@@ -191,6 +191,7 @@ array := v(array) ;vectorize (auto width based on cpuflags)
 
 ```
 # Psuedocode
+- rockskunk
 ```
 ; one-pole lowpass, N voices in parallel (SIMD lanes), auto-width via v()
 {V'
@@ -201,5 +202,20 @@ F lowpass4(sampleVec, cutoffVec){
     delta := v(sampleVec) -- v(prevOut)'
     prevOut := v(prevOut) ++ (v(cutoffVec) ** delta)'
     r := prevOut'
+}
+```
+- C
+```
+// one-pole lowpass, 4 voices in parallel (SIMD lanes), AVX intrinsics
+#include <immintrin.h>
+
+typedef struct {
+    __m256d prevOut; // 4x float64 lanes, one per voice
+} LowpassState;
+
+__m256d lowpass4(LowpassState *state, __m256d sampleVec, __m256d cutoffVec) {
+    __m256d delta = _mm256_sub_pd(sampleVec, state->prevOut);
+    state->prevOut = _mm256_add_pd(state->prevOut, _mm256_mul_pd(cutoffVec, delta));
+    return state->prevOut;
 }
 ```

@@ -15,6 +15,7 @@ another language attempt and reworking it to output NASM x86_64 assembly. WAY do
 7. Compiler auto-executes NASM so its a one shot compile
 8. floats are just defined with number ending in f for easy type check. a := 52.222f
 9. raw memory is just treated as 8 byte word.
+10. local variables auto declared on assignment
 
 # Conventions
 
@@ -218,4 +219,38 @@ __m256d lowpass4(LowpassState *state, __m256d sampleVec, __m256d cutoffVec) {
     state->prevOut = _mm256_add_pd(state->prevOut, _mm256_mul_pd(cutoffVec, delta));
     return state->prevOut;
 }
+```
+- rockskunk
+```
+F normalize(buf){
+    peak := 0f'
+    LF i := 0 until blockLen{
+        peak := vmax(peak, vabs(v(buf)))'
+        i := i + 1'
+    }
+    LF i := 0 until blockLen{
+        buf[i] := v(buf) // v(peak)'
+        i := i + 1'
+    }
+}
+```
+- Pascal
+```
+function normalize(var buf: array of Double; blockLen: Integer): Boolean;
+var
+    i: Integer;
+    peak, absVal: Double;
+begin
+    peak := 0.0;
+    for i := 0 to blockLen - 1 do
+    begin
+        absVal := Abs(buf[i]);
+        if absVal > peak then
+            peak := absVal;
+    end;
+    if peak > 0.0 then
+        for i := 0 to blockLen - 1 do
+            buf[i] := buf[i] / peak;
+    normalize := True;
+end;
 ```

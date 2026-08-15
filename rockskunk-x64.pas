@@ -18,6 +18,7 @@ var
     t_count, f_count, position: Integer;
     braceEmitted: Boolean;
     currentFN: String;
+    labelCounter: Integer;
 
 {
     Ripped from a Pascal -> C Transpiler for an old language I had
@@ -83,9 +84,25 @@ procedure emitDirectiveBlock(); begin end; // {D ...}
 procedure emitFileInclude(); begin end;   // ADD("file.rsk")
 
 // FUNCTIONS -----------------------------------------------------------
-procedure emitFN(); begin end;
-procedure emitFunctionProlog(); begin end;
-procedure emitFunctionEpilog(); begin end;
+procedure emitFN(fname : String);
+begin 
+    writeOut(fname + ':' + #10);
+end;
+
+procedure emitFunctionSetup();
+begin 
+    writeOut('    push rbp' + #10);
+    writeOut('    mov rbp, rsp' + #10);
+end;
+
+procedure emitFunctionTeardown(result : String);
+begin 
+    writeOut('    mov rax, ' + result + #10);
+    writeOut('    add rsp, 16' + #10);
+    writeOut('    pop rbp' + #10);
+    writeOut('    ret' + #10);
+end;
+
 procedure emitReturn(); begin end;
 
 // CONTROL FLOW -----------------------------------------------------------
@@ -114,16 +131,40 @@ procedure emitMalloc(); begin end;            // cm(size)
 procedure emitFree(); begin end;              // fm(p)
 
 // MATH -----------------------------------------------------------
-procedure emitAdd(a, b : Integer); 
-begin 
-    writeOut('add ' + a + ', ' + b);
+procedure emitAdd(dst, src: String);
+begin
+    writeOut('    add ' + dst + ', ' + src + #10);
 end;
-procedure emitSub(a, b : Integer);
-begin 
-    writeOut('sub ' + a + ', ' + b);
+
+procedure emitSub(dst, src: String);
+begin
+    writeOut('    add ' + dst + ', ' + src + #10);
 end;
-procedure emitMul(); begin end;
-procedure emitDiv(); begin end;
+
+procedure emitMul(dst, src: String);
+begin
+    writeOut('    imul ' + dst + ', ' + src + #10);
+end;
+
+procedure emitDiv(dividend, divisor: String);
+begin
+    if isConstant(divisor) and stringToFloat(divisor) = 0.0 then // CATCH DIV 0
+    begin
+        fpWrite(1,'!! ERROR: divide by zero' + #10, 45);
+        break;
+    end
+    else
+    begin
+        // GUARD DIV 0
+        writeOut('    cmp ' + divisor + ', 0' + #10);
+        writeOut('    je .divzero_' + labelCounter + #10);
+        writeOut('    mov rax, ' + dividend + #10);
+        writeOut('    cqo' + #10);
+        writeOut('    idiv ' + divisor + #10);
+        writeOut('.divzero_' + labelCounter + ':' + #10);
+    end;
+end;
+
 procedure emitMod(); begin end;
 
 // VECTOR OPS -----------------------------------------------------------

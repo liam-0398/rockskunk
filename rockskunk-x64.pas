@@ -387,7 +387,7 @@ begin
                         Inc(t_count);
                         Dec(i); // Dec to counteract Inc at bottom of main loop
                     end
-                else if buf[i] = #39 then // Handle single quotes
+                else if buf[i] = #96 then // Handle double quote strings
                 begin
                     word := '';
                     Inc(i); // skip opening quote

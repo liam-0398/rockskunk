@@ -93,6 +93,7 @@ procedure emitFunctionSetup();
 begin 
     writeOut('    push rbp' + #10);
     writeOut('    mov rbp, rsp' + #10);
+    writeOut('    sub rsp, 16' + #10);
 end;
 
 procedure emitFunctionTeardown(result : String);
@@ -114,7 +115,11 @@ procedure emitWHILELoop(); begin end; // LW
 procedure emitLabel(); begin end;
 
 // ASSIGNMENT -----------------------------------------------------------
-procedure emitAssign(); begin end;
+procedure emitAssign(variable : String; value : String);
+begin
+    writeOut('    , 16' + #10);
+end;
+
 procedure emitPairAssign(); begin end;
 procedure emitCompoundAssign(); begin end; // :+=
 

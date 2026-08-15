@@ -1,0 +1,8 @@
+
+F testFunction() {
+    a := 5'
+    b := 10'
+    r := a + b'
+}
+
+testFunction'

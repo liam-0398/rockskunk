@@ -183,6 +183,23 @@ p := &a' ; load specific address
 
 
 ; Misc
+
 {D' align(32)} ; COMPILER DIRECTIVES, align 32. TOP OF FILE
 
+array := v(array) ;vectorize (auto width based on cpuflags)
+                  ; pad with zeros if trying to shove 4 wide into AVX-512 for example
+
 ```
+# Psuedocode
+'''
+; one-pole lowpass, N voices in parallel (SIMD lanes), auto-width via v()
+{V'
+    prevOut[4] := 0'
+}
+
+F lowpass4(sampleVec, cutoffVec){
+    delta := v(sampleVec) -- v(prevOut)'
+    prevOut := v(prevOut) ++ (v(cutoffVec) ** delta)'
+    r := prevOut'
+}
+'''

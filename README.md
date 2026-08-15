@@ -191,7 +191,7 @@ array := v(array) ;vectorize (auto width based on cpuflags)
 
 ```
 # Psuedocode
-'''
+```
 ; one-pole lowpass, N voices in parallel (SIMD lanes), auto-width via v()
 {V'
     prevOut[4] := 0'
@@ -202,4 +202,4 @@ F lowpass4(sampleVec, cutoffVec){
     prevOut := v(prevOut) ++ (v(cutoffVec) ** delta)'
     r := prevOut'
 }
-'''
+```

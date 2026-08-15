@@ -332,7 +332,7 @@ begin
                 t_val[t_count] := ',';
                 Inc(t_count);
             end;
-            '#': begin WriteLn('COMMENT');
+            ';': begin WriteLn('COMMENT');
                 while (i < bytes) and (buf[i] <> #10) do
                     Inc(i);
             end;

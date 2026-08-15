@@ -231,9 +231,34 @@ begin
     Inc(position);  // Increment counter to drop the token
 end;
 
-procedure parser();
+procedure symbolTable();
 begin
 
+end;
+
+procedure parser();
+var
+    i: Integer;
+    
+begin
+    i := 0;
+    position := 0;
+    repeat
+        case peek() of
+            'F': begin WriteLn('PARSER - F');
+                consume;
+                emitFN(consume);
+            end;
+            'LBRACE': begin WriteLn('PARSER - {');
+                consume;
+                emitFunctionSetup;
+            end;
+            'RBRACE': begin WriteLn('PARSER - }');
+                consume;
+                emitFunctionTeardown('0');
+            end;
+        end;
+    until position >= t_count;
 end;
 
 // LEXER =============================================================

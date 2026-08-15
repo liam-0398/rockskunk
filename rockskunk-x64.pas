@@ -116,11 +116,11 @@ procedure emitFree(); begin end;              // fm(p)
 // MATH -----------------------------------------------------------
 procedure emitAdd(a, b : Integer); 
 begin 
-    writeOut('add {a},{b}');
+    writeOut('add ' + a + ', ' + b);
 end;
 procedure emitSub(a, b : Integer);
 begin 
-    writeOut('sub {a},{b}');
+    writeOut('sub ' + a + ', ' + b);
 end;
 procedure emitMul(); begin end;
 procedure emitDiv(); begin end;

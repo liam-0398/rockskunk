@@ -117,7 +117,8 @@ procedure emitLabel(); begin end;
 // ASSIGNMENT -----------------------------------------------------------
 procedure emitAssign(variable : String; value : String);
 begin
-    writeOut('    , 16' + #10);
+    writeOut('   mov rax, ' + value + #10);
+
 end;
 
 procedure emitPairAssign(); begin end;
@@ -153,20 +154,14 @@ end;
 
 procedure emitDiv(dividend, divisor: String);
 begin
-    if isConstant(divisor) and stringToFloat(divisor) = 0.0 then // CATCH DIV 0
-    begin
-        fpWrite(1,'!! ERROR: divide by zero' + #10, 45);
-        break;
-    end
-    else
     begin
         // GUARD DIV 0
         writeOut('    cmp ' + divisor + ', 0' + #10);
-        writeOut('    je .divzero_' + labelCounter + #10);
+        writeOut('    je .divzero_' + inttostr(labelCounter) + #10);
         writeOut('    mov rax, ' + dividend + #10);
         writeOut('    cqo' + #10);
         writeOut('    idiv ' + divisor + #10);
-        writeOut('.divzero_' + labelCounter + ':' + #10);
+        writeOut('.divzero_' + inttostr(labelCounter) + ':' + #10);
     end;
 end;
 
@@ -211,8 +206,6 @@ procedure emitLogicalOr(); begin end;
 procedure emitSyscall(); begin end; // sys(a,b,c)
 
 
-
-
 // AST ================================================================
 // ========================================================
 
@@ -234,7 +227,7 @@ begin
     Inc(position);  // Increment counter to drop the token
 end;
 
-procedure parser;
+procedure parser();
 begin
 
 end;
@@ -242,7 +235,7 @@ end;
 // LEXER =============================================================
 // ========================================================
     //Tokenizes input into a pair, ex = is type (EQUAL) and value (=). 
-procedure lexer;
+procedure lexer();
 var
     i, ii, iii, linecount: Integer;
     word: String;

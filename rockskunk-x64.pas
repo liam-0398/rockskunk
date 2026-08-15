@@ -37,12 +37,12 @@ var
     i: Integer;
 begin
     keywordCheck := False;
-    for i := 0 to 29 do
+    for i := 0 to 14 do
         begin
             if word = acceptedKeywords[i] then 
                 begin
-                keywordCheck := True;
-                break;
+                    keywordCheck := True;
+                    break;
                 end;
         end;
 end;
@@ -250,18 +250,54 @@ begin
     isKeyword := False;
     word := '';
     t_count := 0;
-    for i := 0 to 1023 do
-        begin
-            t_type[i] := '';
-            t_val[i] := '';
-        end;
+        for i := 0 to 1023 do
+            begin
+                t_type[i] := '';
+                t_val[i] := '';
+            end;
     
-    i := 0; // Tracks position in buffer
+    i := 0; // POSITION TRACKER   
     repeat
-        
-        if buf[i] = #10 then // Handle newline
+
+        if buf[i] = #10 then // NEWLINE
             Inc(linecount);
-        case buf[i] of // Handle intrinsic words 
+
+        // MULTI CHARACHTER TOKENS
+        case buf[i] + buf[i+1] of
+            ':=': begin WriteLn('ASSIGN');
+                t_type[t_count] := 'ASSIGN';
+                t_val[t_count] := ':=';
+                Inc(t_count);
+                Inc(i);
+            end;
+            '>=': begin WriteLn('GREQUAL');
+                t_type[t_count] := 'GRQEUAL';
+                t_val[t_count] := '>=';
+                Inc(t_count);
+                Inc(i);
+            end;
+            '<>=': begin WriteLn('LESSEQUAL');
+                t_type[t_count] := 'LESSQEUAL';
+                t_val[t_count] := '<=';
+                Inc(t_count);
+                Inc(i);
+            end;
+            '++': begin WriteLn('VADD');
+                t_type[t_count] := 'VADD';
+                t_val[t_count] := '++';
+                Inc(t_count);
+                Inc(i);
+            end;
+            '**': begin WriteLn('VMUL');
+                t_type[t_count] := 'VMUL';
+                t_val[t_count] := '**';
+                Inc(t_count);
+                Inc(i);
+            end;
+        end;
+
+        // SINGLE CHARACHTER TOKENS        
+        case buf[i] of 
             '=': begin WriteLn('EQUAL');
                 t_type[t_count] := 'EQUAL';
                 t_val[t_count] := '=';
@@ -317,8 +353,8 @@ begin
                 t_val[t_count] := ']';
                 Inc(t_count);
             end;
-            #39: begin WriteLn('SINGLEQUOTE');
-                t_type[t_count] := 'SINGLEQUOTE';
+            #39: begin WriteLn('TERMINATOR');
+                t_type[t_count] := 'TERMINATOR';
                 t_val[t_count] := #39;
                 Inc(t_count);
             end;
@@ -327,12 +363,7 @@ begin
                 t_val[t_count] := #96;
                 Inc(t_count);
             end;
-            ';': begin WriteLn('SEMICOLON');
-                t_type[t_count] := 'SEMICOLON';
-                t_val[t_count] := ';';
-                Inc(t_count);
-            end;
-            ',': begin
+            ',': begin WriteLn('COMMA');
                 t_type[t_count] := 'COMMA';
                 t_val[t_count] := ',';
                 Inc(t_count);
@@ -341,7 +372,7 @@ begin
                 while (i < bytes) and (buf[i] <> #10) do
                     Inc(i);
             end;
-            ' ', #9, #13: ; 
+            // ' ', #9, #13: ; dont remeber what this was
             else
                 if buf[i] in ['a'..'z', 'A'..'Z', '_'] then // Handle letters
                     begin
@@ -351,14 +382,19 @@ begin
                             word := word + buf[i];  // Collect words, add charachters to word
                             Inc(i); // Increment position in file, +1 charachter
                         end;
-                        // DEBATING WHETHER TO REUSE FOR PASCAL OUT BUT NOT SURE HOW
-                        isKeyword := keywordCheck(UpperCase(word)); // Check if word is keyword
+              
+                        isKeyword := keywordCheck(UpperCase(word)); 
                         if isKeyword then  
                             begin
                                 t_type[t_count] := UpperCase(word);
+                                WriteLn(UpperCase(word)); // DEBUG PRINT
                             end
                             else
+                                begin
                                 t_type[t_count] := 'IDENTIFIER';
+                                WriteLn('IDENTIFIER'); // DEBUG PRINT
+                                end;
+
                         t_val[t_count] := word;
                         Inc(t_count);
                         Dec(i);  

@@ -31,6 +31,7 @@ procedure writeOut(s: String); // NASM sourcefile write helper
 begin
     fpWrite(fd2, s[1], Length(s));
 end;
+
 function keywordCheck(word: String): Boolean; // Flag keywords
 var
     i: Integer;
@@ -45,6 +46,7 @@ begin
                 end;
         end;
 end;
+
 function isFloat(word: String): Boolean; // check array to see if var is float
 var
     i: Integer;
@@ -59,6 +61,7 @@ begin
                 end;
         end;
 end;
+
 procedure openFile; // Open sourcefile, SLANG 
 begin
     FillChar(buf, SizeOf(buf), 0);
@@ -66,10 +69,12 @@ begin
     bytes := FpRead(fd, buf, SizeOf(buf));
     fpClose(fd);
 end;
+
 procedure openIntermediateFile; // open NASM sourcefile
 begin
     fd2 := fpOpen('intermediate.asm',O_WRONLY OR O_CREAT OR O_TRUNC, 438);
 end;
+
 procedure closeIntermediateFile; begin fpClose(fd2); end;
 
 // CODE GENERATION ===========================================

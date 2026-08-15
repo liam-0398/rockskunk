@@ -245,6 +245,7 @@ var
     i, linecount: Integer;
     word: String;
     isKeyword: Boolean;
+    isMultiple: Boolean;
 begin
     linecount := 0;
     isKeyword := False;
@@ -256,8 +257,10 @@ begin
                 t_val[i] := '';
             end;
     
-    i := 0; // POSITION TRACKER   
+    i := 0; // POSITION TRACKER  
+  
     repeat
+        isMultiple := False; 
 
         if buf[i] = #10 then // NEWLINE
             Inc(linecount);
@@ -267,111 +270,119 @@ begin
             ':=': begin WriteLn('ASSIGN');
                 t_type[t_count] := 'ASSIGN';
                 t_val[t_count] := ':=';
+                isMultiple := True;
                 Inc(t_count);
                 Inc(i);
             end;
             '>=': begin WriteLn('GREQUAL');
                 t_type[t_count] := 'GRQEUAL';
                 t_val[t_count] := '>=';
+                isMultiple := True;
                 Inc(t_count);
                 Inc(i);
             end;
-            '<>=': begin WriteLn('LESSEQUAL');
+            '<=': begin WriteLn('LESSEQUAL');
                 t_type[t_count] := 'LESSQEUAL';
                 t_val[t_count] := '<=';
+                isMultiple := True;
                 Inc(t_count);
                 Inc(i);
             end;
             '++': begin WriteLn('VADD');
                 t_type[t_count] := 'VADD';
                 t_val[t_count] := '++';
+                isMultiple := True;
                 Inc(t_count);
                 Inc(i);
             end;
             '**': begin WriteLn('VMUL');
                 t_type[t_count] := 'VMUL';
                 t_val[t_count] := '**';
+                isMultiple := True;
                 Inc(t_count);
                 Inc(i);
             end;
         end;
 
-        // SINGLE CHARACHTER TOKENS        
-        case buf[i] of 
-            '=': begin WriteLn('EQUAL');
-                t_type[t_count] := 'EQUAL';
-                t_val[t_count] := '=';
-                Inc(t_count);
-            end;
-            '+': begin WriteLn('PLUS');
-                t_type[t_count] := 'PLUS';
-                t_val[t_count] := '+';
-                Inc(t_count);
-            end;
-            '-': begin WriteLn('MINUS');
-                t_type[t_count] := 'MINUS';
-                t_val[t_count] := '-';
-                Inc(t_count);
-            end;
-            '*': begin WriteLn('STAR');
-                t_type[t_count] := 'STAR';
-                t_val[t_count] := '*';
-                Inc(t_count);
-            end;
-            '/': begin WriteLn('SLASH');
-                t_type[t_count] := 'SLASH';
-                t_val[t_count] := '/';
-                Inc(t_count);
-            end;
-            '{': begin WriteLn('LBRACE');
-                t_type[t_count] := 'LBRACE';
-                t_val[t_count] := '{';
-                Inc(t_count);
-            end;
-            '}': begin WriteLn('RBRACE');
-                t_type[t_count] := 'RBRACE';
-                t_val[t_count] := '}';
-                Inc(t_count);
-            end;
-            '(': begin WriteLn('LPAR');
-                t_type[t_count] := 'LPAR';
-                t_val[t_count] := '(';
-                Inc(t_count);
-            end;
-            ')': begin WriteLn('RPAR');
-                t_type[t_count] := 'RPAR';
-                t_val[t_count] := ')';
-                Inc(t_count);
-            end;
-            '[': begin WriteLn('LBRAC');
-                t_type[t_count] := 'LBRAC';
-                t_val[t_count] := '[';
-                Inc(t_count);
-            end;
-            ']': begin WriteLn('RBRAC');
-                t_type[t_count] := 'RBRAC';
-                t_val[t_count] := ']';
-                Inc(t_count);
-            end;
-            #39: begin WriteLn('TERMINATOR');
-                t_type[t_count] := 'TERMINATOR';
-                t_val[t_count] := #39;
-                Inc(t_count);
-            end;
-            #96: begin WriteLn('QUOTE');
-                t_type[t_count] := 'QUOTE';
-                t_val[t_count] := #96;
-                Inc(t_count);
-            end;
-            ',': begin WriteLn('COMMA');
-                t_type[t_count] := 'COMMA';
-                t_val[t_count] := ',';
-                Inc(t_count);
-            end;
-            ';': begin WriteLn('COMMENT');
-                while (i < bytes) and (buf[i] <> #10) do
-                    Inc(i);
-            end;
+        // SINGLE CHARACHTER TOKENS 
+        if not isMultiple then 
+        begin       
+            case buf[i] of 
+                '=': begin WriteLn('EQUAL');
+                    t_type[t_count] := 'EQUAL';
+                    t_val[t_count] := '=';
+                    Inc(t_count);
+                end;
+                '+': begin WriteLn('PLUS');
+                    t_type[t_count] := 'PLUS';
+                    t_val[t_count] := '+';
+                    Inc(t_count);
+                end;
+                '-': begin WriteLn('MINUS');
+                    t_type[t_count] := 'MINUS';
+                    t_val[t_count] := '-';
+                    Inc(t_count);
+                end;
+                '*': begin WriteLn('STAR');
+                    t_type[t_count] := 'STAR';
+                    t_val[t_count] := '*';
+                    Inc(t_count);
+                end;
+                '/': begin WriteLn('SLASH');
+                    t_type[t_count] := 'SLASH';
+                    t_val[t_count] := '/';
+                    Inc(t_count);
+                end;
+                '{': begin WriteLn('LBRACE');
+                    t_type[t_count] := 'LBRACE';
+                    t_val[t_count] := '{';
+                    Inc(t_count);
+                end;
+                '}': begin WriteLn('RBRACE');
+                    t_type[t_count] := 'RBRACE';
+                    t_val[t_count] := '}';
+                    Inc(t_count);
+                end;
+                '(': begin WriteLn('LPAR');
+                    t_type[t_count] := 'LPAR';
+                    t_val[t_count] := '(';
+                    Inc(t_count);
+                end;
+                ')': begin WriteLn('RPAR');
+                    t_type[t_count] := 'RPAR';
+                    t_val[t_count] := ')';
+                    Inc(t_count);
+                end;
+                '[': begin WriteLn('LBRAC');
+                    t_type[t_count] := 'LBRAC';
+                    t_val[t_count] := '[';
+                    Inc(t_count);
+                end;
+                ']': begin WriteLn('RBRAC');
+                    t_type[t_count] := 'RBRAC';
+                    t_val[t_count] := ']';
+                    Inc(t_count);
+                end;
+                #39: begin WriteLn('TERMINATOR');
+                    t_type[t_count] := 'TERMINATOR';
+                    t_val[t_count] := #39;
+                    Inc(t_count);
+                end;
+                #96: begin WriteLn('QUOTE');
+                    t_type[t_count] := 'QUOTE';
+                    t_val[t_count] := #96;
+                    Inc(t_count);
+                end;
+                ',': begin WriteLn('COMMA');
+                    t_type[t_count] := 'COMMA';
+                    t_val[t_count] := ',';
+                    Inc(t_count);
+                end;
+                ';': begin WriteLn('COMMENT');
+                    while (i < bytes) and (buf[i] <> #10) do
+                        Inc(i);
+                end;
+          
             // ' ', #9, #13: ; dont remeber what this was
             else
                 if buf[i] in ['a'..'z', 'A'..'Z', '_'] then // Handle letters
@@ -439,7 +450,8 @@ begin
                     // no Dec(i) needed, already on closing quote, main Inc(i) moves past it
                 end; 
                 
-        end;  
+        end; 
+        end; 
         Inc(i); // Increment position in buffer
     until i >= bytes; // Runs until EOF
     {// ARRAY PRINT DEBUG

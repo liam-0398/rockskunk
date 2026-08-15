@@ -237,7 +237,7 @@ end;
 
 procedure lexer();
 var
-    i, ii, iii, linecount: Integer;
+    i, linecount: Integer;
     word: String;
     isKeyword: Boolean;
 begin
@@ -246,10 +246,10 @@ begin
     word := '';
     t_count := 0;
     for i := 0 to 1023 do
-begin
-    t_type[i] := '';
-    t_val[i] := '';
-end;
+        begin
+            t_type[i] := '';
+            t_val[i] := '';
+        end;
     
     i := 0; // Tracks position in buffer
     repeat
@@ -346,29 +346,7 @@ end;
                             word := word + buf[i];  // Collect words, add charachters to word
                             Inc(i); // Increment position in file, +1 charachter
                         end;
-                        // ADD . to end of end. is it is not end; (for loops not functions)
-                        if (UpperCase(word) = 'END') and (buf[i] = '.') then
-                        begin
-                            word := word + '.';
-                            Inc(i);
-                        end;
                         // DEBATING WHETHER TO REUSE FOR PASCAL OUT BUT NOT SURE HOW
-                        if UpperCase(word) = 'CC' then 
-                        begin
-                            t_type[t_count] := 'CC';
-                            word := ''; // clear word
-                            Inc(i); // skip space after CC
-                            while buf[i] <> #39 do
-                            begin
-                                word := word + buf[i]; // add charachters to word
-                                Inc(i);
-                            end;
-                            t_val[t_count] := word; // input collected words into value
-                            Inc(t_count); // increment
-                            Dec(i); // let main Inc(i) land on semicolon, gets consumed naturally
-                        end
-                        else
-                        begin
                         isKeyword := keywordCheck(UpperCase(word)); // Check if word is keyword
                         if isKeyword then  
                             begin
@@ -379,7 +357,6 @@ end;
                         t_val[t_count] := word;
                         Inc(t_count);
                         Dec(i);  
-                        end;             
                     end
                     
                 else if buf[i] in ['0'..'9'] then // Handle numbers

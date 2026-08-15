@@ -213,8 +213,7 @@ procedure emitSyscall(); begin end; // sys(a,b,c)
 // AST ================================================================
 // ========================================================
 
-// Maybe skip? Track strack offset by buffering to string before writing
-// to a file directly and counting 
+// Maybe skip? Who needs em anyways
 
 
 // PARSER =============================================================

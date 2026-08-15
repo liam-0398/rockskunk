@@ -1,24 +1,23 @@
 program rockskunk_x64;
 uses
     BaseUnix, SysUtils, Unix;
+
 const
-    acceptedKeywords: array[0..29] of String =
-    ('USE', 'STATIC', 'GLOBAL', 'BDEF', 'EDEF',
-    'PR', 'FN', 'IF', 'WHEN', 'FOR', 'TO',
-    'WHILE', 'DO', 'NOT', 'REPEAT', 'UNTIL', 'CC',
-    'LOOP', 'DEFINE', 'CONDITION', 'LOCAL', 'FLOAT',
-    'END', 'END.', 'LESS', 'MORE', 'LESSE', 'MOREE',
-    'AND', 'OR');
+    acceptedKeywords: array[0..14] of String =
+    ('ADD', 'V', 'S', 'R', 'D',
+     'F', 'LF', 'LW', 'W', 'I', 'E',
+     'OR', 'AND', 'NOR', 'XOR');
 var
-    fd, fd2, bytes: cint;
-    filename: String;
-    buf: Array[0..65535] of char;
-    t_type, t_val: Array[0..4096] of String;
+    buf: Array[0..65535] of Char;
     floats: Array[0..512] of String;
-    t_count, f_count, position: Integer;
+    t_type, t_val: Array[0..4096] of String;
+
     braceEmitted: Boolean;
+    bytes: CInt;
     currentFN: String;
-    labelCounter: Integer;
+    f_count, labelCounter, position, t_count: Integer;
+    fd, fd2: CInt;
+    filename: String;
 
 {
     Ripped from a Pascal -> C Transpiler for an old language I had
@@ -144,7 +143,7 @@ end;
 
 procedure emitSub(dst, src: String);
 begin
-    writeOut('    add ' + dst + ', ' + src + #10);
+    writeOut('    sub ' + dst + ', ' + src + #10);
 end;
 
 procedure emitMul(dst, src: String);
@@ -234,15 +233,14 @@ end;
 
 // LEXER =============================================================
 // ========================================================
-    //Tokenizes input into a pair, ex = is type (EQUAL) and value (=). 
+//Tokenizes input into a pair, ex = is type (EQUAL) and value (=). 
+
 procedure lexer();
 var
     i, ii, iii, linecount: Integer;
     word: String;
     isKeyword: Boolean;
 begin
-    
-    
     linecount := 0;
     isKeyword := False;
     word := '';

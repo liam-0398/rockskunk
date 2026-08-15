@@ -257,6 +257,25 @@ begin
                 consume;
                 emitFunctionTeardown('0');
             end;
+            'IDENTIFIER': begin WriteLn('PARSER - IDENT');
+                if peek() = 'ASSIGN' then
+                    begin
+                        // register/table := consume()
+                        // consume();
+                        WriteLn('ASSIGN BRANCH REACHED')
+                    end
+                else
+                    begin
+                        // Work branch in future
+                        consume;
+                    end;
+            end;
+            'ASSIGN': begin WriteLn('PARSER - ASSIGN');
+                consume;
+            end;
+
+
+            
         end;
     until position >= t_count;
 end;

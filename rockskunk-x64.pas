@@ -24,6 +24,53 @@ var
     Undergoing massive restructuring to output rockskunk -> NASM
 }
 
+// HELPERS =================================================
+// ========================================================
+
+procedure writeOut(s: String); // NASM sourcefile write helper
+begin
+    fpWrite(fd2, s[1], Length(s));
+end;
+function keywordCheck(word: String): Boolean; // Flag keywords
+var
+    i: Integer;
+begin
+    keywordCheck := False;
+    for i := 0 to 29 do
+        begin
+            if word = acceptedKeywords[i] then 
+                begin
+                keywordCheck := True;
+                break;
+                end;
+        end;
+end;
+function isFloat(word: String): Boolean; // check array to see if var is float
+var
+    i: Integer;
+begin
+    isFloat := False;
+    for i := 0 to f_count - 1 do
+        begin
+            if word = floats[i] then 
+                begin
+                isFloat := True;
+                break;
+                end;
+        end;
+end;
+procedure openFile; // Open sourcefile, SLANG 
+begin
+    FillChar(buf, SizeOf(buf), 0);
+    fd := fpOpen(filename,O_RdOnly);
+    bytes := FpRead(fd, buf, SizeOf(buf));
+    fpClose(fd);
+end;
+procedure openIntermediateFile; // open NASM sourcefile
+begin
+    fd2 := fpOpen('intermediate.asm',O_WRONLY OR O_CREAT OR O_TRUNC, 438);
+end;
+procedure closeIntermediateFile; begin fpClose(fd2); end;
 
 // CODE GENERATION ===========================================
 // ========================================================
@@ -67,8 +114,14 @@ procedure emitMalloc(); begin end;            // cm(size)
 procedure emitFree(); begin end;              // fm(p)
 
 // MATH -----------------------------------------------------------
-procedure emitAdd(); begin end;
-procedure emitSub(); begin end;
+procedure emitAdd(a, b : Integer); 
+begin 
+    writeOut('add {a},{b}');
+end;
+procedure emitSub(a, b : Integer);
+begin 
+    writeOut('sub {a},{b}');
+end;
 procedure emitMul(); begin end;
 procedure emitDiv(); begin end;
 procedure emitMod(); begin end;
@@ -107,58 +160,12 @@ procedure emitBitXor(); begin end;
 procedure emitLogicalAnd(); begin end;
 procedure emitLogicalOr(); begin end;
 
-// SYSTEM =================================================
-// ========================================================
+// SYSTEM ----------------------------------
+
 procedure emitSyscall(); begin end; // sys(a,b,c)
 
 
-// HELPERS =================================================
-// ========================================================
 
-procedure writeOut(s: String); // C sourcefile write helper
-begin
-    fpWrite(fd2, s[1], Length(s));
-end;
-function keywordCheck(word: String): Boolean; // Flag keywords
-var
-    i: Integer;
-begin
-    keywordCheck := False;
-    for i := 0 to 29 do
-        begin
-            if word = acceptedKeywords[i] then 
-                begin
-                keywordCheck := True;
-                break;
-                end;
-        end;
-end;
-function isFloat(word: String): Boolean; // check array to see if var is float
-var
-    i: Integer;
-begin
-    isFloat := False;
-    for i := 0 to f_count - 1 do
-        begin
-            if word = floats[i] then 
-                begin
-                isFloat := True;
-                break;
-                end;
-        end;
-end;
-procedure openFile; // Open sourcefile, SLANG 
-begin
-    FillChar(buf, SizeOf(buf), 0);
-    fd := fpOpen(filename,O_RdOnly);
-    bytes := FpRead(fd, buf, SizeOf(buf));
-    fpClose(fd);
-end;
-procedure openIntermediateFile; // open c.out intermediate C sourcefile
-begin
-    fd2 := fpOpen('c.out',O_WRONLY OR O_CREAT OR O_TRUNC, 438);
-end;
-procedure closeIntermediateFile; begin fpClose(fd2); end;
 
 // AST ================================================================
 // ========================================================

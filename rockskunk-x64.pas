@@ -496,6 +496,7 @@ if ParamCount = 1 then
         filename := ParamStr(1);
         openFile;
         lexer;
+        openIntermediateFile;
         parser;
     end
 else

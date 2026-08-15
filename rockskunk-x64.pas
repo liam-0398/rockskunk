@@ -1,4 +1,4 @@
-program rockskunk-x64;
+program rockskunk_x64;
 uses
     BaseUnix, SysUtils, Unix;
 const
@@ -181,7 +181,7 @@ begin
     Inc(position);  // Increment counter to drop the token
 end;
 
-function parser();
+procedure parser;
 begin
 
 end;

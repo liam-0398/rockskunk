@@ -315,7 +315,7 @@ begin
         op := peek(); // Operator
         consume;
         second := consume; // Operand
-        
+
         if op = 'PLUS' then
             result1 := StrToFloat(first) + StrToFloat(second)
         else if op = 'MINUS' then
@@ -652,30 +652,30 @@ begin
                 Inc(t_count);
                 Inc(i);
             end;
-            '{V': begin WriteLn('VARBLOCK');
+            '|V': begin WriteLn('VARBLOCK');
                 t_type[t_count] := 'VARBLOCK';
-                t_val[t_count] := '{V';
+                t_val[t_count] := '|V';
                 isMultiple := True;
                 Inc(t_count);
                 Inc(i);
             end;
-            '{S': begin WriteLn('STATICBLOCK');
+            '|S': begin WriteLn('STATICBLOCK');
                 t_type[t_count] := 'STATICBLOCK';
-                t_val[t_count] := '{S';
+                t_val[t_count] := '|S';
                 isMultiple := True;
                 Inc(t_count);
                 Inc(i);
             end;
-            '{D': begin WriteLn('DIRECTIVE');
+            '|D': begin WriteLn('DIRECTIVE');
                 t_type[t_count] := 'DIRECTIVE';
-                t_val[t_count] := '{D';
+                t_val[t_count] := '|D';
                 isMultiple := True;
                 Inc(t_count);
                 Inc(i);
             end;
-            '{R': begin WriteLn('RECORDBLOCK');
+            '|R': begin WriteLn('RECORDBLOCK');
                 t_type[t_count] := 'RECORDBLOCK';
-                t_val[t_count] := '{R';
+                t_val[t_count] := '|R';
                 isMultiple := True;
                 Inc(t_count);
                 Inc(i);
@@ -782,6 +782,11 @@ begin
                 ',': begin WriteLn('COMMA');
                     t_type[t_count] := 'COMMA';
                     t_val[t_count] := ',';
+                    Inc(t_count);
+                end;
+                '|': begin WriteLn('PIPE');
+                    t_type[t_count] := 'PIPE';
+                    t_val[t_count] := '|';
                     Inc(t_count);
                 end;
                 ';': begin WriteLn('COMMENT');

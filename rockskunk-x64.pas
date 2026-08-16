@@ -136,6 +136,13 @@ begin
     writeOut('    mov ' + variable + ', rax' + #10);
 end;
 
+procedure emitAssignFloat(variable : String; value : String);
+begin
+    if value <> 'xmm0' then
+        writeOut('    mov xmm0, ' + value + #10); // if i didnt do this i get mov rax, rax
+    writeOut('    mov ' + variable + ', xmm0' + #10);
+end;
+
 procedure emitPairAssign(); begin end;
 procedure emitCompoundAssign(); begin end; // :+=
 
@@ -262,6 +269,9 @@ begin
                     first := '[rbp-' + IntToStr(symOffset[i]) + ']';
                 end;
         end;
+
+    if first[Length(first)] = 'f' then  // strip the ol 'f' from floats before register assignment
+                first := copy(first, 1, Length(first) - 1);
  
     if not ((peek() = 'PLUS') or (peek() = 'MINUS') or (peek() = 'STAR') or (peek() = 'SLASH')) then
         begin
@@ -271,9 +281,6 @@ begin
     else
         begin
             WriteLn('EEVAL F - OP BRANCH');
-
-            if first[Length(first)] = 'f' then  // strip the ol 'f' from floats before register assignment
-                first := copy(first, 1, Length(first) - 1);
 
             loadXMM0(first);
             op := peek(); // Operator
@@ -410,8 +417,16 @@ begin
                     begin
                         variable := '[rbp-' + IntToStr(symOffset[symIndex]) + ']';  // [rbp-8] etc
                         consume(); // :=
-                        src := evaluateExpression();
-                        emitAssign(variable, src);
+                            if peek() = 'FLOAT' then
+                                begin
+                                src := evaluateExpressionFloat();
+                                emitAssignFloat(variable, src);
+                                end
+                            else
+                                begin
+                                src := evaluateExpression();
+                                emitAssign(variable, src);
+                                end;
                         WriteLn('ASSIGN BRANCH - DECLARED');
                     end
                 else 
@@ -424,8 +439,16 @@ begin
                                 returnAddr := '[rbp-' + IntToStr(symOffset[symCount]) + ']'; 
                         inc(symCount);
                         consume(); // :=
-                        src := evaluateExpression();
-                        emitAssign(variable, src);
+                            if peek() = 'FLOAT' then
+                                begin
+                                src := evaluateExpressionFloat();
+                                emitAssignFloat(variable, src);
+                                end
+                            else
+                                begin
+                                src := evaluateExpression();
+                                emitAssign(variable,src);
+                                end;
                         WriteLn('ASSIGN BRANCH - UNDECLARED');
                     end;
         end
@@ -447,9 +470,6 @@ begin
                 consume;
                 emitFN(consume);
                 frameOffset := 0;
-            end;
-            'FLOAT': begin WriteLn('PARSER - FLOAT');
-                evaluateExpressionFloat;
             end;
             'LPAR': begin WriteLn('PARSER - (');
                 consume; // PLACEHOLDER
@@ -731,6 +751,7 @@ begin
                         begin
                             t_type[t_count] := 'FLOAT'; // Store as type NUMBER
                             t_val[t_count] := word; // put number into value
+                            WriteLn('FLOAT');
                             Inc(t_count);
                             Dec(i); // Dec to counteract Inc at bottom of main loop
                         end
@@ -738,6 +759,7 @@ begin
                         begin
                             t_type[t_count] := 'NUMBER'; // Store as type NUMBER
                             t_val[t_count] := word; // put number into value
+                            WriteLn('NUMBER');
                             Inc(t_count);
                             Dec(i); // Dec to counteract Inc at bottom of main loop
                         end;

@@ -513,7 +513,7 @@ begin
                     begin
                         variable := '[rbp-' + IntToStr(symOffset[symIndex]) + ']';  // [rbp-8] etc
                         consume(); // :=
-                            if peek() = 'FLOAT' then
+                            if symType[symIndex] = 'FLOAT' then
                                 begin
                                 src := evaluateExpressionFloat();
                                 emitAssignFloat(variable, src);
@@ -528,6 +528,12 @@ begin
                 else 
                     begin
                         frameOffset := frameOffset + 8;
+
+                        if peek2() = 'FLOAT' then
+                            symType[symCount] := 'FLOAT';
+                        if peek2() = 'NUMBER' then
+                            symType[symCount] := 'NUMBER';
+
                         symOffset[symCount] := frameOffset;
                         symName[symCount] := variable;
                         variable := '[rbp-' + IntToStr(symOffset[symCount]) + ']';  

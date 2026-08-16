@@ -145,8 +145,9 @@ procedure emitLabel(); begin end;
 // ASSIGNMENT -----------------------------------------------------------
 procedure emitAssign(variable : String; value : String);
 begin
-    writeOut('    mov rax, ' + value + #10);
-    writeOut('    mov ' + variable + ', rax' + #10);  
+    if value <> 'rax' then
+        writeOut('    mov rax, ' + value + #10);
+    writeOut('    mov ' + variable + ', rax' + #10);
 end;
 
 procedure emitPairAssign(); begin end;

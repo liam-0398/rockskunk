@@ -439,11 +439,12 @@ procedure lexer();
 var
     i, linecount: Integer;
     word: String;
-    isKeyword: Boolean;
+    isKeyword, isFloat: Boolean;
     isMultiple: Boolean;
 begin
     linecount := 0;
     isKeyword := False;
+    isFloat :=  False;
     word := '';
     t_count := 0;
         for i := 0 to 1023 do
@@ -627,7 +628,7 @@ begin
                         Dec(i);  
                     end
                     
-                else if buf[i] in ['0'..'9'] then // Handle numbers
+                {else if buf[i] in ['0'..'9'] then // Handle numbers // OLD BRANCH
                 begin
                     word := '';
                     while buf[i] in ['0'..'9'] do // Collect digits
@@ -649,7 +650,36 @@ begin
                         t_val[t_count] := word; // put number into value
                         Inc(t_count);
                         Dec(i); // Dec to counteract Inc at bottom of main loop
-                    end
+                    end}
+
+                else if buf[i] in ['0'..'9'] then
+                begin
+                    word := '';
+                    while buf[i] in ['0'..'9', '.', 'f'] do
+                        begin
+                            word := word + buf[i];
+                            Inc(i);
+                        end;
+                    
+                   if (Pos('.', word) > 0) or (Pos('f', word) > 0) then
+                        isFloat := True;
+
+                    if isFloat then
+                        begin
+                            t_type[t_count] := 'FLOAT'; // Store as type NUMBER
+                            t_val[t_count] := word; // put number into value
+                            Inc(t_count);
+                            Dec(i); // Dec to counteract Inc at bottom of main loop
+                        end
+                    else
+                        begin
+                            t_type[t_count] := 'NUMBER'; // Store as type NUMBER
+                            t_val[t_count] := word; // put number into value
+                            Inc(t_count);
+                            Dec(i); // Dec to counteract Inc at bottom of main loop
+                        end;
+                end
+
                 else if buf[i] = #96 then // Handle double quote strings
                 begin
                     word := '';

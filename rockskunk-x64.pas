@@ -266,6 +266,18 @@ function peek(): String; // Look at the next token non-destructively
 begin
     peek := t_type[position]; 
 end;
+
+function peek2(): String; // Look at the next token non-destructively
+begin
+    peek2 := t_type[position+1]; 
+end;
+
+function peek3(): String; // Look at the next token non-destructively
+begin
+    peek3 := t_type[position+2]; 
+end;
+
+
 function consume(): String; // Eat the next token and then remove it
 begin
     consume := t_val[position]; // pull value (actual content of token)
@@ -277,6 +289,7 @@ end;
 function evaluateExpressionFloat(): String;
 var
     first, second, op: String;
+    result1: Double;
     i: Integer;
 begin
 
@@ -284,7 +297,7 @@ begin
     i := 0;
     first := consume(); // CONSUME VARIABLE
 
-    if not isNumber(first) then
+     if not isNumber(first) then
         begin
             for i := 0 to symCount - 1 do
                 begin
@@ -295,6 +308,24 @@ begin
 
     if first[Length(first)] = 'f' then  // strip the ol 'f' from floats before register assignment
                 first := copy(first, 1, Length(first) - 1);
+
+
+    if isNumber(first) and (peek2() = 'NUMBER') then
+        begin
+        op := consume; // Operator
+        second := consume; // Operand
+        if op = 'PLUS' then
+            result1 := StrToFloat(first) + StrToFloat(second)
+        else if op = 'MINUS' then
+            result1 := StrToFloat(first) - StrToFloat(second)
+        else if op = 'STAR' then
+            result1 := StrToFloat(first) * StrToFloat(second)
+        else if op = 'SLASH' then
+            result1 := StrToFloat(first) / StrToFloat(second);
+
+        WriteLn('OPTIMIZATION - FLOAT ARITHMATIC');
+        Exit(FloatToStr(result1));
+        end;
  
     if not ((peek() = 'PLUS') or (peek() = 'MINUS') or (peek() = 'STAR') or (peek() = 'SLASH')) then
         begin
@@ -347,12 +378,13 @@ end;
 function evaluateExpression(): String;
 var
     first, second, op: String;
+    result1: Integer;
     i: Integer;
 begin
 
     //WriteLn('About to consume: ' + peek());
     i := 0;
-    first := consume(); // CONSUME VARIABLE
+    first := consume(); // CONSUME FIRST #/V := 1 + 2
 
     if not isNumber(first) then
         begin
@@ -362,6 +394,23 @@ begin
                     first := '[rbp-' + IntToStr(symOffset[i]) + ']';
                 end;
         end;
+
+    if isNumber(first) and (peek2() = 'NUMBER') then
+            begin
+            op := consume; // Operator
+            second := consume; // Operand
+            if op = 'PLUS' then
+                result1 := StrToInt(first) + StrToInt(second)
+            else if op = 'MINUS' then
+                result1 := StrToInt(first) - StrToInt(second)
+            else if op = 'STAR' then
+                result1 := StrToInt(first) * StrToInt(second)
+            else if op = 'SLASH' then
+                result1 := StrToInt(first) div StrToInt(second);
+
+            WriteLn('OPTIMIZATION - ARITHMATIC');
+            Exit(IntToStr(result1));
+    end;
  
     if not ((peek() = 'PLUS') or (peek() = 'MINUS') or (peek() = 'STAR') or (peek() = 'SLASH')) then
         begin

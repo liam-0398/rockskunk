@@ -312,8 +312,10 @@ begin
 
     if isNumber(first) and (peek2() = 'NUMBER') then
         begin
-        op := consume; // Operator
+        op := peek(); // Operator
+        consume;
         second := consume; // Operand
+        
         if op = 'PLUS' then
             result1 := StrToFloat(first) + StrToFloat(second)
         else if op = 'MINUS' then
@@ -386,19 +388,12 @@ begin
     i := 0;
     first := consume(); // CONSUME FIRST #/V := 1 + 2
 
-    if not isNumber(first) then
-        begin
-            for i := 0 to symCount - 1 do
-                begin
-                if symName[i] = first then
-                    first := '[rbp-' + IntToStr(symOffset[i]) + ']';
-                end;
-        end;
-
     if isNumber(first) and (peek2() = 'NUMBER') then
             begin
-            op := consume; // Operator
+            op := peek(); // Operator
+            consume;
             second := consume; // Operand
+
             if op = 'PLUS' then
                 result1 := StrToInt(first) + StrToInt(second)
             else if op = 'MINUS' then
@@ -412,6 +407,15 @@ begin
             Exit(IntToStr(result1));
     end;
  
+    if not isNumber(first) then
+        begin
+            for i := 0 to symCount - 1 do
+                begin
+                if symName[i] = first then
+                    first := '[rbp-' + IntToStr(symOffset[i]) + ']';
+                end;
+    end;
+
     if not ((peek() = 'PLUS') or (peek() = 'MINUS') or (peek() = 'STAR') or (peek() = 'SLASH')) then
         begin
            evaluateExpression := first;

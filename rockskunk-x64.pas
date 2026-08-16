@@ -233,13 +233,6 @@ procedure emitLogicalOr(); begin end;
 
 procedure emitSyscall(); begin end; // sys(a,b,c)
 
-
-// AST ================================================================
-// ========================================================
-
-// Maybe skip? Who needs em anyways
-
-
 // PARSER =============================================================
 // ========================================================
 
@@ -254,9 +247,7 @@ begin
     Inc(position);  // Increment counter to drop the token
 end;
 
-procedure symbolTable();
 // symOffset, symName, symCount
-begin
 
 end;
 

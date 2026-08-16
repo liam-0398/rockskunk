@@ -11,11 +11,13 @@ var
     buf: Array[0..65535] of Char;
     floats: Array[0..512] of String;
     t_type, t_val: Array[0..4096] of String;
+    symName: array[0..255] of String;
+    symOffset: array[0..255] of Integer;
 
     braceEmitted: Boolean;
     bytes: CInt;
     currentFN: String;
-    f_count, labelCounter, position, t_count: Integer;
+    f_count, labelCounter, position, t_count, symCount: Integer;
     fd, fd2: CInt;
     filename: String;
 

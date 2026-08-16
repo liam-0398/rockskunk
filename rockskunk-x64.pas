@@ -139,8 +139,8 @@ end;
 procedure emitAssignFloat(variable : String; value : String);
 begin
     if value <> 'xmm0' then
-        writeOut('    mov xmm0, ' + value + #10); // if i didnt do this i get mov rax, rax
-    writeOut('    mov ' + variable + ', xmm0' + #10);
+        writeOut('    movsd xmm0, ' + value + #10); // if i didnt do this i get mov rax, rax
+    writeOut('    movsd ' + variable + ', xmm0' + #10);
 end;
 
 procedure emitPairAssign(); begin end;

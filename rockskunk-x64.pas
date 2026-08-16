@@ -8,7 +8,7 @@ const
      'F', 'LF', 'LW', 'W', 'I', 'E',
      'OR', 'AND', 'NOR', 'XOR', 'CALL');
 var
-    buf: Array[0..65535] of Char;
+    buf, databuf, textbuf: Array[0..65535] of Char;
     symName, symType: array[0..255] of String;
     symOffset: array[0..255] of Integer;
     t_type, t_val: Array[0..4096] of String;
@@ -16,7 +16,7 @@ var
     braceEmitted: Boolean;
     bytes: CInt;
     currentFN: String;
-    fd, fd2: CInt;
+    fd, fd2, fd3, fd4: CInt;
     filename, returnAddr: String;
     frameOffset, labelCounter, position, symCount, t_count: Integer;
 
@@ -29,6 +29,8 @@ var
 // ========================================================
 
 procedure writeOut(s: String); begin fpWrite(fd2, s[1], Length(s)); end;
+procedure writeText(s: String); begin fpWrite(fd3, s[1], Length(s)); end;
+procedure writeData(s: String); begin fpWrite(fd4, s[1], Length(s)); end;
 
 function keywordCheck(word: String): Boolean; // Flag keywords
 var
@@ -65,10 +67,39 @@ end;
 
 procedure openIntermediateFile; // open NASM sourcefile
 begin
-    fd2 := fpOpen('intermediate.asm',O_WRONLY OR O_CREAT OR O_TRUNC, 438);
+    fd3 := fpOpen('text.tmp',O_WRONLY OR O_CREAT OR O_TRUNC, 438);
+    fd4 := fpOpen('data.tmp',O_WRONLY OR O_CREAT OR O_TRUNC, 438);
+    FillChar(databuf, SizeOf(databuf), 0);
+    FillChar(textbuf, SizeOf(textbuf), 0);
 end;
 
-procedure closeIntermediateFile; begin fpClose(fd2); end;
+procedure writeASM;
+var
+    dbytes, tbytes: cint;
+begin
+    fd2 := fpOpen('intermediate.asm',O_WRONLY OR O_CREAT OR O_TRUNC, 438);
+
+    fd4 := fpOpen('data.tmp', O_RdOnly, 438);
+    WriteOut('section .data' + #10);
+    dbytes := fpRead(fd4, databuf, SizeOf(databuf));
+    fpWrite(fd2, databuf, dbytes);
+    fpClose(fd4);
+
+    fd3 := fpOpen('text.tmp',O_RdOnly, 438);
+    WriteOut('section .text' + #10);
+    fd3 := fpOpen('text.tmp', O_RdOnly, 438);
+    tbytes := fpRead(fd3, textbuf, SizeOf(textbuf));
+    fpWrite(fd2, textbuf, tbytes);
+    fpClose(fd3);
+
+    fpClose(fd2);
+end;
+
+procedure closeIntermediateFile;
+begin  
+    fpClose(fd3);
+    fpClose(fd4);
+end;
 
 // CODE GENERATION ===========================================
 // ========================================================
@@ -77,17 +108,17 @@ procedure closeIntermediateFile; begin fpClose(fd2); end;
 
 procedure loadRAX(addr: String);
 begin
-    writeOut('    mov rax, ' + addr + #10);
+    WriteText('    mov rax, ' + addr + #10);
 end;
 
 procedure loadRBX(addr: String);
 begin
-    writeOut('    mov rbx, ' + addr + #10);
+    WriteText('    mov rbx, ' + addr + #10);
 end;
 
 procedure loadXMM0(addr: String);
 begin
-    writeOut('    movsd xmm0, ' + addr + #10);
+    WriteText('    movsd xmm0, ' + addr + #10);
 end;
 
 // BLOCKS -----------------------------------------------------------
@@ -100,22 +131,22 @@ procedure emitFileInclude(); begin end;   // ADD("file.rsk")
 // FUNCTIONS -----------------------------------------------------------
 procedure emitFN(fname : String);
 begin 
-    writeOut(fname + ':' + #10);
+    WriteText(fname + ':' + #10);
 end;
 
 procedure emitFunctionSetup();
 begin 
-    writeOut('    push rbp' + #10);
-    writeOut('    mov rbp, rsp' + #10);
-    writeOut('    sub rsp, 128' + #10);
+    WriteText('    push rbp' + #10);
+    WriteText('    mov rbp, rsp' + #10);
+    WriteText('    sub rsp, 128' + #10);
 end;
 
 procedure emitFunctionTeardown(result : String);
 begin 
-    writeOut('    mov rax, ' + result + #10);
-    writeOut('    add rsp, 128' + #10);
-    writeOut('    pop rbp' + #10);
-    writeOut('    ret' + #10 + #10);
+    WriteText('    mov rax, ' + result + #10);
+    WriteText('    add rsp, 128' + #10);
+    WriteText('    pop rbp' + #10);
+    WriteText('    ret' + #10 + #10);
 end;
 
 procedure emitReturn(); begin end;
@@ -132,15 +163,15 @@ procedure emitLabel(); begin end;
 procedure emitAssign(variable : String; value : String);
 begin
     if value <> 'rax' then
-        writeOut('    mov rax, ' + value + #10); // if i didnt do this i get mov rax, rax
-    writeOut('    mov ' + variable + ', rax' + #10);
+        WriteText('    mov rax, ' + value + #10); // if i didnt do this i get mov rax, rax
+    WriteText('    mov ' + variable + ', rax' + #10);
 end;
 
 procedure emitAssignFloat(variable : String; value : String);
 begin
     if value <> 'xmm0' then
-        writeOut('    movsd xmm0, ' + value + #10); // if i didnt do this i get mov rax, rax
-    writeOut('    movsd ' + variable + ', xmm0' + #10);
+        WriteText('    movsd xmm0, ' + value + #10); // if i didnt do this i get mov rax, rax
+    WriteText('    movsd ' + variable + ', xmm0' + #10);
 end;
 
 procedure emitPairAssign(); begin end;
@@ -159,39 +190,39 @@ procedure emitMalloc(); begin end;            // cm(size)
 procedure emitFree(); begin end;              // fm(p)
 
 // MATH -----------------------------------------------------------
-procedure emitAdd(dst, src: String); begin writeOut('    add ' + dst + ', ' + src + #10); end;
-procedure emitSub(dst, src: String); begin writeOut('    sub ' + dst + ', ' + src + #10); end;
-procedure emitMul(dst, src: String); begin writeOut('    imul ' + dst + ', ' + src + #10); end;
+procedure emitAdd(dst, src: String); begin WriteText('    add ' + dst + ', ' + src + #10); end;
+procedure emitSub(dst, src: String); begin WriteText('    sub ' + dst + ', ' + src + #10); end;
+procedure emitMul(dst, src: String); begin WriteText('    imul ' + dst + ', ' + src + #10); end;
 
 procedure emitDiv(dividend, divisor: String);
 begin
     begin
         // GUARD DIV 0
-        writeOut('    cmp ' + divisor + ', 0' + #10);
-        writeOut('    je .divzero_' + inttostr(labelCounter) + #10);
-        writeOut('    mov rax, ' + dividend + #10);
-        writeOut('    cqo' + #10);
-        writeOut('    idiv ' + divisor + #10);
-        writeOut('.divzero_' + inttostr(labelCounter) + ':' + #10);
+        WriteText('    cmp ' + divisor + ', 0' + #10);
+        WriteText('    je .divzero_' + inttostr(labelCounter) + #10);
+        WriteText('    mov rax, ' + dividend + #10);
+        WriteText('    cqo' + #10);
+        WriteText('    idiv ' + divisor + #10);
+        WriteText('.divzero_' + inttostr(labelCounter) + ':' + #10);
     end;
 end;
 
 procedure emitMod(); begin end;
 
-procedure emitAddFloat(dst, src: String); begin writeOut('    addsd ' + dst + ', ' + src + #10); end;
-procedure emitSubFloat(dst, src: String); begin writeOut('    subsd ' + dst + ', ' + src + #10); end;
-procedure emitMulFloat(dst, src: String); begin writeOut('    imulsd ' + dst + ', ' + src + #10); end;
+procedure emitAddFloat(dst, src: String); begin WriteText('    addsd ' + dst + ', ' + src + #10); end;
+procedure emitSubFloat(dst, src: String); begin WriteText('    subsd ' + dst + ', ' + src + #10); end;
+procedure emitMulFloat(dst, src: String); begin WriteText('    imulsd ' + dst + ', ' + src + #10); end;
 
 procedure emitDivFloat(dividend, divisor: String);
 begin
     begin
         // GUARD DIV 0
-        writeOut('    cmp ' + divisor + ', 0' + #10);
-        writeOut('    je .divzero_' + inttostr(labelCounter) + #10);
-        writeOut('    mov rax, ' + dividend + #10);
-        writeOut('    cqo' + #10);
-        writeOut('    divsd ' + divisor + #10);
-        writeOut('.divzero_' + inttostr(labelCounter) + ':' + #10);
+        WriteText('    cmp ' + divisor + ', 0' + #10);
+        WriteText('    je .divzero_' + inttostr(labelCounter) + #10);
+        WriteText('    mov rax, ' + dividend + #10);
+        WriteText('    cqo' + #10);
+        WriteText('    divsd ' + divisor + #10);
+        WriteText('.divzero_' + inttostr(labelCounter) + ':' + #10);
     end;
 end;
 
@@ -454,7 +485,7 @@ begin
         end
         else
             begin
-                 writeOut('call ' + variable + #10);
+                 WriteText('call ' + variable + #10);
             end;
 end;
 
@@ -528,12 +559,12 @@ begin
         end;
     until position >= t_count;
 
-    writeOut('global _start'+ #10);
-    writeOut('_start:'+ #10);
-    writeOut('  call main'+ #10);
-    writeOut('  mov rdi, rax'+ #10);
-    writeOut('  mov rax, 60'+ #10);
-    writeOut('  syscall'+ #10);
+    WriteText('global _start'+ #10);
+    WriteText('_start:'+ #10);
+    WriteText('  call main'+ #10);
+    WriteText('  mov rdi, rax'+ #10);
+    WriteText('  mov rax, 60'+ #10);
+    WriteText('  syscall'+ #10);
 
 end;
 
@@ -808,7 +839,9 @@ begin
         symOffset[i] := 0;
         symName[i] := '';
         end;
-
+    deleteFile('intermediate.asm');
+    deleteFile('text.tmp');
+    deleteFile('data.tmp');
     symCount := 0;
 end;
 
@@ -817,11 +850,13 @@ if ParamCount = 1 then
     begin
         filename := ParamStr(1);
         openFile;
+        
         arrayInit;
         lexer;
         openIntermediateFile;
         parser;
         closeIntermediateFile;
+        writeASM;
     end
 else
     WriteLn('No File Loaded');

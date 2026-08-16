@@ -3,3 +3,5 @@ rockskunk-x64
 intermediate.asm
 test
 test.o
+data.tmp
+text.tmp

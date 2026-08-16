@@ -147,20 +147,9 @@ procedure emitMalloc(); begin end;            // cm(size)
 procedure emitFree(); begin end;              // fm(p)
 
 // MATH -----------------------------------------------------------
-procedure emitAdd(dst, src: String);
-begin
-    writeOut('    add ' + dst + ', ' + src + #10);
-end;
-
-procedure emitSub(dst, src: String);
-begin
-    writeOut('    sub ' + dst + ', ' + src + #10);
-end;
-
-procedure emitMul(dst, src: String);
-begin
-    writeOut('    imul ' + dst + ', ' + src + #10);
-end;
+procedure emitAdd(dst, src: String); begin writeOut('    add ' + dst + ', ' + src + #10); end;
+procedure emitSub(dst, src: String); begin writeOut('    sub ' + dst + ', ' + src + #10); end;
+procedure emitMul(dst, src: String); begin writeOut('    imul ' + dst + ', ' + src + #10); end;
 
 procedure emitDiv(dividend, divisor: String);
 begin
@@ -176,6 +165,25 @@ begin
 end;
 
 procedure emitMod(); begin end;
+
+procedure emitAddFloat(dst, src: String); begin writeOut('    add ' + dst + ', ' + src + #10); end;
+procedure emitSubFloat(dst, src: String); begin writeOut('    sub ' + dst + ', ' + src + #10); end;
+procedure emitMulFloat(dst, src: String); begin writeOut('    imul ' + dst + ', ' + src + #10); end;
+
+procedure emitDivFloat(dividend, divisor: String);
+begin
+    begin
+        // GUARD DIV 0
+        writeOut('    cmp ' + divisor + ', 0' + #10);
+        writeOut('    je .divzero_' + inttostr(labelCounter) + #10);
+        writeOut('    mov rax, ' + dividend + #10);
+        writeOut('    cqo' + #10);
+        writeOut('    idiv ' + divisor + #10);
+        writeOut('.divzero_' + inttostr(labelCounter) + ':' + #10);
+    end;
+end;
+
+procedure emitModFloat(); begin end;
 
 // VECTOR OPS -----------------------------------------------------------
 procedure emitVecAdd(); begin end;   // ++
@@ -230,6 +238,72 @@ begin
 end;
 
 // symOffset, symName, symCount
+
+function evaluateExpressionFloat(): String;
+var
+    first, second, op: String;
+    i: Integer;
+begin
+
+    //WriteLn('About to consume: ' + peek());
+    i := 0;
+    first := consume(); // CONSUME VARIABLE
+
+    if not isNumber(first) then
+        begin
+            for i := 0 to symCount - 1 do
+                begin
+                if symName[i] = first then
+                    first := '[rbp-' + IntToStr(symOffset[i]) + ']';
+                end;
+        end;
+ 
+    if not ((peek() = 'PLUS') or (peek() = 'MINUS') or (peek() = 'STAR') or (peek() = 'SLASH')) then
+        begin
+           evaluateExpressionFloat := first;
+           WriteLn('EEVAL - NOT OP BRANCH');
+        end
+    else
+        begin
+            WriteLn('EEVAL - OP BRANCH');
+            loadRAX(first);
+            op := peek(); // Operator
+            consume;
+            second := consume(); // Second
+
+            i := 0;
+            if not isNumber(second) then
+            begin
+                for i := 0 to symCount - 1 do
+                    begin
+                    if symName[i] = second then
+                        second := '[rbp-' + IntToStr(symOffset[i]) + ']';
+                    end;
+            end;
+
+            if op = 'PLUS' then
+                begin            
+                    emitAddFloat('rax', second);
+                    evaluateExpressionFloat := 'rax';
+                end
+            else if op = 'MINUS' then
+                begin   
+                    emitSubFloat('rax', second);
+                    evaluateExpressionFloat := 'rax';
+                end
+            else if op = 'STAR' then
+                begin
+                    emitMulFloat('rax', second);
+                    evaluateExpressionFloat := 'rax';
+                end
+            else if op = 'SLASH' then
+                begin
+                    emitDivFloat('rax', second);
+                    evaluateExpressionFloat := 'rax';
+                end
+        end; 
+
+end;
 
 function evaluateExpression(): String;
 var

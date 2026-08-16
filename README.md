@@ -19,6 +19,7 @@ another language attempt and reworking it to output NASM x86_64 assembly. WAY do
 
 # Conventions
 
+- first function called is always "main"
 - Many small functions over large blobs of doom
 - Use common functions inside functions to keep codebase small
 - Left to right associative for vector ops a ** b ** c

@@ -1,8 +1,6 @@
 
-F testFunction() {
+F main() {
     a := 5'
     b := 10'
     r := a + b'
 }
-
-testFunction'

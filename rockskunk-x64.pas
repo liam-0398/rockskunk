@@ -249,8 +249,6 @@ end;
 
 // symOffset, symName, symCount
 
-end;
-
 function evaluateExpression(): String;
 var
     first, second, op: String;
@@ -429,11 +427,26 @@ begin
             'LW': begin WriteLn('PARSER - LOOP/WHILE');
                 consume;
             end;
-
-
-            
+            'VARBLOCK': begin WriteLn('PARSER - GLOBAL VAR');
+                consume; // consume '
+            end;
+            'STATICBLOCK': begin WriteLn('PARSER - STATIC');
+                consume; // consume '
+            end;
+            'RECORDBLOCK': begin WriteLn('PARSER - RECORD');
+                consume; // consume '
+            end;
+        
         end;
     until position >= t_count;
+
+    writeOut('global _start'+ #10);
+    writeOut('_start:'+ #10);
+    writeOut('  call main'+ #10);
+    writeOut('  mov rdi, rax'+ #10);
+    writeOut('  mov rax, 60'+ #10);
+    writeOut('  syscall'+ #10);
+
 end;
 
 // LEXER =============================================================
@@ -491,13 +504,6 @@ begin
             '{R': begin WriteLn('RECORDBLOCK');
                 t_type[t_count] := 'RECORDBLOCK';
                 t_val[t_count] := '{R';
-                isMultiple := True;
-                Inc(t_count);
-                Inc(i);
-            end;
-            ':=': begin WriteLn('ASSIGN');
-                t_type[t_count] := 'ASSIGN';
-                t_val[t_count] := ':=';
                 isMultiple := True;
                 Inc(t_count);
                 Inc(i);

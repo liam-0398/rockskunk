@@ -3,10 +3,10 @@ uses
     BaseUnix, SysUtils, Unix;
 
 const
-    acceptedKeywords: array[0..14] of String =
+    acceptedKeywords: array[0..15] of String = // MAKE SURE TO UPDATE KEYWORD CHECK WHEN ADDING
     ('ADD', 'V', 'S', 'R', 'D',
      'F', 'LF', 'LW', 'W', 'I', 'E',
-     'OR', 'AND', 'NOR', 'XOR');
+     'OR', 'AND', 'NOR', 'XOR', 'CALL');
 var
     buf: Array[0..65535] of Char;
     floats: Array[0..512] of String;
@@ -37,7 +37,7 @@ var
     i: Integer;
 begin
     keywordCheck := False;
-    for i := 0 to 14 do
+    for i := 0 to 15 do
         begin
             if word = acceptedKeywords[i] then 
                 begin
@@ -238,6 +238,7 @@ end;
 procedure parser();
 var
     i: Integer;
+    dest, src: String;
     
 begin
     i := 0;
@@ -247,6 +248,12 @@ begin
             'F': begin WriteLn('PARSER - F');
                 consume;
                 emitFN(consume);
+            end;
+            'LPAR': begin WriteLn('PARSER - (');
+                consume; // PLACEHOLDER
+            end;
+            'RPAR': begin WriteLn('PARSER - )');
+                consume; // PLACEHOLDER
             end;
             'LBRACE': begin WriteLn('PARSER - {');
                 consume;
@@ -261,7 +268,11 @@ begin
                     begin
                         // register/table := consume()
                         // consume();
-                        WriteLn('ASSIGN BRANCH REACHED')
+                        dest := consume();
+                        consume();
+                        src := consume();
+                        emitAssign(dest, src);
+                        WriteLn('ASSIGN BRANCH REACHED');
                     end
                 else
                     begin
@@ -270,6 +281,30 @@ begin
                     end;
             end;
             'ASSIGN': begin WriteLn('PARSER - ASSIGN');
+                consume;
+            end;
+            'V': begin WriteLn('PARSER - GLOBAL VARIABLES');
+                consume;
+            end;
+            'S': begin WriteLn('PARSER - STATIC');
+                consume;
+            end;
+            'R': begin WriteLn('PARSER - RECORD');
+                consume;
+            end;
+            'W': begin WriteLn('PARSER - WHEN');
+                consume;
+            end;
+            'I': begin WriteLn('PARSER - IF');
+                consume;
+            end;
+            'E': begin WriteLn('PARSER - ELSE');
+                consume;
+            end;
+            'LF': begin WriteLn('PARSER - LOOP/FOR');
+                consume;
+            end;
+            'LW': begin WriteLn('PARSER - LOOP/WHILE');
                 consume;
             end;
 

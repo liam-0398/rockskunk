@@ -85,7 +85,6 @@ begin
     fpWrite(fd2, databuf, dbytes);
     fpClose(fd4);
 
-    fd3 := fpOpen('text.tmp',O_RdOnly, 438);
     WriteOut('section .text' + #10);
     fd3 := fpOpen('text.tmp', O_RdOnly, 438);
     tbytes := fpRead(fd3, textbuf, SizeOf(textbuf));

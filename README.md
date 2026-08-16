@@ -189,7 +189,7 @@ p := &a' ; load specific address
 
 array := v(array) ;vectorize (auto width based on cpuflags)
                   ; pad with zeros if trying to shove 4 wide into AVX-512 for example
-                  ; now it can be used with vector operations
+                  ; make this data/data structure able to be used with ** ++ etc
 
 ```
 # Psuedocode

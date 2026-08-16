@@ -9,7 +9,7 @@ const
      'OR', 'AND', 'NOR', 'XOR', 'CALL');
 var
     buf: Array[0..65535] of Char;
-    symName: array[0..255] of String;
+    symName, symType: array[0..255] of String;
     symOffset: array[0..255] of Integer;
     t_type, t_val: Array[0..4096] of String;
 
@@ -107,13 +107,13 @@ procedure emitFunctionSetup();
 begin 
     writeOut('    push rbp' + #10);
     writeOut('    mov rbp, rsp' + #10);
-    writeOut('    sub rsp, 16' + #10);
+    writeOut('    sub rsp, 128' + #10);
 end;
 
 procedure emitFunctionTeardown(result : String);
 begin 
     writeOut('    mov rax, ' + result + #10);
-    writeOut('    add rsp, 16' + #10);
+    writeOut('    add rsp, 128' + #10);
     writeOut('    pop rbp' + #10);
     writeOut('    ret' + #10 + #10);
 end;

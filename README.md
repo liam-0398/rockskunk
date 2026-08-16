@@ -6,7 +6,7 @@ another language attempt and reworking it to output NASM x86_64 assembly. WAY do
 
 # Core tenants 
 
-1. Two types: Float64 (IEEE-754). String (pointer, legnth aware). Everything else is just raw memory
+1. Two types: Float64 (IEEE-754). String (pointer, legnth prepended). Everything else is just raw memory (8-byte qword)
 2. Compiles directly to x86_64 NASM 
 3. Contains vector intrinsics that use SIMD registers based on what CPUFLAGS are availble. Can be set with command line argument to target older/newer CPUs. Detection is done in-compiler in Pascal with branching for every variation.
 4. Memory is flat, arrays are offsets. 

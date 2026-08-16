@@ -85,6 +85,11 @@ begin
     writeOut('    mov rbx, ' + addr + #10);
 end;
 
+procedure loadXMM0(addr: String);
+begin
+    writeOut('    movsd xmm0, ' + addr + #10);
+end;
+
 // BLOCKS -----------------------------------------------------------
 procedure emitGlobalBlock(); begin end;   // {V ...}
 procedure emitStaticBlock(); begin end;   // {S ...}
@@ -166,9 +171,9 @@ end;
 
 procedure emitMod(); begin end;
 
-procedure emitAddFloat(dst, src: String); begin writeOut('    add ' + dst + ', ' + src + #10); end;
-procedure emitSubFloat(dst, src: String); begin writeOut('    sub ' + dst + ', ' + src + #10); end;
-procedure emitMulFloat(dst, src: String); begin writeOut('    imul ' + dst + ', ' + src + #10); end;
+procedure emitAddFloat(dst, src: String); begin writeOut('    addsd ' + dst + ', ' + src + #10); end;
+procedure emitSubFloat(dst, src: String); begin writeOut('    subsd ' + dst + ', ' + src + #10); end;
+procedure emitMulFloat(dst, src: String); begin writeOut('    imulsd ' + dst + ', ' + src + #10); end;
 
 procedure emitDivFloat(dividend, divisor: String);
 begin
@@ -178,7 +183,7 @@ begin
         writeOut('    je .divzero_' + inttostr(labelCounter) + #10);
         writeOut('    mov rax, ' + dividend + #10);
         writeOut('    cqo' + #10);
-        writeOut('    idiv ' + divisor + #10);
+        writeOut('    divsd ' + divisor + #10);
         writeOut('.divzero_' + inttostr(labelCounter) + ':' + #10);
     end;
 end;
@@ -261,12 +266,16 @@ begin
     if not ((peek() = 'PLUS') or (peek() = 'MINUS') or (peek() = 'STAR') or (peek() = 'SLASH')) then
         begin
            evaluateExpressionFloat := first;
-           WriteLn('EEVAL - NOT OP BRANCH');
+           WriteLn('EEVAL F - NOT OP BRANCH');
         end
     else
         begin
-            WriteLn('EEVAL - OP BRANCH');
-            loadRAX(first);
+            WriteLn('EEVAL F - OP BRANCH');
+
+            if first[Length(first)] = 'f' then  // strip the ol 'f' from floats before register assignment
+                first := copy(first, 1, Length(first) - 1);
+
+            loadXMM0(first);
             op := peek(); // Operator
             consume;
             second := consume(); // Second
@@ -283,23 +292,23 @@ begin
 
             if op = 'PLUS' then
                 begin            
-                    emitAddFloat('rax', second);
-                    evaluateExpressionFloat := 'rax';
+                    emitAddFloat('xmm0', second);
+                    evaluateExpressionFloat := 'xmm0';
                 end
             else if op = 'MINUS' then
                 begin   
-                    emitSubFloat('rax', second);
-                    evaluateExpressionFloat := 'rax';
+                    emitSubFloat('xmm0', second);
+                    evaluateExpressionFloat := 'xmm0';
                 end
             else if op = 'STAR' then
                 begin
-                    emitMulFloat('rax', second);
-                    evaluateExpressionFloat := 'rax';
+                    emitMulFloat('xmm0', second);
+                    evaluateExpressionFloat := 'xmm0';
                 end
             else if op = 'SLASH' then
                 begin
-                    emitDivFloat('rax', second);
-                    evaluateExpressionFloat := 'rax';
+                    emitDivFloat('xmm0', second);
+                    evaluateExpressionFloat := 'xmm0';
                 end
         end; 
 
@@ -438,6 +447,9 @@ begin
                 consume;
                 emitFN(consume);
                 frameOffset := 0;
+            end;
+            'FLOAT': begin WriteLn('PARSER - FLOAT');
+                evaluateExpressionFloat;
             end;
             'LPAR': begin WriteLn('PARSER - (');
                 consume; // PLACEHOLDER

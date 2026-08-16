@@ -9,30 +9,26 @@ const
      'OR', 'AND', 'NOR', 'XOR', 'CALL');
 var
     buf: Array[0..65535] of Char;
-    floats: Array[0..512] of String;
-    t_type, t_val: Array[0..4096] of String;
     symName: array[0..255] of String;
     symOffset: array[0..255] of Integer;
+    t_type, t_val: Array[0..4096] of String;
 
     braceEmitted: Boolean;
     bytes: CInt;
     currentFN: String;
-    f_count, labelCounter, position, t_count, symCount, frameOffset: Integer;
     fd, fd2: CInt;
     filename, returnAddr: String;
+    frameOffset, labelCounter, position, symCount, t_count: Integer;
 
 {
-    Ripped from a Pascal -> C Transpiler for an old language I had
+    Ripped lexer and scaffolding from a Pascal -> C Transpiler for an old language I had
     Undergoing massive restructuring to output rockskunk -> NASM
 }
 
 // HELPERS =================================================
 // ========================================================
 
-procedure writeOut(s: String); // NASM sourcefile write helper
-begin
-    fpWrite(fd2, s[1], Length(s));
-end;
+procedure writeOut(s: String); begin fpWrite(fd2, s[1], Length(s)); end;
 
 function keywordCheck(word: String): Boolean; // Flag keywords
 var
@@ -49,21 +45,6 @@ begin
         end;
 end;
 
-function isFloat(word: String): Boolean; // check array to see if var is float
-var
-    i: Integer;
-begin
-    isFloat := False;
-    for i := 0 to f_count - 1 do
-        begin
-            if word = floats[i] then 
-                begin
-                isFloat := True;
-                break;
-                end;
-        end;
-end;
-
 function isNumber(token: String): Boolean;
 var
     i: Integer;
@@ -74,7 +55,7 @@ begin
             isNumber := False;
 end;
 
-procedure openFile; // Open sourcefile, SLANG 
+procedure openFile; // Open rockskunk sourcefile
 begin
     FillChar(buf, SizeOf(buf), 0);
     fd := fpOpen(filename,O_RdOnly);

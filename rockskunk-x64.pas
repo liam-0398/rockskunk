@@ -374,14 +374,16 @@ begin
                         emitAssign(variable, src);
                         WriteLn('ASSIGN BRANCH - UNDECLARED');
                     end;
+        end
+        else
+            begin
+                 writeOut('call ' + variable + #10);
             end;
 end;
 
 procedure parser();
 var
     i: Integer;
-    
-    
 begin
     i := 0;
     position := 0;
@@ -678,6 +680,7 @@ var
     i: Integer;
 begin
     i := 0;
+    frameOffset := 0;
     for i := 0 to 255 do
         begin
         symOffset[i] := 0;
@@ -696,6 +699,7 @@ if ParamCount = 1 then
         lexer;
         openIntermediateFile;
         parser;
+        closeIntermediateFile;
     end
 else
     WriteLn('No File Loaded');

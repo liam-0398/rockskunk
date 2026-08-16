@@ -222,7 +222,7 @@ procedure emitSyscall(); begin end; // sys(a,b,c)
 // Used to check type (identifier) and value of words for decision making
 function peek(): String; // Look at the next token non-destructively
 begin
-    peek := t_type[position]; // check type, type used to determine decisions
+    peek := t_type[position]; 
 end;
 function consume(): String; // Eat the next token and then remove it
 begin
@@ -232,6 +232,49 @@ end;
 
 procedure symbolTable();
 begin
+
+end;
+
+function evaluateExpression(dest: String): String;
+var
+    first, second: String;
+begin
+
+    first := consume();
+
+    if not ((peek() = 'PLUS') or (peek() = 'MINUS') or (peek() = 'STAR') or (peek() = 'SLASH')) then
+        begin
+           evaluateExpression := first;
+           WriteLn('EEVAL - NOT OP BRANCH');
+        end
+    else
+        begin
+            WriteLn('EEVAL - OP BRANCH');
+            if peek() = 'PLUS' then
+                begin
+                    consume(); // Operator
+                    second := consume(); // Second
+                    emitAdd(first, second);
+                end
+            else if peek() = 'MINUS' then
+                begin
+                    consume(); // Operator
+                    second := consume(); // Second
+                    emitSub(first, second);
+                end
+            else if peek() = 'STAR' then
+                begin
+                    consume(); // Operator
+                    second := consume(); // Second
+                    emitMul(first, second);
+                end
+            else if peek() = 'SLASH' then
+                begin
+                    consume(); // Operator
+                    second := consume(); // Second
+                    emitDiv(first, second);
+                end
+        end; 
 
 end;
 
@@ -264,13 +307,13 @@ begin
                 emitFunctionTeardown('0');
             end;
             'IDENTIFIER': begin WriteLn('PARSER - IDENT');
+                dest := consume();
                 if peek() = 'ASSIGN' then
                     begin
                         // register/table := consume()
                         // consume();
-                        dest := consume();
-                        consume();
-                        src := consume();
+                        consume(); // :=
+                        src := evaluateExpression(dest);
                         emitAssign(dest, src);
                         WriteLn('ASSIGN BRANCH REACHED');
                     end
@@ -281,6 +324,9 @@ begin
                     end;
             end;
             'ASSIGN': begin WriteLn('PARSER - ASSIGN');
+                consume;
+            end;
+            'TERMINATOR': begin WriteLn('PARSER - TERMINATOR');
                 consume;
             end;
             'V': begin WriteLn('PARSER - GLOBAL VARIABLES');

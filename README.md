@@ -38,27 +38,24 @@ ADD("dir/ofile.rsk")'
 
 
 ; global variables (before first function)
-{V'
+|V'
     a := 500'
     b := 42342'
     string ::= "bigfootisreal"'
-    array[1] := 333'
-}
+    array[1] := 333' |
 
 
 ; Static assignments (before first function)
-{S'
-    password := "mustardstains"'
-}
+|S'
+    password := "mustardstains"' |
 
 
 ; records
-{R' delayLine'
+|R' delayLine'
     buf := 0'      ; offset 0, N floats
     wptr := N'      ; offset N
     len := N+1'
-    fb := N+2'
-}
+    fb := N+2' |
 
 delayLine.buf := 5'
 result := delayLine.wptr'
@@ -199,9 +196,8 @@ array := v(array) ;vectorize (auto width based on cpuflags)
 - rockskunk
 ```
 ; one-pole lowpass, N voices in parallel (SIMD lanes), auto-width via v()
-{V'
-    prevOut[4] := 0'
-}
+|V'
+    prevOut[4] := 0' |
 
 F lowpass4(sampleVec, cutoffVec) {
     delta := v(sampleVec) -- v(prevOut)'

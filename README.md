@@ -1,7 +1,7 @@
 ## rockskunk
 # A terse, typeless (ish), no-bullshit language
 
-Currently non-functional, very early stages. Using old C transpiler I had written for 
+Compiles VERY simple test programs to NASM thus far. Using old C transpiler I had written for
 another language attempt and reworking it to output NASM x86_64 assembly. WAY down the line I want to do a ppc32 version as well.
 
 # Core tenants 
@@ -51,7 +51,7 @@ ADD("dir/ofile.rsk")'
 
 
 ; records
-{R delayLine'
+{R' delayLine'
     buf := 0'      ; offset 0, N floats
     wptr := N'      ; offset N
     len := N+1'

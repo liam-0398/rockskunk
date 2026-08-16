@@ -19,7 +19,7 @@ var
     currentFN: String;
     f_count, labelCounter, position, t_count, symCount, frameOffset: Integer;
     fd, fd2: CInt;
-    filename: String;
+    filename, returnAddr: String;
 
 {
     Ripped from a Pascal -> C Transpiler for an old language I had
@@ -62,6 +62,16 @@ begin
                 break;
                 end;
         end;
+end;
+
+function isNumber(token: String): Boolean;
+var
+    i: Integer;
+begin
+    isNumber := True;
+    for i := 1 to Length(token) do
+        if not (token[i] in ['0'..'9']) then
+            isNumber := False;
 end;
 
 procedure openFile; // Open sourcefile, SLANG 
@@ -250,13 +260,24 @@ begin
 
 end;
 
-function evaluateExpression(variable: String): String;
+function evaluateExpression(): String;
 var
-    first, second: String;
+    first, second, op: String;
+    i: Integer;
 begin
 
     //WriteLn('About to consume: ' + peek());
+    i := 0;
     first := consume(); // CONSUME VARIABLE
+
+    if not isNumber(first) then
+        begin
+            for i := 0 to symCount - 1 do
+                begin
+                if symName[i] = first then
+                    first := '[rbp-' + IntToStr(symOffset[i]) + ']';
+                end;
+        end;
  
     if not ((peek() = 'PLUS') or (peek() = 'MINUS') or (peek() = 'STAR') or (peek() = 'SLASH')) then
         begin
@@ -266,35 +287,38 @@ begin
     else
         begin
             WriteLn('EEVAL - OP BRANCH');
-            if peek() = 'PLUS' then
-                begin
-                    consume(); // Operator
-                    second := consume(); // Second
-                    loadRAX(first);
+            loadRAX(first);
+            op := peek(); // Operator
+            consume;
+            second := consume(); // Second
+
+            i := 0;
+            if not isNumber(second) then
+            begin
+                for i := 0 to symCount - 1 do
+                    begin
+                    if symName[i] = second then
+                        second := '[rbp-' + IntToStr(symOffset[i]) + ']';
+                    end;
+            end;
+
+            if op = 'PLUS' then
+                begin            
                     emitAdd('rax', second);
                     evaluateExpression := 'rax';
                 end
-            else if peek() = 'MINUS' then
-                begin
-                    consume(); // Operator
-                    second := consume(); // Second
-                    loadRAX(first);
+            else if op = 'MINUS' then
+                begin   
                     emitSub('rax', second);
                     evaluateExpression := 'rax';
                 end
-            else if peek() = 'STAR' then
+            else if op = 'STAR' then
                 begin
-                    consume(); // Operator
-                    second := consume(); // Second
-                    loadRAX(first);
                     emitMul('rax', second);
                     evaluateExpression := 'rax';
                 end
-            else if peek() = 'SLASH' then
+            else if op = 'SLASH' then
                 begin
-                    consume(); // Operator
-                    second := consume(); // Second
-                    loadRAX(first);
                     emitDiv('rax', second);
                     evaluateExpression := 'rax';
                 end
@@ -305,14 +329,17 @@ end;
 procedure discriminateIdentifier();
 var
     variable, dest, src: String;
-    isDeclared: boolean;
+    isDeclared, isReturn: boolean;
     i, symIndex: Integer;
 begin
     i := 0;
     symIndex := 0;
     isDeclared := False;
+    isReturn := False;
 
     variable := consume(); // consume the a in a := 5
+    if variable = 'r' then
+        isReturn := True;
 
     for i := 0 to 255 do 
         begin
@@ -329,7 +356,7 @@ begin
                     begin
                         variable := '[rbp-' + IntToStr(symOffset[symIndex]) + ']';  // [rbp-8] etc
                         consume(); // :=
-                        src := evaluateExpression(variable);
+                        src := evaluateExpression();
                         emitAssign(variable, src);
                         WriteLn('ASSIGN BRANCH - DECLARED');
                     end
@@ -339,9 +366,11 @@ begin
                         symOffset[symCount] := frameOffset;
                         symName[symCount] := variable;
                         variable := '[rbp-' + IntToStr(symOffset[symCount]) + ']';  
+                            if isReturn then
+                                returnAddr := '[rbp-' + IntToStr(symOffset[symCount]) + ']'; 
                         inc(symCount);
                         consume(); // :=
-                        src := evaluateExpression(variable);
+                        src := evaluateExpression();
                         emitAssign(variable, src);
                         WriteLn('ASSIGN BRANCH - UNDECLARED');
                     end;
@@ -375,7 +404,7 @@ begin
             end;
             'RBRACE': begin WriteLn('PARSER - }');
                 consume;
-                emitFunctionTeardown('0');
+                emitFunctionTeardown(returnAddr);
             end;
             'IDENTIFIER': begin WriteLn('PARSER - IDENT');
                 discriminateIdentifier();

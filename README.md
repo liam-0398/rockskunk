@@ -185,7 +185,7 @@ p := &a' ; load specific address
 
 ; Misc
 
-{D' align(32)} ; COMPILER DIRECTIVES, align 32. TOP OF FILE
+|D' align(32)| ; COMPILER DIRECTIVES, align 32. TOP OF FILE
 
 array := v(array) ;vectorize (auto width based on cpuflags)
                   ; pad with zeros if trying to shove 4 wide into AVX-512 for example

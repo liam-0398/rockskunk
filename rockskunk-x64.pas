@@ -178,7 +178,7 @@ procedure emitCompoundAssign(); begin end; // :+=
 
 function emitFloatConstant(float: String): String;
 begin
-        WriteData('float_' + IntToStr(labelCounter) + ': dq ' + float + #10);
+        WriteData('   float_' + IntToStr(labelCounter) + ': dq ' + float + #10);
         emitFloatConstant := 'float_' + IntToStr(labelCounter);
         Inc(labelCounter);
 end;

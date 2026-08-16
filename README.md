@@ -74,20 +74,20 @@ result := delayLine.wptr'
 
 
 ; Function
-F functionName(a1, a2){
+F functionName(a1, a2) {
     r := a1 * a2'
 }
 
 
 ; For Loop
-LF i := 1 until 10{
+LF (i := 1 until 10) {
     p("ANNOYING MESSAGE")'
     i := i + 1'
 }
 
 
 ; While loop
-LW i <= 500{
+LW (i <= 500){
     i++'
 }
 
@@ -99,14 +99,14 @@ W (i = 5){
 
 
 ; If (continues until else is seen)
-I ([i = 5] or [f = 69]){
+I ([i = 5] or [f = 69]) {
     p("MATCH FOUND")'
 }
 
 
 ; Else
 E {
-    drinkLiqour'
+    drinkWine'
 }
 
 
@@ -151,6 +151,7 @@ result := sys(a,b,c)'
 
 ; Conditionals
 
+=
 <
 >
 <=
@@ -202,7 +203,7 @@ array := v(array) ;vectorize (auto width based on cpuflags)
     prevOut[4] := 0'
 }
 
-F lowpass4(sampleVec, cutoffVec){
+F lowpass4(sampleVec, cutoffVec) {
     delta := v(sampleVec) -- v(prevOut)'
     prevOut := v(prevOut) ++ (v(cutoffVec) ** delta)'
     r := prevOut' }
@@ -224,13 +225,13 @@ __m256d lowpass4(LowpassState *state, __m256d sampleVec, __m256d cutoffVec) {
 ```
 - rockskunk
 ```
-F normalize(buf){
+F normalize(buf) {
     peak := 0f'
-    LF i := 0 until blockLen{
+    LF (i := 0 until blockLen) {
         peak := vmax(peak, vabs(v(buf)))'
         i := i + 1'
     }
-    LF i := 0 until blockLen{
+    LF (i := 0 until blockLen) {
         buf[i] := v(buf) // v(peak)'
         i := i + 1' }}
 ```

@@ -146,7 +146,7 @@ procedure emitLabel(); begin end;
 procedure emitAssign(variable : String; value : String);
 begin
     if value <> 'rax' then
-        writeOut('    mov rax, ' + value + #10);
+        writeOut('    mov rax, ' + value + #10); // if i didnt do this i get mov rax, rax
     writeOut('    mov ' + variable + ', rax' + #10);
 end;
 

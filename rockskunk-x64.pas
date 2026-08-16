@@ -306,7 +306,7 @@ begin
             begin
                 if isDeclared = True then 
                     begin
-                        variable := symOffset[symIndex];
+                        variable := IntToStr(symOffset[symIndex]);
                         consume(); // :=
                         src := evaluateExpression(variable);
                         emitAssign(variable, src);
@@ -316,6 +316,7 @@ begin
                     begin
                         frameOffset := frameOffset + 8;
                         symOffset[symCount] := frameOffset;
+                        symName[symCount] := variable;
                         inc(symCount);
                         consume(); // :=
                         src := evaluateExpression(variable);

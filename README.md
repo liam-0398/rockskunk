@@ -25,6 +25,7 @@ another language attempt and reworking it to output NASM x86_64 assembly. WAY do
 - Left to right associative for vector ops a ** b ** c
 - Normal operators evaluated left to right
 - Closing bracket goes on last line not below. Same if FN also ends a loop or conditional
+- floats must look like 10.0f with the . and the f
 
 # Syntax
 

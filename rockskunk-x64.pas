@@ -53,7 +53,7 @@ var
 begin
     isNumber := True;
     for i := 1 to Length(token) do
-        if not (token[i] in ['0'..'9']) then
+        if not (token[i] in ['0'..'9', '.']) then
             isNumber := False;
 end;
 
@@ -85,7 +85,7 @@ begin
     fpWrite(fd2, databuf, dbytes);
     fpClose(fd4);
 
-    WriteOut('section .text' + #10);
+    WriteOut(#10 + 'section .text' + #10);
     fd3 := fpOpen('text.tmp', O_RdOnly, 438);
     tbytes := fpRead(fd3, textbuf, SizeOf(textbuf));
     fpWrite(fd2, textbuf, tbytes);
@@ -175,6 +175,13 @@ end;
 
 procedure emitPairAssign(); begin end;
 procedure emitCompoundAssign(); begin end; // :+=
+
+function emitFloatConstant(float: String): String;
+begin
+        WriteData('float_' + IntToStr(labelCounter) + ': dq ' + float + #10);
+        emitFloatConstant := 'float_' + IntToStr(labelCounter);
+        Inc(labelCounter);
+end;
 
 // ARRAYS / MEMORY -----------------------------------------------------------
 procedure emitArrayAssignWord(); begin end;   // array[i]
@@ -330,13 +337,27 @@ begin
  
     if not ((peek() = 'PLUS') or (peek() = 'MINUS') or (peek() = 'STAR') or (peek() = 'SLASH')) then
         begin
-           evaluateExpressionFloat := first;
-           WriteLn('EEVAL F - NOT OP BRANCH');
+            if isNumber(first) then
+                begin
+                first := emitFloatConstant(first);
+                first := '[' + first + ']';
+                evaluateExpressionFloat := first;
+                WriteLn('EEVAL F - NOT OP - FASSIGN');
+                end
+            else
+                begin
+                    evaluateExpressionFloat := first;
+                    WriteLn('EEVAL F - NOT OP BRANCH');
+                end;
         end
     else
         begin
             WriteLn('EEVAL F - OP BRANCH');
-
+            if isNumber(first) then
+                begin
+                first := emitFloatConstant(first);
+                first := '[' + first + ']';
+                end;
             loadXMM0(first);
             op := peek(); // Operator
             consume;

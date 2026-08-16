@@ -197,13 +197,10 @@ procedure emitMul(dst, src: String); begin WriteText('    imul ' + dst + ', ' + 
 procedure emitDiv(dividend, divisor: String);
 begin
     begin
-        // GUARD DIV 0
-        WriteText('    cmp ' + divisor + ', 0' + #10);
-        WriteText('    je .divzero_' + inttostr(labelCounter) + #10);
+        // Divide by zero and see what happens lol
         WriteText('    mov rax, ' + dividend + #10);
         WriteText('    cqo' + #10);
         WriteText('    idiv ' + divisor + #10);
-        WriteText('.divzero_' + inttostr(labelCounter) + ':' + #10);
     end;
 end;
 
@@ -211,18 +208,13 @@ procedure emitMod(); begin end;
 
 procedure emitAddFloat(dst, src: String); begin WriteText('    addsd ' + dst + ', ' + src + #10); end;
 procedure emitSubFloat(dst, src: String); begin WriteText('    subsd ' + dst + ', ' + src + #10); end;
-procedure emitMulFloat(dst, src: String); begin WriteText('    imulsd ' + dst + ', ' + src + #10); end;
+procedure emitMulFloat(dst, src: String); begin WriteText('    mulsd ' + dst + ', ' + src + #10); end;
 
 procedure emitDivFloat(dividend, divisor: String);
 begin
     begin
-        // GUARD DIV 0
-        WriteText('    cmp ' + divisor + ', 0' + #10);
-        WriteText('    je .divzero_' + inttostr(labelCounter) + #10);
-        WriteText('    mov rax, ' + dividend + #10);
-        WriteText('    cqo' + #10);
-        WriteText('    divsd ' + divisor + #10);
-        WriteText('.divzero_' + inttostr(labelCounter) + ':' + #10);
+        WriteText('    movsd xmm0, ' + dividend + #10);
+        WriteText('    divsd xmm0,' + divisor + #10);
     end;
 end;
 
@@ -849,8 +841,7 @@ begin
 if ParamCount = 1 then
     begin
         filename := ParamStr(1);
-        openFile;
-        
+        openFile;    
         arrayInit;
         lexer;
         openIntermediateFile;

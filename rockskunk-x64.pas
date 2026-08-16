@@ -17,7 +17,7 @@ var
     braceEmitted: Boolean;
     bytes: CInt;
     currentFN: String;
-    f_count, labelCounter, position, t_count, symCount: Integer;
+    f_count, labelCounter, position, t_count, symCount, frameOffset: Integer;
     fd, fd2: CInt;
     filename: String;
 
@@ -233,6 +233,7 @@ begin
 end;
 
 procedure symbolTable();
+// symOffset, symName, symCount
 begin
 
 end;
@@ -280,10 +281,54 @@ begin
 
 end;
 
+procedure discriminateIdentifier();
+var
+    variable, dest, src: String;
+    isDeclared: boolean;
+    i, symIndex: Integer;
+begin
+    i := 0;
+    symIndex := 0;
+    isDeclared := False;
+
+    variable := consume(); // consume the a in a := 5
+
+    for i := 0 to 255 do 
+        begin
+            if symName[i] = variable then
+                begin
+                    isDeclared := True;
+                    symIndex := i;
+                end;
+        end;
+
+        if peek() = 'ASSIGN' then
+            begin
+                if isDeclared = True then 
+                    begin
+                        variable := symOffset[symIndex];
+                        consume(); // :=
+                        src := evaluateExpression(variable);
+                        emitAssign(variable, src);
+                        WriteLn('ASSIGN BRANCH - DECLARED');
+                    end
+                else 
+                    begin
+                        frameOffset := frameOffset + 8;
+                        symOffset[symCount] := frameOffset;
+                        inc(symCount);
+                        consume(); // :=
+                        src := evaluateExpression(variable);
+                        emitAssign(variable, src);
+                        WriteLn('ASSIGN BRANCH - UNDECLARED');
+                    end;
+            end;
+end;
+
 procedure parser();
 var
     i: Integer;
-    dest, src: String;
+    
     
 begin
     i := 0;
@@ -293,6 +338,7 @@ begin
             'F': begin WriteLn('PARSER - F');
                 consume;
                 emitFN(consume);
+                frameOffset := 0;
             end;
             'LPAR': begin WriteLn('PARSER - (');
                 consume; // PLACEHOLDER
@@ -309,21 +355,7 @@ begin
                 emitFunctionTeardown('0');
             end;
             'IDENTIFIER': begin WriteLn('PARSER - IDENT');
-                dest := consume();
-                if peek() = 'ASSIGN' then
-                    begin
-                        // register/table := consume()
-                        // consume();
-                        consume(); // :=
-                        src := evaluateExpression(dest);
-                        emitAssign(dest, src);
-                        WriteLn('ASSIGN BRANCH REACHED');
-                    end
-                else
-                    begin
-                        // Work branch in future
-                        consume;
-                    end;
+                discriminateIdentifier();
             end;
             'ASSIGN': begin WriteLn('PARSER - ASSIGN');
                 consume;
@@ -590,12 +622,28 @@ begin
     // ARRAY PRINT DEBUG}
 end;
 
-// INIT
+// INIT ============================================
+
+procedure arrayInit();
+var
+    i: Integer;
+begin
+    i := 0;
+    for i := 0 to 255 do
+        begin
+        symOffset[i] := 0;
+        symName[i] := '';
+        end;
+
+    symCount := 0;
+end;
+
 begin
 if ParamCount = 1 then
     begin
         filename := ParamStr(1);
         openFile;
+        arrayInit;
         lexer;
         openIntermediateFile;
         parser;

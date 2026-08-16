@@ -3,8 +3,8 @@ uses
     BaseUnix, SysUtils, Unix;
 
 const
-    acceptedKeywords: array[0..14] of String = // MAKE SURE TO UPDATE KEYWORD CHECK WHEN ADDING
-    ('ADD', 'V', 'S', 'D',
+    acceptedKeywords: array[0..13] of String = // MAKE SURE TO UPDATE KEYWORD CHECK WHEN ADDING
+    ('ADD', 'V', 'S',
      'F', 'LF', 'LW', 'W', 'I', 'E',
      'OR', 'AND', 'NOR', 'XOR', 'CALL');
 var
@@ -37,7 +37,7 @@ var
     i: Integer;
 begin
     keywordCheck := False;
-    for i := 0 to 14 do
+    for i := 0 to 13 do
         begin
             if word = acceptedKeywords[i] then 
                 begin
@@ -200,7 +200,7 @@ begin
         // Divide by zero and see what happens lol
         WriteText('    mov rax, ' + dividend + #10);
         WriteText('    cqo' + #10);
-        WriteText('    idiv ' + divisor + #10);
+        WriteText('    idiv qword ' + divisor + #10);
     end;
 end;
 
@@ -609,6 +609,13 @@ begin
             '{S': begin WriteLn('STATICBLOCK');
                 t_type[t_count] := 'STATICBLOCK';
                 t_val[t_count] := '{S';
+                isMultiple := True;
+                Inc(t_count);
+                Inc(i);
+            end;
+            '{D': begin WriteLn('DIRECTIVE');
+                t_type[t_count] := 'DIRECTIVE';
+                t_val[t_count] := '{D';
                 isMultiple := True;
                 Inc(t_count);
                 Inc(i);

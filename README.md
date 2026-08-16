@@ -19,11 +19,12 @@ another language attempt and reworking it to output NASM x86_64 assembly. WAY do
 
 # Conventions
 
-- first function called is always "main"
+- First function called is always "main"
 - Many small functions over large blobs of doom
 - Use common functions inside functions to keep codebase small
 - Left to right associative for vector ops a ** b ** c
-- Normal operators evaluated left to right, parens evaluated before rest
+- Normal operators evaluated left to right
+- Closing bracket goes on last line not below. Same if FN also ends a loop or conditional
 
 # Syntax
 
@@ -204,8 +205,7 @@ array := v(array) ;vectorize (auto width based on cpuflags)
 F lowpass4(sampleVec, cutoffVec){
     delta := v(sampleVec) -- v(prevOut)'
     prevOut := v(prevOut) ++ (v(cutoffVec) ** delta)'
-    r := prevOut'
-}
+    r := prevOut' }
 ```
 - C
 ```
@@ -232,9 +232,7 @@ F normalize(buf){
     }
     LF i := 0 until blockLen{
         buf[i] := v(buf) // v(peak)'
-        i := i + 1'
-    }
-}
+        i := i + 1' }}
 ```
 - Pascal
 ```

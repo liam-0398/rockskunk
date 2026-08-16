@@ -627,34 +627,11 @@ begin
                         Inc(t_count);
                         Dec(i);  
                     end
-                    
-                {else if buf[i] in ['0'..'9'] then // Handle numbers // OLD BRANCH
-                begin
-                    word := '';
-                    while buf[i] in ['0'..'9'] do // Collect digits
-                        begin   
-                            word := word + buf[i]; // add charachters to word
-                            Inc(i); 
-                        end;
-                        if buf[i] = '.' then // check decimal, float
-                        begin
-                            word := word + '.'; // append decimal
-                            Inc(i); // move past decimal
-                            while buf[i] in ['0'..'9'] do // collect digits past decimal
-                            begin
-                                word := word + buf[i];
-                                Inc(i);
-                            end;
-                        end;
-                        t_type[t_count] := 'NUMBER'; // Store as type NUMBER
-                        t_val[t_count] := word; // put number into value
-                        Inc(t_count);
-                        Dec(i); // Dec to counteract Inc at bottom of main loop
-                    end}
 
                 else if buf[i] in ['0'..'9'] then
                 begin
                     word := '';
+                    isFloat := False;
                     while buf[i] in ['0'..'9', '.', 'f'] do
                         begin
                             word := word + buf[i];

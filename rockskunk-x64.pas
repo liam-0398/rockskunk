@@ -3,8 +3,8 @@ uses
     BaseUnix, SysUtils, Unix;
 
 const
-    acceptedKeywords: array[0..15] of String = // MAKE SURE TO UPDATE KEYWORD CHECK WHEN ADDING
-    ('ADD', 'V', 'S', 'R', 'D',
+    acceptedKeywords: array[0..14] of String = // MAKE SURE TO UPDATE KEYWORD CHECK WHEN ADDING
+    ('ADD', 'V', 'S', 'D',
      'F', 'LF', 'LW', 'W', 'I', 'E',
      'OR', 'AND', 'NOR', 'XOR', 'CALL');
 var
@@ -39,7 +39,7 @@ var
     i: Integer;
 begin
     keywordCheck := False;
-    for i := 0 to 15 do
+    for i := 0 to 14 do
         begin
             if word = acceptedKeywords[i] then 
                 begin
@@ -82,6 +82,18 @@ procedure closeIntermediateFile; begin fpClose(fd2); end;
 // CODE GENERATION ===========================================
 // ========================================================
 
+// HELPERS ----------------------------------------------------------
+
+procedure loadRAX(addr: String);
+begin
+    writeOut('    mov rax, ' + addr + #10);
+end;
+
+procedure loadRBX(addr: String);
+begin
+    writeOut('    mov rbx, ' + addr + #10);
+end;
+
 // BLOCKS -----------------------------------------------------------
 procedure emitGlobalBlock(); begin end;   // {V ...}
 procedure emitStaticBlock(); begin end;   // {S ...}
@@ -107,7 +119,7 @@ begin
     writeOut('    mov rax, ' + result + #10);
     writeOut('    add rsp, 16' + #10);
     writeOut('    pop rbp' + #10);
-    writeOut('    ret' + #10);
+    writeOut('    ret' + #10 + #10);
 end;
 
 procedure emitReturn(); begin end;
@@ -123,8 +135,8 @@ procedure emitLabel(); begin end;
 // ASSIGNMENT -----------------------------------------------------------
 procedure emitAssign(variable : String; value : String);
 begin
-    writeOut('   mov rax, ' + value + #10);
-
+    writeOut('    mov rax, ' + value + #10);
+    writeOut('    mov ' + variable + ', rax' + #10);  
 end;
 
 procedure emitPairAssign(); begin end;
@@ -238,13 +250,14 @@ begin
 
 end;
 
-function evaluateExpression(dest: String): String;
+function evaluateExpression(variable: String): String;
 var
     first, second: String;
 begin
 
-    first := consume();
-
+    //WriteLn('About to consume: ' + peek());
+    first := consume(); // CONSUME VARIABLE
+ 
     if not ((peek() = 'PLUS') or (peek() = 'MINUS') or (peek() = 'STAR') or (peek() = 'SLASH')) then
         begin
            evaluateExpression := first;
@@ -257,25 +270,33 @@ begin
                 begin
                     consume(); // Operator
                     second := consume(); // Second
-                    emitAdd(first, second);
+                    loadRAX(first);
+                    emitAdd('rax', second);
+                    evaluateExpression := 'rax';
                 end
             else if peek() = 'MINUS' then
                 begin
                     consume(); // Operator
                     second := consume(); // Second
-                    emitSub(first, second);
+                    loadRAX(first);
+                    emitSub('rax', second);
+                    evaluateExpression := 'rax';
                 end
             else if peek() = 'STAR' then
                 begin
                     consume(); // Operator
                     second := consume(); // Second
-                    emitMul(first, second);
+                    loadRAX(first);
+                    emitMul('rax', second);
+                    evaluateExpression := 'rax';
                 end
             else if peek() = 'SLASH' then
                 begin
                     consume(); // Operator
                     second := consume(); // Second
-                    emitDiv(first, second);
+                    loadRAX(first);
+                    emitDiv('rax', second);
+                    evaluateExpression := 'rax';
                 end
         end; 
 
@@ -306,7 +327,7 @@ begin
             begin
                 if isDeclared = True then 
                     begin
-                        variable := IntToStr(symOffset[symIndex]);
+                        variable := '[rbp-' + IntToStr(symOffset[symIndex]) + ']';  // [rbp-8] etc
                         consume(); // :=
                         src := evaluateExpression(variable);
                         emitAssign(variable, src);
@@ -317,6 +338,7 @@ begin
                         frameOffset := frameOffset + 8;
                         symOffset[symCount] := frameOffset;
                         symName[symCount] := variable;
+                        variable := '[rbp-' + IntToStr(symOffset[symCount]) + ']';  
                         inc(symCount);
                         consume(); // :=
                         src := evaluateExpression(variable);
@@ -349,7 +371,7 @@ begin
             end;
             'LBRACE': begin WriteLn('PARSER - {');
                 consume;
-                emitFunctionSetup;
+                emitFunctionSetup();
             end;
             'RBRACE': begin WriteLn('PARSER - }');
                 consume;
@@ -368,9 +390,6 @@ begin
                 consume;
             end;
             'S': begin WriteLn('PARSER - STATIC');
-                consume;
-            end;
-            'R': begin WriteLn('PARSER - RECORD');
                 consume;
             end;
             'W': begin WriteLn('PARSER - WHEN');

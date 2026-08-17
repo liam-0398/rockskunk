@@ -1180,8 +1180,8 @@ begin
 if ParamCount = 1 then
     begin
         filename := ParamStr(1);
-        openFile;    
         arrayInit;
+        openFile;
         lexer;
         openIntermediateFile;
         parser;

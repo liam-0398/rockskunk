@@ -101,7 +101,7 @@ procedure writeASM; // Write to real intermediate.asm that is compiled by NASM
 var
     dbytes, tbytes: cint;
 begin
-    fd2 := fpOpen('intermediate.asm',O_WRONLY OR O_CREAT, 438);
+    fd2 := fpOpen('intermediate.asm',O_WRONLY OR O_CREAT OR O_TRUNC, 438);
 
     fd4 := fpOpen('data.tmp', O_RdOnly, 438);
     WriteOut('section .bss' + #10);

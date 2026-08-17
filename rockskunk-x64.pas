@@ -3,6 +3,7 @@ uses
     BaseUnix, SysUtils, Unix;
 
 const
+    intRegs: array[0..5] of String = ('rdi', 'rsi', 'rdx', 'rcx', 'r8', 'r9');
     acceptedKeywords: array[0..13] of String = // MAKE SURE TO UPDATE KEYWORD CHECK WHEN ADDING
     ('ADD', 'V', 'S',
      'F', 'LF', 'LW', 'W', 'I', 'E',
@@ -563,7 +564,7 @@ begin
 
     if variable = 'r' then isReturn := True;
 
-    WriteLn('discrim start: variable=' + variable + ' position=' + IntToStr(position)); // DEBUG
+    //WriteLn('discrim start: variable=' + variable + ' position=' + IntToStr(position)); // DEBUG
 
     for i := 0 to 255 do  // scan to see if var is delclred already
         begin
@@ -662,7 +663,7 @@ procedure parser();
 var
     argtypeident: String;
     isFloat: Boolean;
-    i: Integer;
+    i, seenFloats, seenInts: Integer;
 begin
     i := 0;
     position := 0;
@@ -672,6 +673,7 @@ begin
                 consume;
                 currentFN := consume;
                 emitFN(currentFN);
+                WriteLn('F CASE: pos=' + IntToStr(position) + ' peek=' + peek());
                 frameOffset := 0;
                 argCount := 0;
                 symCount := 0;
@@ -696,12 +698,11 @@ begin
                                    if peek() = 'COMMA' then
                                         consume;
                                     if peek() = 'COLON' then
-                                        begin
-                                        consume; // consume colon           
+                                        begin        
                                             consume; // consume colon
                                             if peekV() = 'f' then
                                                 begin
-                                                    symType[symCount] := 'FLOAT'; // int param for now
+                                                    symType[symCount - 1] := 'FLOAT'; // int param for now
                                                     consume; // consume f
                                                 end
                                             else
@@ -712,6 +713,7 @@ begin
                                 paramPending := True;
                                 paramOffset[argCount] := frameOffset;
                                 inc(argCount);
+                                WriteLn('PARAM: name=' + symName[symCount-1] + ' type=' + symType[symCount-1] + ' offset=' + IntToStr(paramOffset[argCount-1]));
                             until peek() = 'RPAR';
                     end;
                         consume; // )
@@ -729,7 +731,25 @@ begin
                 emitFunctionSetup();
                 if paramPending then
                     begin
-                        WriteText('    mov [rbp-' + IntToStr(paramOffset[argCount]) + '], rdi' + #10);
+                        seenFloats := 0;
+                        seenInts := 0;
+                        for i := 0 to argCount - 1 do
+                            begin
+                                WriteLn('LBRACE READ: i=' + IntToStr(i) + ' type=' + symType[i] + ' offset=' + IntToStr(paramOffset[i]));
+                                if symType[i] = 'FLOAT' then
+                                    begin
+                                        WriteText('   movsd [rbp-' + intToStr(paramOffset[i]) + '], xmm' + IntToStr(seenFloats) + #10);
+                                        Inc(seenFloats);
+                                    end
+                                else
+                                    begin
+                                        WriteText('    mov [rbp-' + IntToStr(paramOffset[i]) + '], ' + intregs[seenInts] + #10);
+                                        Inc(seenInts);
+                                    end;
+
+
+                            end;
+                        
                         paramPending := False;
                     end;
             end;

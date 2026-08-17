@@ -288,6 +288,16 @@ begin
     peekV := t_val[position]; 
 end;
 
+function peekV2(): String; // Look at the next token non-destructively
+begin
+    peekV2 := t_val[position+1]; 
+end;
+
+function peekV3(): String; // Look at the next token non-destructively
+begin
+    peekV3 := t_val[position+2]; 
+end;
+
 function peek(): String; // Look at the next token non-destructively
 begin
     peek := t_type[position]; 
@@ -460,12 +470,13 @@ end;
 
 procedure discriminateIdentifier();
 var
-    variable, rightside: String;
+    variable, rightside, twoname: String;
     isDeclared, isReturn, isFloat: boolean;
-    i, symIndex: Integer;
+    i, ii, symIndex: Integer;
 
 begin
     i := 0;
+    ii := 0;
     symIndex := 0;
     isDeclared := False;
     isReturn := False;
@@ -507,8 +518,19 @@ begin
 
                     if peek2() = 'FLOAT' then
                         symType[symCount] := 'FLOAT';
-                     if peek2() = 'NUMBER' then
+                    if peek2() = 'NUMBER' then
                         symType[symCount] := 'NUMBER';
+                    if peek2() = 'IDENTIFIER' then
+                        begin
+                            twoname := peekV2();
+                            for ii := 0 to symCount-1 do 
+                                begin
+                                    if symName[ii] = twoname then
+                                        symType[symCount] := symType[ii];
+                                end;
+                        end;
+                    
+                    isFloat := (symType[symCount] = 'FLOAT');
 
                         symOffset[symCount] := frameOffset;
                         symName[symCount] := variable;
@@ -517,7 +539,7 @@ begin
                         returnAddr := '[rbp-' + IntToStr(symOffset[symCount]) + ']'; 
                         inc(symCount);
                         consume(); // :=
-                    if peek() = 'FLOAT' then
+                    if isFloat then
                         begin
                           rightside := evaluateExpression(isFloat);
                           emitAssignFloat(variable, rightside);

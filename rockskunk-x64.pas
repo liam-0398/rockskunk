@@ -327,6 +327,24 @@ begin
     Inc(position);  // Increment counter to drop the token
 end;
 
+function justMakeItAFuckingFloat(misformattedBastard: String): String;
+var
+    isFloat: Boolean;
+begin
+    isFloat := False;
+
+    if (Pos('.', misformattedBastard) > 0) or (Pos('f', misformattedBastard) > 0) then
+                        isFloat := True;
+
+    if not isFloat then
+        Exit(misformattedBastard)
+    else
+        begin
+            if misformattedBastard[Length(misformattedBastard)] = 'f' then misformattedBastard := copy(misformattedBastard, 1, Length(misformattedBastard) - 1); // strip f from float
+            justMakeItAFuckingFloat := '[' + emitFloatConstant(misformattedBastard) + ']';
+        end;
+end;
+
 // symOffset, symName, symCount
 
 function evaluateExpression(isFloat: Boolean): String;
@@ -388,12 +406,7 @@ begin
                 end;
         end;
 
-    if (isNumber(first)) and (isFloat) then // throw a label in .data for floats
-        begin
-            first := emitFloatConstant(first);
-            first := '[' + first + ']';
-            WriteLn('EEVAL F - F CONSTANT .DATA'); 
-        end;
+    first := justMakeItAFuckingFloat(first);
 
     if isNumber(first) and (peek2() = 'NUMBER') then // fold the code if 5 + 5, 5 * 5
             begin
@@ -448,8 +461,7 @@ begin
             consume;
             second := consume(); // Second
 
-            if first[Length(first)] = 'f' then first := copy(first, 1, Length(first) - 1); // strip f from float
-            if second[Length(second)] = 'f' then second := copy(second, 1, Length(second) - 1);
+            second := justMakeItAFuckingFloat(second);
 
             i := 0;
             if not isNumber(second) then

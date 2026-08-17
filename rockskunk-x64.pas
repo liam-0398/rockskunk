@@ -348,6 +348,7 @@ begin
         consume(); // )
         WriteText('    call ' + fname + #10);
         first := 'rax';
+        evaluateExpression := 'rax';
     end
     else
         begin
@@ -505,6 +506,8 @@ begin
     isFloat := False;
 
     variable := consume(); // consume the a in a := 5
+    
+    if variable = 'r' then isReturn := True;
 
     WriteLn('discrim start: variable=' + variable + ' position=' + IntToStr(position)); // DEBUG
 

@@ -1,13 +1,10 @@
 
 
-F addup() {
-    b := 12000.0f
-    r := b + 555.0f }
-
-F helper(a) { 
-    b := addup(a)
+F helper(b: f) { 
+    a := 20.0f
     r := a * b }
 
 F main() {
-    r := helper() }
+    c := 550.0f
+    r := helper(c: f) }
 

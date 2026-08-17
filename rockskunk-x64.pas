@@ -19,6 +19,8 @@ var
     return_FType: array[0..255] of String;
     return_FCount: Integer;
 
+    
+
     stack: Array [0..255] of String;
     sp: Integer;
 
@@ -27,8 +29,9 @@ var
     currentFN: String;
     fd, fd2, fd3, fd4: CInt;
     filename, returnAddr: String;
-    paramPending: Boolean; paramOffset: Integer;
-    frameOffset, labelCounter, position, symCount, t_count: Integer;
+    paramPending: Boolean; 
+    paramOffset: Array [0..128] of Integer;
+    frameOffset, labelCounter, position, symCount, paramCount, t_count: Integer;
 
 {
     Ripped lexer and scaffolding from a Pascal -> C Transpiler for an old language I had
@@ -653,6 +656,8 @@ end;
 
 procedure parser();
 var
+    argtypeident: String;
+    isFloat: Boolean;
     i: Integer;
 begin
     i := 0;
@@ -664,6 +669,7 @@ begin
                 currentFN := consume;
                 emitFN(currentFN);
                 frameOffset := 0;
+                paramCount := 0;
                 symCount := 0;
                     for i := 0 to 255 do
                         begin
@@ -675,16 +681,30 @@ begin
                 if peek() = 'LPAR' then // arg detection
                     begin
                         consume; // (
-                        if peek() = 'IDENTIFIER' then
-                            begin
+                        repeat 
                                 frameOffset := frameOffset + 8;
                                 symOffset[symCount] := frameOffset;
                                 symName[symCount] := consume(); // grab param name
                                 symType[symCount] := 'NUMBER'; // int param for now
                                 inc(symCount);
+                                    if peek() = 'COMMA' then
+                                        consume;
+                                    if peek() = 'COLON' then
+                                        begin
+                                            if peekV() = 'f' then
+                                                begin
+                                                    symType[symCount] := 'FLOAT'; // int param for now
+                                                    consume; // consume f
+                                                end
+                                            else
+                                                begin
+                                                    // STRING EVENTUALLY
+                                                end;
+                                        end;
                                 paramPending := True;
-                                paramOffset := frameOffset;
-                            end;
+                                paramOffset[paramCount] := frameOffset;
+                                inc(paramCount);
+                            until peek() = ')';
                         consume; // )
                     end;
             end;
@@ -699,7 +719,7 @@ begin
                 emitFunctionSetup();
                 if paramPending then
                     begin
-                        WriteText('    mov [rbp-' + IntToStr(paramOffset) + '], rdi' + #10);
+                        WriteText('    mov [rbp-' + IntToStr(paramOffset[paramCount]) + '], rdi' + #10);
                         paramPending := False;
                     end;
             end;
@@ -965,6 +985,11 @@ begin
                 '|': begin WriteLn('PIPE');
                     t_type[t_count] := 'PIPE';
                     t_val[t_count] := '|';
+                    Inc(t_count);
+                end;
+                ':': begin WriteLn('COLON');
+                    t_type[t_count] := 'COLON';
+                    t_val[t_count] := ':';
                     Inc(t_count);
                 end;
                 ';': begin WriteLn('COMMENT');

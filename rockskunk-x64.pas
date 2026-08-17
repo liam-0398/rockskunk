@@ -679,6 +679,8 @@ begin
                 if peek() = 'LPAR' then // arg detection
                     begin
                         consume; // (
+                        if peek() <> 'RPAR' then 
+                        begin
                         repeat 
                                 frameOffset := frameOffset + 8;
                                 symOffset[symCount] := frameOffset;
@@ -704,7 +706,9 @@ begin
                                 paramOffset[argCount] := frameOffset;
                                 inc(argCount);
                             until peek() = ')';
+                    end;
                         consume; // )
+                    
                     end;
             end;
             'LPAR': begin WriteLn('PARSER - (');

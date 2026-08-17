@@ -693,6 +693,7 @@ begin
                                         begin
                                             if peekV() = 'f' then
                                                 begin
+                                                    consume; // consume colon
                                                     symType[symCount] := 'FLOAT'; // int param for now
                                                     consume; // consume f
                                                 end

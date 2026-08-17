@@ -325,7 +325,7 @@ end;
 
 function evaluateExpression(isFloat: Boolean): String;
 var
-    first, second, op: String;
+    first, second, op, argname, fname: String;
     result1: Double;
     i, result2: Integer;
 begin

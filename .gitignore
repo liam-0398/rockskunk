@@ -5,3 +5,4 @@ test
 test.o
 data.tmp
 text.tmp
+tmp*

@@ -268,6 +268,11 @@ procedure emitSyscall(); begin end; // sys(a,b,c)
 // ========================================================
 
 // Used to check type (identifier) and value of words for decision making
+function peekV(): String; // Look at the next token non-destructively
+begin
+    peekV := t_val[position]; 
+end;
+
 function peek(): String; // Look at the next token non-destructively
 begin
     peek := t_type[position]; 
@@ -292,18 +297,17 @@ end;
 
 // symOffset, symName, symCount
 
-function evaluateExpressionFloat(): String;
+function evaluateExpression(isFloat: Boolean): String;
 var
     first, second, op: String;
     result1: Double;
-    i: Integer;
+    i, result2: Integer;
 begin
+    
+    i :=0;
+    first := consume; // first operand
 
-    //WriteLn('About to consume: ' + peek());
-    i := 0;
-    first := consume(); // CONSUME VARIABLE
-
-     if not isNumber(first) then
+    if not isNumber(first) then // look up addr if identifier
         begin
             for i := 0 to symCount - 1 do
                 begin
@@ -312,130 +316,48 @@ begin
                 end;
         end;
 
-    if first[Length(first)] = 'f' then  // strip the ol 'f' from floats before register assignment
-                first := copy(first, 1, Length(first) - 1);
-
-
-    if isNumber(first) and (peek2() = 'NUMBER') then
+    if (isNumber(first)) and (isFloat) then // throw a label in .data
         begin
-        op := peek(); // Operator
-        consume;
-        second := consume; // Operand
-
-        if op = 'PLUS' then
-            result1 := StrToFloat(first) + StrToFloat(second)
-        else if op = 'MINUS' then
-            result1 := StrToFloat(first) - StrToFloat(second)
-        else if op = 'STAR' then
-            result1 := StrToFloat(first) * StrToFloat(second)
-        else if op = 'SLASH' then
-            result1 := StrToFloat(first) / StrToFloat(second);
-
-        WriteLn('OPTIMIZATION - FLOAT ARITHMATIC');
-        Exit(FloatToStr(result1));
+            first := emitFloatConstant(first);
+            first := '[' + first + ']';
+            WriteLn('EEVAL F - F CONSTANT .DATA'); 
         end;
- 
-    if not ((peek() = 'PLUS') or (peek() = 'MINUS') or (peek() = 'STAR') or (peek() = 'SLASH')) then
-        begin
-            if isNumber(first) then
-                begin
-                first := emitFloatConstant(first);
-                first := '[' + first + ']';
-                evaluateExpressionFloat := first;
-                WriteLn('EEVAL F - NOT OP - FASSIGN');
-                end
-            else
-                begin
-                    evaluateExpressionFloat := first;
-                    WriteLn('EEVAL F - NOT OP BRANCH');
-                end;
-        end
-    else
-        begin
-            WriteLn('EEVAL F - OP BRANCH');
-            if isNumber(first) then
-                begin
-                first := emitFloatConstant(first);
-                first := '[' + first + ']';
-                end;
-            loadXMM0(first);
-            op := peek(); // Operator
-            consume;
-            second := consume(); // Second
 
-            i := 0;
-            if not isNumber(second) then
-            begin
-                for i := 0 to symCount - 1 do
-                    begin
-                    if symName[i] = second then
-                        second := '[rbp-' + IntToStr(symOffset[i]) + ']';
-                    end;
-            end;
-
-            if op = 'PLUS' then
-                begin            
-                    emitAddFloat('xmm0', second);
-                    evaluateExpressionFloat := 'xmm0';
-                end
-            else if op = 'MINUS' then
-                begin   
-                    emitSubFloat('xmm0', second);
-                    evaluateExpressionFloat := 'xmm0';
-                end
-            else if op = 'STAR' then
-                begin
-                    emitMulFloat('xmm0', second);
-                    evaluateExpressionFloat := 'xmm0';
-                end
-            else if op = 'SLASH' then
-                begin
-                    emitDivFloat('xmm0', second);
-                    evaluateExpressionFloat := 'xmm0';
-                end
-        end; 
-
-end;
-
-function evaluateExpression(): String;
-var
-    first, second, op: String;
-    result1: Integer;
-    i: Integer;
-begin
-
-    //WriteLn('About to consume: ' + peek());
-    i := 0;
-    first := consume(); // CONSUME FIRST #/V := 1 + 2
-
-    if isNumber(first) and (peek2() = 'NUMBER') then
+    if isNumber(first) and (peek2() = 'NUMBER') then // fold the code if 5 + 5
             begin
             op := peek(); // Operator
             consume;
             second := consume; // Operand
 
-            if op = 'PLUS' then
-                result1 := StrToInt(first) + StrToInt(second)
-            else if op = 'MINUS' then
-                result1 := StrToInt(first) - StrToInt(second)
-            else if op = 'STAR' then
-                result1 := StrToInt(first) * StrToInt(second)
-            else if op = 'SLASH' then
-                result1 := StrToInt(first) div StrToInt(second);
-
-            WriteLn('OPTIMIZATION - ARITHMATIC');
-            Exit(IntToStr(result1));
-    end;
- 
-    if not isNumber(first) then
-        begin
-            for i := 0 to symCount - 1 do
+            if isFloat then
                 begin
-                if symName[i] = first then
-                    first := '[rbp-' + IntToStr(symOffset[i]) + ']';
+                if op = 'PLUS' then
+                    result1 := StrToFloat(first) + StrToFloat(second)
+                else if op = 'MINUS' then
+                    result1 := StrToFloat(first) - StrToFloat(second)
+                else if op = 'STAR' then
+                    result1 := StrToFloat(first) * StrToFloat(second)
+                else if op = 'SLASH' then
+                    result1 := StrToFloat(first) / StrToFloat(second);
+                WriteLn('OPTIMIZATION - FL ARITHMATIC');
+                Exit(FloatToStr(result1));
+                end 
+            else
+                begin
+                if op = 'PLUS' then
+                    result1 := StrToInt(first) + StrToInt(second)
+                else if op = 'MINUS' then
+                    result1 := StrToInt(first) - StrToInt(second)
+                else if op = 'STAR' then
+                    result1 := StrToInt(first) * StrToInt(second)
+                else if op = 'SLASH' then
+                    result1 := StrToInt(first) div StrToInt(second);
+                WriteLn('OPTIMIZATION - FP ARITHMATIC');
+                Exit(IntToStr(result2));
                 end;
     end;
 
+    // if next token isnt operator return the first operand
     if not ((peek() = 'PLUS') or (peek() = 'MINUS') or (peek() = 'STAR') or (peek() = 'SLASH')) then
         begin
            evaluateExpression := first;
@@ -444,7 +366,12 @@ begin
     else
         begin
             WriteLn('EEVAL - OP BRANCH');
-            loadRAX(first);
+
+            if isFloat then
+                loadXMM0(first)
+            else
+                loadRAX(first);
+
             op := peek(); // Operator
             consume;
             second := consume(); // Second
@@ -460,97 +387,129 @@ begin
             end;
 
             if op = 'PLUS' then
-                begin            
-                    emitAdd('rax', second);
-                    evaluateExpression := 'rax';
+                begin    
+                    if isFloat then
+                        begin
+                          emitAddFloat('xmm0', second);
+                          evaluateExpression := 'xmm0';  
+                        end
+                    else
+                        begin        
+                            emitAdd('rax', second);
+                            evaluateExpression := 'rax';
+                        end
                 end
             else if op = 'MINUS' then
-                begin   
-                    emitSub('rax', second);
-                    evaluateExpression := 'rax';
+                begin    
+                    if isFloat then
+                        begin
+                          emitSubFloat('xmm0', second);
+                          evaluateExpression := 'xmm0';  
+                        end
+                    else
+                        begin        
+                            emitSub('rax', second);
+                            evaluateExpression := 'rax';
+                        end
                 end
             else if op = 'STAR' then
-                begin
-                    emitMul('rax', second);
-                    evaluateExpression := 'rax';
+                begin    
+                    if isFloat then
+                        begin
+                          emitMulFloat('xmm0', second);
+                          evaluateExpression := 'xmm0';  
+                        end
+                    else
+                        begin        
+                            emitMul('rax', second);
+                            evaluateExpression := 'rax';
+                        end
                 end
             else if op = 'SLASH' then
-                begin
-                    emitDiv('rax', second);
-                    evaluateExpression := 'rax';
+                begin    
+                    if isFloat then
+                        begin
+                          emitDivFloat('xmm0', second);
+                          evaluateExpression := 'xmm0';  
+                        end
+                    else
+                        begin        
+                            emitDiv('rax', second);
+                            evaluateExpression := 'rax';
+                        end
                 end
         end; 
-
 end;
 
 procedure discriminateIdentifier();
 var
-    variable, dest, src: String;
-    isDeclared, isReturn: boolean;
+    variable, rightside: String;
+    isDeclared, isReturn, isFloat: boolean;
     i, symIndex: Integer;
+
 begin
     i := 0;
     symIndex := 0;
     isDeclared := False;
     isReturn := False;
-
+    isFloat := False;
     variable := consume(); // consume the a in a := 5
-    if variable = 'r' then
-        isReturn := True;
 
-    for i := 0 to 255 do 
+    for i := 0 to 255 do  // check to see if already declared
         begin
             if symName[i] = variable then
                 begin
                     isDeclared := True;
                     symIndex := i;
+                    if symType[i] = 'FLOAT' then
+                        isFloat := True;
                 end;
         end;
 
-        if peek() = 'ASSIGN' then
-            begin
-                if isDeclared = True then 
-                    begin
-                        variable := '[rbp-' + IntToStr(symOffset[symIndex]) + ']';  // [rbp-8] etc
-                        consume(); // :=
-                            if symType[symIndex] = 'FLOAT' then
+    if peek() = 'ASSIGN' then
+        begin
+            if isDeclared = True then
+                begin
+                    variable := '[rbp-' + IntToStr(symOffset[symIndex]) + ']';  // [rbp-8] etc
+                    consume(); // :=
+                        if symType[symIndex] = 'FLOAT' then
                                 begin
-                                src := evaluateExpressionFloat();
-                                emitAssignFloat(variable, src);
+                                rightside := evaluateExpression(isFloat);
+                                emitAssignFloat(variable, rightside);
                                 end
                             else
                                 begin
-                                src := evaluateExpression();
-                                emitAssign(variable, src);
+                                rightside := evaluateExpression(isFloat);
+                                emitAssign(variable, rightside);
                                 end;
                         WriteLn('ASSIGN BRANCH - DECLARED');
-                    end
-                else 
-                    begin
-                        frameOffset := frameOffset + 8;
+                end
+            else
+                begin
+                    frameOffset := frameOffset + 8;
 
-                        if peek2() = 'FLOAT' then
-                            symType[symCount] := 'FLOAT';
-                        if peek2() = 'NUMBER' then
-                            symType[symCount] := 'NUMBER';
+                    if peek2() = 'FLOAT' then
+                        symType[symCount] := 'FLOAT';
+                     if peek2() = 'NUMBER' then
+                        symType[symCount] := 'NUMBER';
 
                         symOffset[symCount] := frameOffset;
                         symName[symCount] := variable;
                         variable := '[rbp-' + IntToStr(symOffset[symCount]) + ']';  
-                            if isReturn then
-                                returnAddr := '[rbp-' + IntToStr(symOffset[symCount]) + ']'; 
+                    if isReturn then
+                        returnAddr := '[rbp-' + IntToStr(symOffset[symCount]) + ']'; 
                         inc(symCount);
                         consume(); // :=
-                            if peek() = 'FLOAT' then
-                                begin
-                                src := evaluateExpressionFloat();
-                                emitAssignFloat(variable, src);
-                                end
-                            else
-                                begin
-                                src := evaluateExpression();
-                                emitAssign(variable,src);
-                                end;
+                    if peek() = 'FLOAT' then
+                        begin
+                          rightside := evaluateExpression(isFloat);
+                          emitAssignFloat(variable, rightside);
+                        end
+                    else
+                        begin
+                            rightside := evaluateExpression(isFloat);
+                            emitAssign(variable,rightside);
+                         end;
                         WriteLn('ASSIGN BRANCH - UNDECLARED');
                     end;
         end

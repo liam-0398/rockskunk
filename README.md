@@ -74,9 +74,15 @@ result := delayLine.wptr'
 
 
 ; Function
-F functionName(a1, a2) {
+; Undeclared args are raw qword (so int or whatever you want), declare with (var: f) or 
+; (var: s). No chained args for single type declaration. 
+;fn(a, b: f, c, d, e: s, f: f)
+; word, float, word, word, string, float
+
+F functionName(a1, a2: f) {
     r := a1 * a2'
 }
+
 
 
 ; For Loop

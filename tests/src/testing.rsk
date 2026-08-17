@@ -1,6 +1,13 @@
 
-F square(a) { r := a * a' }
+
+F addup(b) {
+    b := b + 12000
+    r := b + 555 }
+
+F helper(a) { 
+    b := addup(a)
+    r := a * b }
 
 F main() {
-    r := square(5)'
-}
+    r := helper(5) }
+

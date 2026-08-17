@@ -19,8 +19,6 @@ var
     return_FType: array[0..255] of String;
     return_FCount: Integer;
 
-    
-
     stack: Array [0..255] of String;
     sp: Integer;
 
@@ -31,7 +29,7 @@ var
     filename, returnAddr: String;
     paramPending: Boolean; 
     paramOffset: Array [0..128] of Integer;
-    frameOffset, labelCounter, position, symCount, paramCount, t_count: Integer;
+    frameOffset, labelCounter, position, symCount, argCount, t_count: Integer;
 
 {
     Ripped lexer and scaffolding from a Pascal -> C Transpiler for an old language I had
@@ -669,7 +667,7 @@ begin
                 currentFN := consume;
                 emitFN(currentFN);
                 frameOffset := 0;
-                paramCount := 0;
+                argCount := 0;
                 symCount := 0;
                     for i := 0 to 255 do
                         begin
@@ -703,8 +701,8 @@ begin
                                                 end;
                                         end;
                                 paramPending := True;
-                                paramOffset[paramCount] := frameOffset;
-                                inc(paramCount);
+                                paramOffset[argCount] := frameOffset;
+                                inc(argCount);
                             until peek() = ')';
                         consume; // )
                     end;
@@ -720,7 +718,7 @@ begin
                 emitFunctionSetup();
                 if paramPending then
                     begin
-                        WriteText('    mov [rbp-' + IntToStr(paramOffset[paramCount]) + '], rdi' + #10);
+                        WriteText('    mov [rbp-' + IntToStr(paramOffset[argCount]) + '], rdi' + #10);
                         paramPending := False;
                     end;
             end;
@@ -1124,5 +1122,8 @@ if ParamCount = 1 then
         writeASM;
     end
 else
+    begin
     WriteLn('No File Loaded');
+    end;
 end.
+

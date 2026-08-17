@@ -101,7 +101,7 @@ procedure writeASM; // Write to real intermediate.asm that is compiled by NASM
 var
     dbytes, tbytes: cint;
 begin
-    fd2 := fpOpen('intermediate.asm',O_WRONLY OR O_CREAT OR O_TRUNC, 438);
+    fd2 := fpOpen('intermediate.asm',O_WRONLY OR O_CREAT, 438);
 
     fd4 := fpOpen('data.tmp', O_RdOnly, 438);
     WriteOut('section .bss' + #10);
@@ -167,8 +167,25 @@ begin
 end;
 
 procedure emitFunctionTeardown(result : String);
+var
+isFloat: Boolean;
+i: Integer;
 begin 
-    WriteText('    mov rax, ' + result + #10);
+    isFloat := False;
+    i := 0;
+
+    for i := 0 to return_FCount - 1 do
+        begin
+            if currentFN = return_FName[i] then
+                if return_FType[i] = 'FLOAT' then
+                    isFloat := True;
+        end;
+
+    if not isFloat then
+        WriteText('    mov rax, ' + result + #10)
+    else
+        WriteText('    movsd xmm0, ' + result + #10);
+
     WriteText('    add rsp, 128' + #10);
     WriteText('    pop rbp' + #10);
     WriteText('    ret' + #10 + #10);
@@ -361,13 +378,14 @@ end;
 function evaluateExpression(isFloat: Boolean): String;
 var
     first, second, op, argname, fname: String;
-    returnsFloat: Boolean;
+    returnsFloat, isFloatArg: Boolean;
     result1: Double;
     i, ii, result2: Integer;
 begin
     i := 0;
     ii := 0;
     returnsFloat := False;
+    isFloatArg := False;
 
     if (peek() = 'IDENTIFIER') and (peek2() = 'LPAR') then 
     begin
@@ -386,13 +404,19 @@ begin
                 if peek() = 'COLON' then
                     begin
                         consume; // :
+                        if peekV() = 'f' then
+                            isFloatArg := True;
                         consume; // type marker 
                     end;
                 if not isNumber(argname) then
                     for i := 0 to symCount - 1 do
                         if symName[i] = argname then
                             argname := '[rbp-' + IntToStr(symOffset[i]) + ']';
-                WriteText('    mov rdi, ' + argname + #10);
+
+                if isFloatArg then 
+                    WriteText('    movsd xmm0, ' + argname + #10)
+                else
+                    WriteText('    mov rdi, ' + argname + #10);
             end;
         consume(); // )
 

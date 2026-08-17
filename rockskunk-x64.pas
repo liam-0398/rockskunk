@@ -595,6 +595,16 @@ begin
                                         symType[symCount] := symType[ii];
                                 end;
                         end;
+
+                    if (peek2() = 'IDENTIFIER') and (peek3() = 'LPAR') then
+                        begin
+                            twoname := peekV2();
+                            for ii := 0 to symCount-1 do 
+                                begin
+                                    if return_FName[ii] = twoname then
+                                        symType[symCount] := return_FType[ii];
+                                end;
+                        end;
                     
                     isFloat := (symType[symCount] = 'FLOAT');
                         symOffset[symCount] := frameOffset;

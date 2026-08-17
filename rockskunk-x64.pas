@@ -382,6 +382,11 @@ begin
         if peek() <> 'RPAR' then
             begin
                 argname := consume(); // single arg
+                if peek() = 'COLON' then
+                    begin
+                        consume; // :
+                        consume; // type marker 
+                    end;
                 if not isNumber(argname) then
                     for i := 0 to symCount - 1 do
                         if symName[i] = argname then
@@ -389,6 +394,7 @@ begin
                 WriteText('    mov rdi, ' + argname + #10);
             end;
         consume(); // )
+
         if returnsFloat then
             begin
                 WriteText('    call ' + fname + #10);
@@ -687,13 +693,14 @@ begin
                                 symName[symCount] := consume(); // grab param name
                                 symType[symCount] := 'NUMBER'; // int param for now
                                 inc(symCount);
-                                    if peek() = 'COMMA' then
+                                   if peek() = 'COMMA' then
                                         consume;
                                     if peek() = 'COLON' then
                                         begin
+                                        consume; // consume colon           
+                                            consume; // consume colon
                                             if peekV() = 'f' then
                                                 begin
-                                                    consume; // consume colon
                                                     symType[symCount] := 'FLOAT'; // int param for now
                                                     consume; // consume f
                                                 end
@@ -705,7 +712,7 @@ begin
                                 paramPending := True;
                                 paramOffset[argCount] := frameOffset;
                                 inc(argCount);
-                            until peek() = ')';
+                            until peek() = 'RPAR';
                     end;
                         consume; // )
                     

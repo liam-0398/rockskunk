@@ -13,6 +13,12 @@ var
     symOffset: array[0..255] of Integer;
     t_type, t_val: Array[0..4096] of String;
 
+
+    // for capturing return types so assingment to function return knows whats up
+    return_FName: array[0..255] of String; 
+    return_FType: array[0..255] of String;
+    return_FCount: Integer;
+
     stack: Array [0..255] of String;
     sp: Integer;
 
@@ -561,12 +567,17 @@ begin
                     
                     isFloat := (symType[symCount] = 'FLOAT');
 
+
+
                         symOffset[symCount] := frameOffset;
                         symName[symCount] := variable;
                         variable := '[rbp-' + IntToStr(symOffset[symCount]) + ']';  
                     if isReturn then
+                        return_FName[return_FCount] := currentFN;
+                        return_FType[return_FCount] := symType[symCount];
                         returnAddr := '[rbp-' + IntToStr(symOffset[symCount]) + ']'; 
                         inc(symCount);
+                        inc(return_FCount);
                         consume(); // :=
                     if isFloat then // send to expression evaulator to find out what to do to right side
                         begin

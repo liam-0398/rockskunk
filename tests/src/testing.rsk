@@ -1,13 +1,13 @@
 
 
-F addup(b) {
-    b := b + 12000
-    r := b + 555 }
+F addup() {
+    b := b + 12000.0f
+    r := b + 555.0f }
 
 F helper(a) { 
     b := addup(a)
     r := a * b }
 
 F main() {
-    r := helper(5) }
+    r := helper() }
 

@@ -27,6 +27,7 @@ another language attempt and reworking it to output NASM x86_64 assembly. WAY do
 - Closing bracket goes on last line not below. Same if FN also ends a loop or conditional
 - floats must look like 10.0f with the . and the f
 - never mix floats and ints. use intfloat() or floatint()
+- Functions are always declared before they are called
 
 # Syntax
 

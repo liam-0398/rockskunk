@@ -332,15 +332,25 @@ end;
 function evaluateExpression(isFloat: Boolean): String;
 var
     first, second, op, argname, fname: String;
+    returnsFloat: Boolean;
     result1: Double;
-    i, result2: Integer;
+    i, ii, result2: Integer;
 begin
     
-    i :=0;
+    i := 0;
+    ii := 0;
+    returnsFloat := False;
 
     if (peek() = 'IDENTIFIER') and (peek2() = 'LPAR') then 
     begin
         fname := consume(); // function name
+
+        for ii := 0 to return_FCount - 1 do
+            begin
+                if fname = return_FName[ii] then
+                    returnsFloat := True;
+            end;
+                    
         consume(); // (
         if peek() <> 'RPAR' then
             begin
@@ -352,9 +362,18 @@ begin
                 WriteText('    mov rdi, ' + argname + #10);
             end;
         consume(); // )
-        WriteText('    call ' + fname + #10);
-        first := 'rax';
-        evaluateExpression := 'rax';
+        if returnsFloat then
+            begin
+                WriteText('    call ' + fname + #10);
+                first := 'xmm0';
+                evaluateExpression := 'xmm0';
+            end
+        else
+            begin
+                WriteText('    call ' + fname + #10);
+                first := 'rax';
+                evaluateExpression := 'rax';
+            end;
     end
     else
         begin
@@ -566,19 +585,22 @@ begin
                         end;
                     
                     isFloat := (symType[symCount] = 'FLOAT');
-
-
-
                         symOffset[symCount] := frameOffset;
                         symName[symCount] := variable;
                         variable := '[rbp-' + IntToStr(symOffset[symCount]) + ']';  
+
                     if isReturn then
+                        begin
                         return_FName[return_FCount] := currentFN;
                         return_FType[return_FCount] := symType[symCount];
-                        returnAddr := '[rbp-' + IntToStr(symOffset[symCount]) + ']'; 
-                        inc(symCount);
+                        returnAddr := '[rbp-' + IntToStr(symOffset[symCount]) + ']';
                         inc(return_FCount);
+                        end;
+
+                        inc(symCount);
                         consume(); // :=
+                        
+
                     if isFloat then // send to expression evaulator to find out what to do to right side
                         begin
                           rightside := evaluateExpression(isFloat);
@@ -608,7 +630,8 @@ begin
         case peek() of
             'F': begin WriteLn('PARSER - F');
                 consume;
-                emitFN(consume);
+                currentFN := consume;
+                emitFN(currentFN);
                 frameOffset := 0;
                 symCount := 0;
                     for i := 0 to 255 do
@@ -990,9 +1013,12 @@ begin
         symName[i] := '';
         end;
     FillChar(stack, SizeOf(stack), 0);
+    FillChar(return_FName, SizeOf(return_FName), 0);
+    FillChar(return_FType, SizeOf(return_FType), 0);
     deleteFile('intermediate.asm');
     deleteFile('text.tmp');
     deleteFile('data.tmp');
+    return_FCount := 0;
     symCount := 0;
     sp := 0;
 end;

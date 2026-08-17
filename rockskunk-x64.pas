@@ -21,6 +21,7 @@ var
     currentFN: String;
     fd, fd2, fd3, fd4: CInt;
     filename, returnAddr: String;
+    paramPending: Boolean; paramOffset: Integer;
     frameOffset, labelCounter, position, symCount, t_count: Integer;
 
 {
@@ -330,6 +331,27 @@ var
 begin
     
     i :=0;
+
+    if (peek() = 'IDENTIFIER') and (peek2() = 'LPAR') then
+    begin
+        fname := consume(); // function name
+        consume(); // (
+        if peek() <> 'RPAR' then
+            begin
+                argname := consume(); // single arg
+                if not isNumber(argname) then
+                    for i := 0 to symCount - 1 do
+                        if symName[i] = argname then
+                            argname := '[rbp-' + IntToStr(symOffset[i]) + ']';
+                WriteText('    mov rdi, ' + argname + #10);
+            end;
+        consume(); // )
+        WriteText('    call ' + fname + #10);
+        first := 'rax';
+    end
+    else
+        begin
+
     first := consume; // first operand
 
     if first[Length(first)] = 'f' then first := copy(first, 1, Length(first) - 1);
@@ -465,7 +487,7 @@ begin
                             evaluateExpression := 'rax';
                         end
                 end
-        end; 
+    end;    end; 
 end;
 
 procedure discriminateIdentifier();
@@ -570,6 +592,22 @@ begin
                 consume;
                 emitFN(consume);
                 frameOffset := 0;
+                paramPending := False;
+                if peek() = 'LPAR' then
+                    begin
+                        consume; // (
+                        if peek() = 'IDENTIFIER' then
+                            begin
+                                frameOffset := frameOffset + 8;
+                                symOffset[symCount] := frameOffset;
+                                symName[symCount] := consume(); // grab param name
+                                symType[symCount] := 'NUMBER'; // int param for now
+                                inc(symCount);
+                                paramPending := True;
+                                paramOffset := frameOffset;
+                            end;
+                        consume; // )
+                    end;
             end;
             'LPAR': begin WriteLn('PARSER - (');
                 consume; // PLACEHOLDER
@@ -580,6 +618,11 @@ begin
             'LBRACE': begin WriteLn('PARSER - {');
                 consume;
                 emitFunctionSetup();
+                if paramPending then
+                    begin
+                        WriteText('    mov [rbp-' + IntToStr(paramOffset) + '], rdi' + #10);
+                        paramPending := False;
+                    end;
             end;
             'RBRACE': begin WriteLn('PARSER - }');
                 consume;

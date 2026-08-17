@@ -81,7 +81,7 @@ begin
     fpClose(fd);
 end;
 
-procedure openIntermediateFile; // open NASM sourcefile
+procedure openIntermediateFile; // open temp sourcefile
 begin
     fd3 := fpOpen('text.tmp',O_WRONLY OR O_CREAT OR O_TRUNC, 438);
     fd4 := fpOpen('data.tmp',O_WRONLY OR O_CREAT OR O_TRUNC, 438);
@@ -89,7 +89,7 @@ begin
     FillChar(textbuf, SizeOf(textbuf), 0);
 end;
 
-procedure writeASM;
+procedure writeASM; // Write to real intermediate.asm that is compiled by NASM
 var
     dbytes, tbytes: cint;
 begin
@@ -332,7 +332,7 @@ begin
     
     i :=0;
 
-    if (peek() = 'IDENTIFIER') and (peek2() = 'LPAR') then
+    if (peek() = 'IDENTIFIER') and (peek2() = 'LPAR') then 
     begin
         fname := consume(); // function name
         consume(); // (
@@ -353,9 +353,9 @@ begin
     else
         begin
 
-    first := consume; // first operand
+    first := consume; // first operand (the a in a + b)
 
-    if first[Length(first)] = 'f' then first := copy(first, 1, Length(first) - 1);
+    if first[Length(first)] = 'f' then first := copy(first, 1, Length(first) - 1); // strip f from float
 
     if not isNumber(first) then // look up addr if identifier
         begin
@@ -366,14 +366,14 @@ begin
                 end;
         end;
 
-    if (isNumber(first)) and (isFloat) then // throw a label in .data
+    if (isNumber(first)) and (isFloat) then // throw a label in .data for floats
         begin
             first := emitFloatConstant(first);
             first := '[' + first + ']';
             WriteLn('EEVAL F - F CONSTANT .DATA'); 
         end;
 
-    if isNumber(first) and (peek2() = 'NUMBER') then // fold the code if 5 + 5
+    if isNumber(first) and (peek2() = 'NUMBER') then // fold the code if 5 + 5, 5 * 5
             begin
             op := peek(); // Operator
             consume;
@@ -407,7 +407,7 @@ begin
                 end;
     end;
 
-    // if next token isnt operator return the first operand
+    // if next token isnt operator return the first operand eg if var := 5 not var := 5 + b
     if not ((peek() = 'PLUS') or (peek() = 'MINUS') or (peek() = 'STAR') or (peek() = 'SLASH')) then
         begin
            evaluateExpression := first;
@@ -418,9 +418,9 @@ begin
             WriteLn('EEVAL - OP BRANCH');
 
             if isFloat then
-                loadXMM0(first)
+                loadXMM0(first) // floats need Xtra Math Man
             else
-                loadRAX(first);
+                loadRAX(first); 
 
             op := peek(); // Operator
             consume;
@@ -436,6 +436,7 @@ begin
                     end;
             end;
 
+            // ASM emission for math
             if op = 'PLUS' then
                 begin    
                     if isFloat then

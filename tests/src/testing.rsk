@@ -1,7 +1,7 @@
 
 
 F addup() {
-    b := b + 12000.0f
+    b := 12000.0f
     r := b + 555.0f }
 
 F helper(a) { 

@@ -1,6 +1,6 @@
 
+F square(a) { r := a * a' }
+
 F main() {
-    a := 5.0f'
-    b := 10.0f'
-    r := a + b'
+    r := square(5)'
 }

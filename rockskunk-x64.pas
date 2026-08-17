@@ -592,6 +592,13 @@ begin
                 consume;
                 emitFN(consume);
                 frameOffset := 0;
+                symCount := 0;
+                    for i := 0 to 255 do
+                        begin
+                            symName[i] := '';
+                            symOffset[i] := 0;
+                            symType[i] := '';
+                        end;
                 paramPending := False;
                 if peek() = 'LPAR' then
                     begin

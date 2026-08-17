@@ -572,7 +572,7 @@ end;
 
 procedure discriminateIdentifier();
 var
-    variable, rightside, twoname: String;
+    variable, rightside, twoname, argname: String;
     isDeclared, isReturn, isFloat: boolean;
     i, ii, symIndex: Integer;
 
@@ -678,8 +678,20 @@ begin
                     end;
         end
         else
-            begin
-                 WriteText('call ' + variable + #10);
+            begin //REPLACETHIS 
+                if variable = 'printw' then
+                    begin
+                        consume; // (
+                        argname := consume(); // the value to print
+                        if not isNumber(argname) then
+                            for i := 0 to symCount - 1 do
+                                if symName[i] = argname then
+                                    argname := '[rbp-' + IntToStr(symOffset[i]) + ']';
+                        consume; // )
+                        functionPrintW(argname);
+                    end
+                else
+                    WriteText('call ' + variable + #10);
             end;
 end;
 

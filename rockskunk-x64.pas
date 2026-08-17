@@ -503,7 +503,10 @@ begin
     isDeclared := False;
     isReturn := False;
     isFloat := False;
+
     variable := consume(); // consume the a in a := 5
+
+    WriteLn('discrim start: variable=' + variable + ' position=' + IntToStr(position)); // DEBUG
 
     for i := 0 to 255 do  // check to see if already declared
         begin

@@ -1,3 +1,0 @@
-begin
-    WriteLn(ParamCount);
-end.

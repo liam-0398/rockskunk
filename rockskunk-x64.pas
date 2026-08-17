@@ -360,13 +360,13 @@ begin
             else
                 begin
                 if op = 'PLUS' then
-                    result1 := StrToInt(first) + StrToInt(second)
+                    result2 := StrToInt(first) + StrToInt(second)
                 else if op = 'MINUS' then
-                    result1 := StrToInt(first) - StrToInt(second)
+                    result2 := StrToInt(first) - StrToInt(second)
                 else if op = 'STAR' then
-                    result1 := StrToInt(first) * StrToInt(second)
+                    result2 := StrToInt(first) * StrToInt(second)
                 else if op = 'SLASH' then
-                    result1 := StrToInt(first) div StrToInt(second);
+                    result2 := StrToInt(first) div StrToInt(second);
                 WriteLn('OPTIMIZATION - FP ARITHMATIC');
                 Exit(IntToStr(result2));
                 end;

@@ -102,7 +102,9 @@ begin
     fd2 := fpOpen('intermediate.asm',O_WRONLY OR O_CREAT OR O_TRUNC, 438);
 
     fd4 := fpOpen('data.tmp', O_RdOnly, 438);
-    WriteOut('section .data' + #10);
+    WriteOut('section .bss' + #10);
+    WriteOut('   digitbuf: resb 32' + #10);
+    WriteOut(#10 + 'section .data' + #10);
     dbytes := fpRead(fd4, databuf, SizeOf(databuf));
     fpWrite(fd2, databuf, dbytes);
     fpClose(fd4);
@@ -285,6 +287,13 @@ procedure emitLogicalOr(); begin end;
 // SYSTEM ----------------------------------
 
 procedure emitSyscall(); begin end; // sys(a,b,c)
+
+procedure functionPrintW(source: String);
+begin
+    WriteText('    mov rax, ' + source + #10);
+    WriteText('    call print_qword' + #10);
+
+end;
 
 // PARSER =============================================================
 // ========================================================
@@ -748,6 +757,37 @@ begin
     WriteText('  mov rdi, rax'+ #10);
     WriteText('  mov rax, 60'+ #10);
     WriteText('  syscall'+ #10);
+
+    // print_qword function NASM
+    // word is in rax
+    // NOT MY WORK NEED TO REWRITE WHEN I KNOW MORE ASM> FOR DEBUGGING ONLY ===========
+    WriteText('print_qword:' + #10);
+    WriteText('    mov rsi, digitbuf + 20' + #10);      // point past the end of the buffer
+    WriteText('    mov rcx, 0' + #10);                   // digit counter
+    WriteText('    cmp rax, 0' + #10);
+    WriteText('    jne .pq_loop' + #10);
+    WriteText('    dec rsi' + #10);
+    WriteText('    mov byte [rsi], 48' + #10);           // just write '0'
+    WriteText('    inc rcx' + #10);
+    WriteText('    jmp .pq_done' + #10);
+    WriteText('.pq_loop:' + #10);
+    WriteText('    cmp rax, 0' + #10);
+    WriteText('    je .pq_done' + #10);
+    WriteText('    cqo' + #10);
+    WriteText('    mov rbx, 10' + #10);
+    WriteText('    idiv rbx' + #10);
+    WriteText('    add rdx, 48' + #10);                  // remainder -> ASCII digit
+    WriteText('    dec rsi' + #10);
+    WriteText('    mov [rsi], dl' + #10);
+    WriteText('    inc rcx' + #10);
+    WriteText('    jmp .pq_loop' + #10);
+    WriteText('.pq_done:' + #10);
+    WriteText('    mov rax, 1' + #10);                   // syscall: write
+    WriteText('    mov rdi, 1' + #10);                   // fd: stdout
+    WriteText('    mov rdx, rcx' + #10);                 // length = digit count
+    WriteText('    syscall' + #10);
+    WriteText('    ret' + #10 + #10);
+     // NOT MY WORK NEED TO REWRITE WHEN I KNOW MORE ASM> FOR DEBUGGING ONLY ===========
 
 end;
 

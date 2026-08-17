@@ -13,6 +13,9 @@ var
     symOffset: array[0..255] of Integer;
     t_type, t_val: Array[0..4096] of String;
 
+    stack: Array [0..255] of String;
+    sp: Integer;
+
     braceEmitted: Boolean;
     bytes: CInt;
     currentFN: String;
@@ -27,6 +30,18 @@ var
 
 // HELPERS =================================================
 // ========================================================
+
+procedure push(value: String); 
+begin 
+    stack[sp] := value;
+    Inc(sp);
+end;
+
+function pop(): String;
+begin 
+    Dec(sp);
+    pop := stack[sp];
+end;
 
 procedure writeOut(s: String); begin fpWrite(fd2, s[1], Length(s)); end;
 procedure writeText(s: String); begin fpWrite(fd3, s[1], Length(s)); end;
@@ -881,10 +896,12 @@ begin
         symOffset[i] := 0;
         symName[i] := '';
         end;
+    FillChar(stack, SizeOf(stack), 0);
     deleteFile('intermediate.asm');
     deleteFile('text.tmp');
     deleteFile('data.tmp');
     symCount := 0;
+    sp := 0;
 end;
 
 begin

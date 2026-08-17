@@ -336,7 +336,6 @@ var
     result1: Double;
     i, ii, result2: Integer;
 begin
-    
     i := 0;
     ii := 0;
     returnsFloat := False;
@@ -379,8 +378,11 @@ begin
         begin
 
     first := consume; // first operand (the a in a + b)
+    second := peek2();
 
     if first[Length(first)] = 'f' then first := copy(first, 1, Length(first) - 1); // strip f from float
+    if second[Length(second)] = 'f' then second := copy(second, 1, Length(second) - 1);
+
 
     if not isNumber(first) then // look up addr if identifier
         begin

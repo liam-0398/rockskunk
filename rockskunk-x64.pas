@@ -506,45 +506,45 @@ begin
     isFloat := False;
 
     variable := consume(); // consume the a in a := 5
-    
+
     if variable = 'r' then isReturn := True;
 
     WriteLn('discrim start: variable=' + variable + ' position=' + IntToStr(position)); // DEBUG
 
-    for i := 0 to 255 do  // check to see if already declared
+    for i := 0 to 255 do  // scan to see if var is delclred already
         begin
             if symName[i] = variable then
                 begin
                     isDeclared := True;
                     symIndex := i;
-                    if symType[i] = 'FLOAT' then
+                    if symType[i] = 'FLOAT' then // if its a float take the float path
                         isFloat := True;
                 end;
         end;
 
-    if peek() = 'ASSIGN' then
+    if peek() = 'ASSIGN' then // if its a := x etc etc
         begin
             if isDeclared = True then
-                begin
+                begin // turn into something nasm understands instead of just "variable"
                     variable := '[rbp-' + IntToStr(symOffset[symIndex]) + ']';  // [rbp-8] etc
                     consume(); // :=
                         if symType[symIndex] = 'FLOAT' then
                                 begin
                                 rightside := evaluateExpression(isFloat);
-                                emitAssignFloat(variable, rightside);
+                                emitAssignFloat(variable, rightside); // emit asm
                                 end
                             else
                                 begin
                                 rightside := evaluateExpression(isFloat);
                                 emitAssign(variable, rightside);
                                 end;
-                        WriteLn('ASSIGN BRANCH - DECLARED');
+                        WriteLn('ASSIGN BRANCH - DECLARED'); // DEBUG
                 end
             else
                 begin
-                    frameOffset := frameOffset + 8;
+                    frameOffset := frameOffset + 8; // vars need to occupy different memory, increment
 
-                    if peek2() = 'FLOAT' then
+                    if peek2() = 'FLOAT' then // determine what it is and make it so
                         symType[symCount] := 'FLOAT';
                     if peek2() = 'NUMBER' then
                         symType[symCount] := 'NUMBER';
@@ -567,7 +567,7 @@ begin
                         returnAddr := '[rbp-' + IntToStr(symOffset[symCount]) + ']'; 
                         inc(symCount);
                         consume(); // :=
-                    if isFloat then
+                    if isFloat then // send to expression evaulator to find out what to do to right side
                         begin
                           rightside := evaluateExpression(isFloat);
                           emitAssignFloat(variable, rightside);
@@ -577,7 +577,7 @@ begin
                             rightside := evaluateExpression(isFloat);
                             emitAssign(variable,rightside);
                          end;
-                        WriteLn('ASSIGN BRANCH - UNDECLARED');
+                        WriteLn('ASSIGN BRANCH - UNDECLARED'); // DEBUG
                     end;
         end
         else
@@ -606,7 +606,7 @@ begin
                             symType[i] := '';
                         end;
                 paramPending := False;
-                if peek() = 'LPAR' then
+                if peek() = 'LPAR' then // arg detection
                     begin
                         consume; // (
                         if peek() = 'IDENTIFIER' then
@@ -684,7 +684,8 @@ begin
         end;
     until position >= t_count;
 
-    WriteText('global _start'+ #10);
+    // placed at bottom for file
+    WriteText('global _start'+ #10);  // entry point so linker can do linker things
     WriteText('_start:'+ #10);
     WriteText('  call main'+ #10);
     WriteText('  mov rdi, rax'+ #10);

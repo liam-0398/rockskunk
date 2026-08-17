@@ -322,6 +322,8 @@ begin
     i :=0;
     first := consume; // first operand
 
+    if first[Length(first)] = 'f' then first := copy(first, 1, Length(first) - 1);
+
     if not isNumber(first) then // look up addr if identifier
         begin
             for i := 0 to symCount - 1 do

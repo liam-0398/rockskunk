@@ -933,7 +933,6 @@ begin
                 consume;
                 currentFN := consume;
                 emitFN(currentFN);
-                WriteLn('F CASE: pos=' + IntToStr(position) + ' peek=' + peek());
                 frameOffset := 0;
                 argCount := 0;
                 symCount := 0;
@@ -971,7 +970,6 @@ begin
                                 paramPending := True;
                                 paramOffset[argCount] := frameOffset;
                                 inc(argCount);
-                                WriteLn('PARAM: name=' + symName[symCount-1] + ' type=' + symType[symCount-1] + ' offset=' + IntToStr(paramOffset[argCount-1]));
                                 if peek() = 'COMMA' then
                                         consume;
                             until peek() = 'RPAR';
@@ -1435,7 +1433,6 @@ begin
                         begin
                             t_type[t_count] := 'FLOAT'; // Store as type NUMBER
                             t_val[t_count] := word; // put number into value
-                            WriteLn('FLOAT');
                             Inc(t_count);
                             Dec(i); // Dec to counteract Inc at bottom of main loop
                         end

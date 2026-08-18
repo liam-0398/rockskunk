@@ -641,8 +641,7 @@ begin
         consume(); // )
         call_ret := call(fname, first, returnsFloat);
         Exit(call_ret);
-
-    end
+        end
     else
         begin
             WriteLn('EEVAL - NOT OP BRANCH'); // DEBUG
@@ -667,31 +666,31 @@ begin
             // if next token isnt operator return the first operand eg if var := 5 not var := 5 + b
             if not ((peek() = 'PLUS') or (peek() = 'MINUS') or (peek() = 'STAR') or (peek() = 'SLASH')) then
                 evaluateExpression := first
-    else
-        begin
-            WriteLn('EEVAL - OP BRANCH');
-
-            if isFloat then
-                loadXMM0(first) // floats need Xtra Math Man
             else
-                loadRAX(first); 
+                begin
+                    WriteLn('EEVAL - OP BRANCH');
 
-            op := peek(); // Operator
-            consume;
-            second := consume(); // Second
+                    if isFloat then
+                        loadXMM0(first) // floats need Xtra Math Man
+                    else
+                        loadRAX(first); 
 
-            second := justMakeItAFuckingFloat(second);
+                    op := peek(); // Operator
+                    consume;
+                    second := consume(); // Second
 
-            i := 0;
-            if not isNumber(second) then
-            begin
-                    second := varToMem(second);
-            end;
+                    second := justMakeItAFuckingFloat(second);
 
-            // ASM emission for math
-            math_ret := emitMath(op, second, isFloat);
-            Exit(math_ret)
-        end;
+                    i := 0;
+                    if not isNumber(second) then
+                    begin
+                            second := varToMem(second);
+                    end;
+
+                    // ASM emission for math
+                    math_ret := emitMath(op, second, isFloat);
+                    Exit(math_ret)
+                end;
     end;   
 end;
 

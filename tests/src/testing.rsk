@@ -1,11 +1,14 @@
 
 
-F helper(b) { 
-    a := 20
-    r := a * b }
+F helper(b: f, c: f) { 
+    a := 20.0f
+    d := a * c
+    r := d + 2.0f }
 
 F main() {
-    b := helper(20)
-    printw(b)
+    a := 5.0f
+    c := 2.0f
+    b := helper(a: f, c: f)
+    printf(b)
     r := 1 }
 

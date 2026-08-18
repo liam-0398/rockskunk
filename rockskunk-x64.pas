@@ -314,6 +314,12 @@ begin
 
 end;
 
+procedure functionPrintF(source: String);
+begin
+    WriteText('    movsd xmm0, ' + source + #10);
+    WriteText('    call print_float' + #10);
+end;
+
 // PARSER =============================================================
 // ========================================================
 
@@ -394,7 +400,8 @@ begin
         for ii := 0 to return_FCount - 1 do
             begin
                 if fname = return_FName[ii] then
-                    returnsFloat := True;
+                    if return_FType[ii] = 'FLOAT' then
+                        returnsFloat := True;
             end;
                     
         consume(); // (
@@ -690,6 +697,17 @@ begin
                         consume; // )
                         functionPrintW(argname);
                     end
+                else if variable = 'printf' then
+                    begin
+                        consume; // (
+                        argname := consume(); // the value to print
+                        if not isNumber(argname) then
+                            for i := 0 to symCount - 1 do
+                                if symName[i] = argname then
+                                    argname := '[rbp-' + IntToStr(symOffset[i]) + ']';
+                        consume; // )
+                        functionPrintF(argname);
+                    end
                 else
                     WriteText('call ' + variable + #10);
             end;
@@ -731,8 +749,6 @@ begin
                                 symName[symCount] := consume(); // grab param name
                                 symType[symCount] := 'NUMBER'; // int param for now
                                 inc(symCount);
-                                   if peek() = 'COMMA' then
-                                        consume;
                                     if peek() = 'COLON' then
                                         begin        
                                             consume; // consume colon
@@ -750,6 +766,8 @@ begin
                                 paramOffset[argCount] := frameOffset;
                                 inc(argCount);
                                 WriteLn('PARAM: name=' + symName[symCount-1] + ' type=' + symType[symCount-1] + ' offset=' + IntToStr(paramOffset[argCount-1]));
+                                if peek() = 'COMMA' then
+                                        consume;
                             until peek() = 'RPAR';
                     end;
                         consume; // )
@@ -837,7 +855,7 @@ begin
     until position >= t_count;
 
     // placed at bottom for file
-    WriteText('global _start'+ #10);  // entry point so linker can do linker things
+    WriteText(#10 + 'global _start' + #10);  // entry point so linker can do linker things
     WriteText('_start:'+ #10);
     WriteText('  call main'+ #10);
     WriteText('  mov rdi, rax'+ #10);
@@ -847,7 +865,7 @@ begin
     // print_qword function NASM
     // word is in rax
     // NOT MY WORK NEED TO REWRITE WHEN I KNOW MORE ASM> FOR DEBUGGING ONLY ===========
-    WriteText('print_qword:' + #10);
+    WriteText(#10 + 'print_qword:' + #10);
     WriteText('    mov rsi, digitbuf + 20' + #10);      // point past the end of the buffer
     WriteText('    mov rcx, 0' + #10);                   // digit counter
     WriteText('    cmp rax, 0' + #10);
@@ -874,6 +892,33 @@ begin
     WriteText('    syscall' + #10);
     WriteText('    ret' + #10 + #10);
      // NOT MY WORK NEED TO REWRITE WHEN I KNOW MORE ASM> FOR DEBUGGING ONLY ===========
+
+        // print_float - value in xmm0
+    // NOT MY WORK NEED TO REWRITE WHEN I KNOW MORE ASM. FOR DEBUGGING ONLY ===========
+    WriteText(#10 + 'print_float:' + #10);
+    WriteText('    cvttsd2si rax, xmm0' + #10);        // integer part -> rax
+    WriteText('    push rax' + #10);                    // save it
+    WriteText('    cvtsi2sd xmm1, rax' + #10);          // int part back to float
+    WriteText('    subsd xmm0, xmm1' + #10);            // xmm0 = fractional part
+    WriteText('    mov rax, 1000' + #10);
+    WriteText('    cvtsi2sd xmm1, rax' + #10);
+    WriteText('    mulsd xmm0, xmm1' + #10);            // frac * 1000
+    WriteText('    cvttsd2si rbx, xmm0' + #10);         // frac digits -> rbx
+    WriteText('    push rbx' + #10);
+    WriteText('    pop rbx' + #10);
+    WriteText('    pop rax' + #10);                     // restore integer part
+    WriteText('    push rbx' + #10);                    // stash frac again
+    WriteText('    call print_qword' + #10);            // print integer part
+    WriteText('    mov rax, 46' + #10);                 // ASCII '.'
+    WriteText('    mov [digitbuf], al' + #10);
+    WriteText('    mov rax, 1' + #10);
+    WriteText('    mov rdi, 1' + #10);
+    WriteText('    mov rsi, digitbuf' + #10);
+    WriteText('    mov rdx, 1' + #10);
+    WriteText('    syscall' + #10);                     // print '.'
+    WriteText('    pop rax' + #10);                     // frac digits
+    WriteText('    call print_qword' + #10);            // print them
+    WriteText('    ret' + #10 + #10);
 
 end;
 

@@ -24,7 +24,7 @@ another language attempt and reworking it to output NASM x86_64 assembly. WAY do
 - Use common functions inside functions to keep codebase small
 - Left to right associative for vector ops a ** b ** c
 - Normal operators evaluated left to right
-- Closing bracket goes on last line not below. Same if FN also ends a loop or conditional
+- Closing bracket goes on last below last unless it is a loop/conditional, those are closed inline
 - floats must look like 10.0f with the . and the f
 - never mix floats and ints. use intfloat() or floatint()
 - Functions are always declared before they are called
@@ -211,7 +211,8 @@ array := v(array) ;vectorize (auto width based on cpuflags)
 F lowpass4(sampleVec, cutoffVec) {
     delta := v(sampleVec) -- v(prevOut)'
     prevOut := v(prevOut) ++ (v(cutoffVec) ** delta)'
-    r := prevOut' }
+    r := prevOut' 
+    }
 ```
 - C
 ```
@@ -238,7 +239,8 @@ F normalize(buf) {
     }
     LF (i := 0 until blockLen) {
         buf[i] := v(buf) // v(peak)'
-        i := i + 1' }}
+        i := i + 1' }
+        }
 ```
 - Pascal
 ```

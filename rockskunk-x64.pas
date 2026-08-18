@@ -361,6 +361,14 @@ begin
     Inc(position);  // Increment counter to drop the token
 end;
 
+procedure varToMem(variable: String);
+var
+    i: Integer;
+begin
+    if symName[i] = variable then
+        variable := '[rbp-' + IntToStr(symOffset[i]) + ']';
+end;
+
 function justMakeItAFuckingFloat(misformattedBastard: String): String;
 var
     isFloat: Boolean;
@@ -451,8 +459,7 @@ begin
                     end;
                 if not isNumber(argname) then
                     for i := 0 to symCount - 1 do
-                        if symName[i] = argname then
-                            argname := '[rbp-' + IntToStr(symOffset[i]) + ']';
+                        varToMem(argname);
 
                 if isFloatArg then 
                     WriteText('    movsd xmm0, ' + argname + #10)
@@ -482,10 +489,7 @@ begin
     if not isNumber(first) then // look up addr if identifier
         begin
             for i := 0 to symCount - 1 do
-                begin
-                if symName[i] = first then
-                    first := '[rbp-' + IntToStr(symOffset[i]) + ']';
-                end;
+                varToMem(first);
         end;
 
     if isNumber(first) and (peek2() = 'NUMBER') then // fold the code if 5 + 5, 5 * 5
@@ -549,10 +553,7 @@ begin
             if not isNumber(second) then
             begin
                 for i := 0 to symCount - 1 do
-                    begin
-                    if symName[i] = second then
-                        second := '[rbp-' + IntToStr(symOffset[i]) + ']';
-                    end;
+                    varToMem(second);
             end;
 
             // ASM emission for math
@@ -691,7 +692,7 @@ begin
                     isFloat := (symType[symCount] = 'FLOAT');
                         symOffset[symCount] := frameOffset;
                         symName[symCount] := variable;
-                        variable := '[rbp-' + IntToStr(symOffset[symCount]) + ']';  
+                        varToMem(variable);  
 
                     if isReturn then
                         begin
@@ -719,15 +720,14 @@ begin
                     end;
         end
         else
-            begin //REPLACETHIS 
+            begin //REPLACE THEESE
                 if variable = 'printw' then
                     begin
                         consume; // (
                         argname := consume(); // the value to print
                         if not isNumber(argname) then
                             for i := 0 to symCount - 1 do
-                                if symName[i] = argname then
-                                    argname := '[rbp-' + IntToStr(symOffset[i]) + ']';
+                                varToMem(argname);
                         consume; // )
                         functionPrintW(argname);
                     end
@@ -737,8 +737,7 @@ begin
                         argname := consume(); // the value to print
                         if not isNumber(argname) then
                             for i := 0 to symCount - 1 do
-                                if symName[i] = argname then
-                                    argname := '[rbp-' + IntToStr(symOffset[i]) + ']';
+                                varToMem(argname);
                         consume; // )
                         functionPrintF(argname);
                     end

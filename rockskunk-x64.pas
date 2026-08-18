@@ -40,6 +40,7 @@ var
 // Forward Declarations
 
 function WhoGoesThere(intruder: String): String; forward;
+function evaluateExpression(isFloat: Boolean): String; forward;
 
 // HELPERS =================================================
 // ========================================================
@@ -325,8 +326,9 @@ begin
     WriteText('    call print_float' + #10);
 end;
 
-// PARSER =============================================================
+// PARSER =================================================
 // ========================================================
+// Helpers ------------------------------------
 
 // Used to check type (identifier) and value of words for decision making
 function peekV(): String; // Look at the next token non-destructively
@@ -376,6 +378,80 @@ begin
                 VarToMem := '[rbp-' + IntToStr(symOffset[i]) + ']';
         end;
 end;
+
+function call(fname: String; first: String; returnsFloat: Boolean): String;
+begin
+          if returnsFloat then
+            begin
+                WriteText('    call ' + fname + #10);
+                first := 'xmm0';
+                call := 'xmm0';
+            end
+        else
+            begin
+                WriteText('    call ' + fname + #10);
+                first := 'rax';
+                call := 'rax';
+            end;
+end;
+
+function emitMath(op: String; second: String; isFloat: Boolean): String;
+begin
+            if op = 'PLUS' then
+                begin    
+                    if isFloat then
+                        begin
+                          emitAddFloat('xmm0', second);
+                          emitMath := 'xmm0';  
+                        end
+                    else
+                        begin        
+                            emitAdd('rax', second);
+                            emitMath := 'rax';
+                        end
+                end
+            else if op = 'MINUS' then
+                begin    
+                    if isFloat then
+                        begin
+                          emitSubFloat('xmm0', second);
+                          emitMath := 'xmm0';  
+                        end
+                    else
+                        begin        
+                            emitSub('rax', second);
+                            emitMath := 'rax';
+                        end
+                end
+            else if op = 'STAR' then
+                begin    
+                    if isFloat then
+                        begin
+                          emitMulFloat('xmm0', second);
+                          emitMath := 'xmm0';  
+                        end
+                    else
+                        begin        
+                            emitMul('rax', second);
+                            emitMath := 'rax';
+                        end
+                end
+            else if op = 'SLASH' then
+                begin    
+                    if isFloat then
+                        begin
+                          emitDivFloat('xmm0', second);
+                          emitMath := 'xmm0';  
+                        end
+                    else
+                        begin        
+                            emitDiv('rax', second);
+                            emitMath := 'rax';
+                        end
+                end
+end;
+
+
 
 function foldCode(first: String; isFloat: boolean): String;
 var
@@ -480,9 +556,11 @@ function addressOf(offset: Integer): String; begin addressOf := '[rbp-' + IntToS
 
 // symOffset, symName, symCount
 
+// MAIN PARSER MACHINERY ====================================================
+
 function evaluateExpression(isFloat: Boolean): String;
 var
-    first, second, op, argname, fname, return: String;
+    first, second, op, argname, fname, return, math_ret, call_ret: String;
     returnsFloat, isFloatArg: Boolean;
     result1: Double;
     i, ii, result2, seenFloats, seenInts: Integer;
@@ -536,47 +614,37 @@ begin
             end;
 
         consume(); // )
+        call_ret := call(fname, first, returnsFloat);
+        Exit(call_ret);
 
-        if returnsFloat then
-            begin
-                WriteText('    call ' + fname + #10);
-                first := 'xmm0';
-                evaluateExpression := 'xmm0';
-            end
-        else
-            begin
-                WriteText('    call ' + fname + #10);
-                first := 'rax';
-                evaluateExpression := 'rax';
-            end;
     end
     else
         begin
 
-    first := consume; // first operand (the a in a + b)
+            first := consume; // first operand (the a in a + b)
 
-    if isFloatLiteral(first) then
-        first := justMakeItAFuckingFloat(first);
+            if isFloatLiteral(first) then
+                first := justMakeItAFuckingFloat(first);
 
-    if not isNumber(first) then // look up addr if identifier
-        begin
-                first := varToMem(first);
-        end;
+            if not isNumber(first) then // look up addr if identifier
+                begin
+                        first := varToMem(first);
+                end;
 
-    if isNumber(first) and (peek2() = 'NUMBER') then // fold the code if 5 + 5, 5 * 5
-        begin
-            return := foldCode(first, isFloat);
-            Exit(return);
-        end;
-          
-    first := justMakeItAFuckingFloat(first);
+            if isNumber(first) and (peek2() = 'NUMBER') then // fold the code if 5 + 5, 5 * 5
+                begin
+                    return := foldCode(first, isFloat);
+                    Exit(return);
+                end;
+                
+            first := justMakeItAFuckingFloat(first);
 
-    // if next token isnt operator return the first operand eg if var := 5 not var := 5 + b
-    if not ((peek() = 'PLUS') or (peek() = 'MINUS') or (peek() = 'STAR') or (peek() = 'SLASH')) then
-        begin
-           evaluateExpression := first;
-           WriteLn('EEVAL - NOT OP BRANCH');
-        end
+            // if next token isnt operator return the first operand eg if var := 5 not var := 5 + b
+            if not ((peek() = 'PLUS') or (peek() = 'MINUS') or (peek() = 'STAR') or (peek() = 'SLASH')) then
+                begin
+                evaluateExpression := first;
+                WriteLn('EEVAL - NOT OP BRANCH');
+                end
     else
         begin
             WriteLn('EEVAL - OP BRANCH');
@@ -599,59 +667,10 @@ begin
             end;
 
             // ASM emission for math
-            if op = 'PLUS' then
-                begin    
-                    if isFloat then
-                        begin
-                          emitAddFloat('xmm0', second);
-                          evaluateExpression := 'xmm0';  
-                        end
-                    else
-                        begin        
-                            emitAdd('rax', second);
-                            evaluateExpression := 'rax';
-                        end
-                end
-            else if op = 'MINUS' then
-                begin    
-                    if isFloat then
-                        begin
-                          emitSubFloat('xmm0', second);
-                          evaluateExpression := 'xmm0';  
-                        end
-                    else
-                        begin        
-                            emitSub('rax', second);
-                            evaluateExpression := 'rax';
-                        end
-                end
-            else if op = 'STAR' then
-                begin    
-                    if isFloat then
-                        begin
-                          emitMulFloat('xmm0', second);
-                          evaluateExpression := 'xmm0';  
-                        end
-                    else
-                        begin        
-                            emitMul('rax', second);
-                            evaluateExpression := 'rax';
-                        end
-                end
-            else if op = 'SLASH' then
-                begin    
-                    if isFloat then
-                        begin
-                          emitDivFloat('xmm0', second);
-                          evaluateExpression := 'xmm0';  
-                        end
-                    else
-                        begin        
-                            emitDiv('rax', second);
-                            evaluateExpression := 'rax';
-                        end
-                end
-    end;    end; 
+            math_ret := emitMath(op, second, isFloat);
+            Exit(math_ret)
+        end;
+    end;   
 end;
 
 procedure discriminateIdentifier();

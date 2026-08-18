@@ -1013,9 +1013,7 @@ begin
     WriteText('    mov rax, 1000' + #10);
     WriteText('    cvtsi2sd xmm1, rax' + #10);
     WriteText('    mulsd xmm0, xmm1' + #10);            // frac * 1000
-    WriteText('    cvttsd2si rbx, xmm0' + #10);         // frac digits -> rbx
-    WriteText('    push rbx' + #10);
-    WriteText('    pop rbx' + #10);
+    WriteText('    cvtsd2si rbx, xmm0' + #10);          // frac digits -> rbx, ROUNDED not truncated
     WriteText('    pop rax' + #10);                     // restore integer part
     WriteText('    push rbx' + #10);                    // stash frac again
     WriteText('    call print_qword' + #10);            // print integer part
@@ -1027,14 +1025,41 @@ begin
     WriteText('    mov rdx, 1' + #10);
     WriteText('    syscall' + #10);                     // print '.'
     WriteText('    pop rax' + #10);                     // frac digits
-    WriteText('    call print_qword' + #10);            // print them
+    WriteText('    call print_frac3' + #10);            // print them, zero padded to 3
+    WriteText('    mov rax, 32' + #10);                 // ASCII space
+    WriteText('    mov [digitbuf], al' + #10);
+    WriteText('    mov rax, 1' + #10);
+    WriteText('    mov rdi, 1' + #10);
+    WriteText('    mov rsi, digitbuf' + #10);
+    WriteText('    mov rdx, 1' + #10);
+    WriteText('    syscall' + #10);                     // print separator space
+    WriteText('    ret' + #10 + #10);
+
+    // print_frac3 - value 0..999 in rax, always prints exactly 3 digits
+    // needed because print_qword drops leading zeros, so 0.05 printed as ".5"
+    WriteText(#10 + 'print_frac3:' + #10);
+    WriteText('    mov rsi, digitbuf + 3' + #10);       // one past the 3 digit field
+    WriteText('    mov rcx, 3' + #10);                  // always write 3, no early exit
+    WriteText('.pf_loop:' + #10);
+    WriteText('    cqo' + #10);
+    WriteText('    mov rbx, 10' + #10);
+    WriteText('    idiv rbx' + #10);                    // rax = quotient, rdx = remainder
+    WriteText('    add rdx, 48' + #10);                 // remainder -> ASCII digit
+    WriteText('    dec rsi' + #10);
+    WriteText('    mov [rsi], dl' + #10);
+    WriteText('    dec rcx' + #10);
+    WriteText('    jnz .pf_loop' + #10);                // loop exactly 3 times, zeros included
+    WriteText('    mov rax, 1' + #10);                  // syscall: write
+    WriteText('    mov rdi, 1' + #10);                  // fd: stdout
+    WriteText('    mov rsi, digitbuf' + #10);
+    WriteText('    mov rdx, 3' + #10);                  // fixed length 3
+    WriteText('    syscall' + #10);
     WriteText('    ret' + #10 + #10);
 
 end;
 
-// LEXER =============================================================
+// LEXER ==================================================
 // ========================================================
-//Tokenizes input into a pair, ex = is type (EQUAL) and value (=). 
 
 procedure lexer();
 var

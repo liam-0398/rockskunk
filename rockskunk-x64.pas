@@ -114,18 +114,22 @@ begin
     Inc(labelCounter)
 end;
 
-procedure openFile; // Open rockskunk sourcefile
+procedure openFile;
+var
+    libBytes: CInt;
 begin
     WriteLn('LOADING STANDARD LIBRARY');
     FillChar(buf, SizeOf(buf), 0);
-    fd := fpOpen(stdlib_filename,O_RdOnly);
-    bytes := FpRead(fd, buf, SizeOf(buf));
+    fd := fpOpen(stdlib_filename, O_RdOnly);
+    libBytes := FpRead(fd, buf, SizeOf(buf));
     fpClose(fd);
+
     WriteLn('LOADING SOURCEFILE LIBRARY');
-    FillChar(buf, SizeOf(buf), 0);
-    fd := fpOpen(filename,O_RdOnly);
-    bytes := FpRead(fd, buf, SizeOf(buf));
+    fd := fpOpen(filename, O_RdOnly);
+    bytes := FpRead(fd, buf[libBytes], SizeOf(buf) - libBytes);
     fpClose(fd);
+
+    bytes := bytes + libBytes;
 end;
 
 procedure openIntermediateFile; // open temp sourcefile
@@ -1668,7 +1672,7 @@ if ParamCount = 1 then
         closeIntermediateFile;
         writeASM;
         sendToNASM(output_filename);
-        deleteFile(output_filename + '.o')
+        deleteFile(output_filename + '.o');
     end
 else
     begin

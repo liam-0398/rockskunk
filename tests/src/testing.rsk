@@ -1,9 +1,72 @@
 
+; rockskunk loop nesting stress test
+; everything runs inside main - stop at the first tier whose output is wrong
+
 F main() {
+
+    ; --- tier 1: single loop, baseline sanity check ---
+    ; expected: 1 2 3
     i := 1
     LW (i <= 3) {
         printw(i)
         i := i + 1
-        r := 0
     }
+
+    ; --- tier 2: two independent loops, back to back, not nested ---
+    ; proves push/pop resets cleanly between separate loops
+    ; expected: 1 2   then   1 2
+    a := 1
+    LW (a <= 2) {
+        printw(a)
+        a := a + 1
+    }
+    b := 1
+    LW (b <= 2) {
+        printw(b)
+        b := b + 1
+    }
+
+    ; --- tier 3: one loop nested inside another, depth 2 ---
+    ; inner runs to completion on every outer pass
+    ; expected: 1 1 2   2 1 2
+    x := 1
+    LW (x <= 2) {
+        printw(x)
+        y := 1
+        LW (y <= 2) {
+            printw(y)
+            y := y + 1
+        }
+        x := x + 1
+    }
+
+    ; --- tier 4: depth 3, the real test of the stack not just a 2-deep hack ---
+    ; expected: 1 1 1 1 2   1 2 1   1 2 2   2 1 1   ... (9 total inner-innermost prints)
+    p := 1
+    LW (p <= 2) {
+        printw(p)
+        q := 1
+        LW (q <= 2) {
+            printw(q)
+            z := 1
+            LW (z <= 2) {
+                printw(z)
+                z := z + 1
+            }
+            q := q + 1
+        }
+        p := p + 1
+    }
+
+    ; --- tier 5: reuse a loop variable name after its loop has closed ---
+    ; proves the stack slot doesn't leak into unrelated code after popping
+    c := 1
+    LW (c <= 2) {
+        printw(c)
+        c := c + 1
+    }
+    c := 99
+    printw(c)
+
+    r := 0
 }

@@ -14,13 +14,9 @@ var
     symOffset: array[0..255] of Integer;
     t_type, t_val: Array[0..4096] of String;
 
-    loop_IndexF: array [0..64] of Integer;
-    loop_IndexW: array [0..64] of Integer;
-    loop_TLabelF: array [0..64] of String;
-    loop_ELabelF: array [0..64] of String;
-    loop_TLabelW: array [0..64] of String;
-    loop_ELabelW: array [0..64] of String;
-    curLoopTop, curLoopEnd: String;
+    loop_TLabel: array [0..64] of String;
+    loop_ELabel: array [0..64] of String;
+    loopDepth: Integer;
     loopBodyNext: Boolean;
 
     // for capturing return types so assingment to function return knows whats up
@@ -884,9 +880,9 @@ begin
         WriteText('    jne ' + endlabel + #10);     // jump if not equa  
 
     //inc(loop_IndexW);
-    curLoopTop := toplabel;
-    curLoopEnd := endlabel;
-    loopWhile := True;
+    loop_TLabel[loopDepth] := toplabel;
+    loop_ELabel[loopDepth] := endlabel;
+    Inc(loopDepth);
     loopBodyNext := True;
 end;
 
@@ -913,9 +909,9 @@ begin
     WriteText('    cmp rax, ' + looplimit + #10);
     WriteText('    jge ' + endlabel + #10);
 
-    curLoopTop := toplabel;
-    curLoopEnd := endlabel;
-    loopFor := True;
+    loop_TLabel[loopDepth] := toplabel;
+    loop_ELabel[loopDepth] := endlabel;
+    Inc(loopDepth);
     loopBodyNext := True;
 end;
 
@@ -924,12 +920,11 @@ end;
 procedure parser();
 var
     argtypeident: String;
-    isFloat, isLoop: Boolean;
+    isFloat: Boolean;
     i, seenFloats, seenInts: Integer;
 begin
     i := 0;
     position := 0;
-    isLoop := False;
     repeat
         case peek() of
             'F': begin 
@@ -1017,11 +1012,11 @@ begin
                 end;
             'RBRACE': begin 
                 consume;
-                    if isLoop then
+                    if loopDepth > 0 then
                         begin
-                            WriteText('    jmp ' + curLoopTop + #10);
-                            emitLabel(curLoopEnd);
-                            isLoop := False;
+                            Dec(loopDepth);
+                            WriteText('    jmp ' + loop_TLabel[loopDepth] + #10);
+                            emitLabel(loop_ELabel[loopDepth]);
                         end
                     else
                         emitFunctionTeardown(returnAddr);
@@ -1051,10 +1046,10 @@ begin
                 consume;
             end;
             'LF': begin 
-                isLoop := loopFor();
+                loopFor();
             end;
             'LW': begin 
-                isLoop := loopWhile();
+                loopWhile();
             end;
             'VARBLOCK': begin 
                 consume; // consume '
@@ -1082,7 +1077,9 @@ begin
     WriteText('  mov rax, 60'+ #10);
     WriteText('  syscall'+ #10);
 
-
+    // print_qword function NASM no space for float use
+    // word is in rax
+    // NOT MY WORK NEED TO REWRITE WHEN I KNOW MORE ASM> FOR DEBUGGING ONLY ===========
     WriteText(#10 + 'print_qword_nosp:' + #10);        // print integer, no trailing space
     WriteText('    mov rsi, digitbuf + 20' + #10);      // point past the end of the buffer
     WriteText('    mov rcx, 0' + #10);                   // digit counter
@@ -1225,8 +1222,6 @@ begin
     
     i := 0; // POSITION TRACKER  
 
-    
-  
     repeat
         isMultiple := False; 
 
@@ -1503,21 +1498,18 @@ begin
         begin
         symOffset[i] := 0;
         symName[i] := '';
-        loop_IndexF[i] := 0;
-        loop_IndexW[i] := 0;
         end;
 
     FillChar(stack, SizeOf(stack), 0);
-    FillChar(loop_TLabelF, SizeOf(loop_TLabelF), 0);
-    FillChar(loop_ELabelF, SizeOf(loop_ELabelF), 0);
-    FillChar(loop_TLabelW, SizeOf(loop_TLabelW), 0);
-    FillChar(loop_ELabelW, SizeOf(loop_ELabelW), 0);
+    FillChar(loop_TLabel, SizeOf(loop_TLabel), 0);
+    FillChar(loop_ELabel, SizeOf(loop_ELabel), 0);
     FillChar(return_FName, SizeOf(return_FName), 0);
     FillChar(return_FType, SizeOf(return_FType), 0);
     deleteFile('intermediate.asm');
     deleteFile('text.tmp');
     deleteFile('data.tmp');
     loopBodyNext := False;
+    loopDepth := 0;
     return_FCount := 0;
     symCount := 0;
     sp := 0;

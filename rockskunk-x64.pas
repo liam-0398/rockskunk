@@ -35,7 +35,7 @@ var
     bytes: CInt;
     currentFN: String;
     fd, fd2, fd3, fd4: CInt;
-    filename, returnAddr: String;
+    filename, stdlib_filename, returnAddr: String;
     paramPending: Boolean; 
     paramOffset: Array [0..128] of Integer;
     frameOffset, labelCounter, position, symCount, argCount, t_count: Integer;
@@ -116,6 +116,12 @@ end;
 
 procedure openFile; // Open rockskunk sourcefile
 begin
+    WriteLn('LOADING STANDARD LIBRARY');
+    FillChar(buf, SizeOf(buf), 0);
+    fd := fpOpen(stdlib_filename,O_RdOnly);
+    bytes := FpRead(fd, buf, SizeOf(buf));
+    fpClose(fd);
+    WriteLn('LOADING SOURCEFILE LIBRARY');
     FillChar(buf, SizeOf(buf), 0);
     fd := fpOpen(filename,O_RdOnly);
     bytes := FpRead(fd, buf, SizeOf(buf));
@@ -1576,6 +1582,7 @@ begin
 if ParamCount = 1 then
     begin
         filename := ParamStr(1);
+        stdlib_filename := 'lib/standard.rsk';
         arrayInit;
         openFile;
         lexer;

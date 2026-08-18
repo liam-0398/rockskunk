@@ -99,6 +99,12 @@ begin
         isFloatLiteral := False;
 end;
 
+function labelMaker(prefix: String): String;
+begin
+    labelMaker := prefix + IntToStr(labelCounter);
+    Inc(labelCounter)
+end;
+
 procedure openFile; // Open rockskunk sourcefile
 begin
     FillChar(buf, SizeOf(buf), 0);
@@ -213,7 +219,8 @@ procedure emitELSE(); begin end;
 procedure emitWHEN(); begin end;
 procedure emitFORLoop(); begin end;   // LF
 procedure emitWHILELoop(); begin end; // LW
-procedure emitLabel(); begin end;
+
+procedure emitLabel(labelname: String); begin WriteText(labelname + ':' + #10) end;
 
 // ASSIGNMENT -----------------------------------------------------------
 procedure emitAssign(variable : String; value : String);
@@ -823,14 +830,64 @@ begin
             end;
 end;
 
+// ONE-OFFS ------------
+
+function loopWhile(): Boolean;
+var
+    loopvar, loopcond, looplimit, toplabel, endlabel: String;
+begin
+    consume; //consume LW 
+    consume; // consume LPAR
+    loopvar := varToMem(consume);
+    loopcond := peek; // grab TYPE not the damn value
+    consume; // now eat it
+    looplimit := consume;
+    consume; // RPAR
+    toplabel := labelMaker('LW');
+    endlabel := labelMaker('LW');
+    emitLabel(toplabel); // it is I, the start of the loop
+
+    
+
+
+
+    loopWhile := True;
+end;
+
+function loopFor(): Boolean;
+var
+    loopvar, loopstart, looplimit, toplabel, endlabel: String;
+begin
+    consume; //consume LF
+    consume; // consume LPAR
+    loopvar := varToMem(consume);
+    consume; // :=
+    loopstart := consume; // 0
+    consume; // until
+    looplimit := consume; 
+    consume; // RPAR
+    toplabel := labelMaker('LW');
+    endlabel := labelMaker('LW');
+    emitLabel(toplabel); // it is I, the start of the loop
+
+    
+
+
+
+    loopFor:= True;
+end;
+
+// PARSER -----------
+
 procedure parser();
 var
     argtypeident: String;
-    isFloat: Boolean;
+    isFloat, isLoop: Boolean;
     i, seenFloats, seenInts: Integer;
 begin
     i := 0;
     position := 0;
+    isLoop := False;
     repeat
         case peek() of
             'F': begin WriteLn('PARSER - F');
@@ -851,6 +908,8 @@ begin
                 if peek() = 'LPAR' then // arg detection
                     begin
                         consume; // (
+                        if isLoop then
+                            isLoop := False;
                         if peek() <> 'RPAR' then 
                         begin
                         repeat 
@@ -946,10 +1005,10 @@ begin
                 consume;
             end;
             'LF': begin WriteLn('PARSER - LOOP/FOR');
-                consume;
+                isLoop := loopFor();
             end;
             'LW': begin WriteLn('PARSER - LOOP/WHILE');
-                consume;
+                isLoop := loopWhile();
             end;
             'VARBLOCK': begin WriteLn('PARSER - GLOBAL VAR');
                 consume; // consume '
@@ -1159,14 +1218,14 @@ begin
                 Inc(i);
             end;
             '>=': begin WriteLn('GREQUAL');
-                t_type[t_count] := 'GRQEUAL';
+                t_type[t_count] := 'GREQUAL';
                 t_val[t_count] := '>=';
                 isMultiple := True;
                 Inc(t_count);
                 Inc(i);
             end;
             '<=': begin WriteLn('LESSEQUAL');
-                t_type[t_count] := 'LESSQEUAL';
+                t_type[t_count] := 'LESSEQUAL';
                 t_val[t_count] := '<=';
                 isMultiple := True;
                 Inc(t_count);
@@ -1235,6 +1294,16 @@ begin
                 ')': begin WriteLn('RPAR');
                     t_type[t_count] := 'RPAR';
                     t_val[t_count] := ')';
+                    Inc(t_count);
+                end;
+                '>': begin WriteLn('MORE');
+                    t_type[t_count] := 'MORE';
+                    t_val[t_count] := '>';
+                    Inc(t_count);
+                end;
+                '<': begin WriteLn('LESS');
+                    t_type[t_count] := 'LESS';
+                    t_val[t_count] := '<';
                     Inc(t_count);
                 end;
                 '[': begin WriteLn('LBRAC');

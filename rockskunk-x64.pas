@@ -556,7 +556,9 @@ begin
         if isFloatLiteral(second) then
             ifFloatIfVar := justMakeItAFuckingFloat(second)
         else if not isNumber(second) then    
-                            ifFloatIfVar := varToMem(second);
+                            ifFloatIfVar := varToMem(second)
+        else
+            ifFloatIfVar := second; // if its just a lowly number
 end;
 
 function WhoGoesThere(intruder: String): String;

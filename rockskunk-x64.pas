@@ -14,6 +14,10 @@ var
     symOffset: array[0..255] of Integer;
     t_type, t_val: Array[0..4096] of String;
 
+    loop_IndexF: array [0..64] of Integer;
+    loop_IndexW: array [0..64] of Integer;
+    loop_TLabel: array [0..64] of String;
+    loop_ELabel: array [0..64] of String;
 
     // for capturing return types so assingment to function return knows whats up
     return_FName: array[0..255] of String; 
@@ -1444,12 +1448,18 @@ var
 begin
     i := 0;
     frameOffset := 0;
+
     for i := 0 to 255 do
         begin
         symOffset[i] := 0;
         symName[i] := '';
+        loop_IndexF[i] := 0;
+        loop_IndexW[i] := 0;
         end;
+
     FillChar(stack, SizeOf(stack), 0);
+    FillChar(loop_TLabel, SizeOf(loop_TLabel), 0);
+    FillChar(loop_ELabel, SizeOf(loop_ELabel), 0);
     FillChar(return_FName, SizeOf(return_FName), 0);
     FillChar(return_FType, SizeOf(return_FType), 0);
     deleteFile('intermediate.asm');

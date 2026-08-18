@@ -6,7 +6,7 @@ const
     intRegs: array[0..5] of String = ('rdi', 'rsi', 'rdx', 'rcx', 'r8', 'r9');
     acceptedKeywords: array[0..13] of String = // MAKE SURE TO UPDATE KEYWORD CHECK WHEN ADDING
     ('ADD', 'V', 'S',
-     'F', 'LF', 'LW', 'W', 'I', 'E',
+     'F', 'LF', 'LW', 'W', 'IF', 'E',
      'OR', 'AND', 'NOR', 'XOR', 'CALL');
 var
     buf, databuf, textbuf: Array[0..65535] of Char;
@@ -20,6 +20,8 @@ var
     loop_ELabelF: array [0..64] of String;
     loop_TLabelW: array [0..64] of String;
     loop_ELabelW: array [0..64] of String;
+    curLoopTop, curLoopEnd: String;
+    loopBodyNext: Boolean;
 
     // for capturing return types so assingment to function return knows whats up
     return_FName: array[0..255] of String; 
@@ -654,7 +656,7 @@ begin
 
         if peek() <> 'RPAR' then
             begin
-                WriteLn('EEVAL - RPAR BRANCH'); // DEBUG
+                WriteLn('EXPRESSION EVAL - RPAR BRANCH'); // DEBUG
                 seenFloats := 0;
                 seenInts := 0;
                 repeat  // VERIFY LOOP
@@ -691,7 +693,7 @@ begin
         end
     else
         begin
-            WriteLn('EEVAL - NOT OP BRANCH'); // DEBUG
+            WriteLn('EXPRESSION EVAL - NOT OPERATOR BRANCH'); // DEBUG
             first := consume; // first operand (the a in a + b)
 
             if isFloatLiteral(first) then
@@ -712,7 +714,7 @@ begin
                 evaluateExpression := first
             else
                 begin
-                    WriteLn('EEVAL - OP BRANCH');
+                    WriteLn('EXPRESSION EVAL - OPERATOR BRANCH');
 
                     if isFloat then
                         loadXMM0(first) // floats need Xtra Math Man
@@ -867,7 +869,6 @@ begin
     //loop_TLabelW[loop_IndexW] := toplabel;
     //loop_ELabelW[loop_IndexW] := endlabel;
 
-    WriteText(toplabel + ':' + #10);
     WriteText('    mov rax, ' + loopvar + #10);    
     WriteText('    cmp rax, ' + looplimit + #10);    
     
@@ -883,7 +884,10 @@ begin
         WriteText('    jne ' + endlabel + #10);     // jump if not equa  
 
     //inc(loop_IndexW);
+    curLoopTop := toplabel;
+    curLoopEnd := endlabel;
     loopWhile := True;
+    loopBodyNext := True;
 end;
 
 function loopFor(): Boolean;
@@ -898,22 +902,21 @@ begin
     consume; // until
     looplimit := consume; 
     consume; // RPAR
-    toplabel := labelMaker('LF');
-    endlabel := labelMaker('LF');
-    //loop_TLabelF[loop_IndexF] := toplabel;
-    //loop_ELabelF[loop_IndexF] := endlabel;
-    emitLabel(toplabel); // it is I, the start of the loop
-
     WriteText('    mov rax, ' + loopstart + #10);
     WriteText('    mov ' + loopvar + ', rax' + #10);
-    
-    WriteText(toplabel + ':' + #10);
-    WriteText('    mov rax, ' + loopvar + #10);     // load loop variable
-    WriteText('    cmp rax, ' + looplimit + #10);   
-    WriteText('    jge ' + endlabel + #10);          // jump if i >= limit
 
-    //Inc(loop_IndexF);
+    toplabel := labelMaker('LF');
+    endlabel := labelMaker('LF');
+    emitLabel(toplabel);
+
+    WriteText('    mov rax, ' + loopvar + #10);
+    WriteText('    cmp rax, ' + looplimit + #10);
+    WriteText('    jge ' + endlabel + #10);
+
+    curLoopTop := toplabel;
+    curLoopEnd := endlabel;
     loopFor := True;
+    loopBodyNext := True;
 end;
 
 // PARSER -----------
@@ -984,39 +987,44 @@ begin
             'RPAR': begin 
                 consume; // PLACEHOLDER
             end;
-            'LBRACE': begin 
+           'LBRACE': begin 
                 consume;
-                emitFunctionSetup();
-                if paramPending then
-                    begin
-                        seenFloats := 0;
-                        seenInts := 0;
-                        for i := 0 to argCount - 1 do
-                            begin
-                                WriteLn('LBRACE READ: i=' + IntToStr(i) + ' type=' + symType[i] + ' offset=' + IntToStr(paramOffset[i]));
-                                if symType[i] = 'FLOAT' then
-                                    begin
-                                        WriteText('   movsd [rbp-' + intToStr(paramOffset[i]) + '], xmm' + IntToStr(seenFloats) + #10);
-                                        Inc(seenFloats);
-                                    end
-                                else
-                                    begin
-                                        WriteText('    mov [rbp-' + IntToStr(paramOffset[i]) + '], ' + intregs[seenInts] + #10);
-                                        Inc(seenInts);
-                                    end;
-
-
-                            end;
-                        
-                        paramPending := False;
-                    end;
-            end;
+                    if loopBodyNext then
+                        loopBodyNext := False
+                    else
+                        begin
+                            emitFunctionSetup();
+                            if paramPending then
+                                begin
+                                    seenFloats := 0;
+                                    seenInts := 0;
+                                    for i := 0 to argCount - 1 do
+                                        begin
+                                            if symType[i] = 'FLOAT' then
+                                                begin
+                                                    WriteText('   movsd [rbp-' + intToStr(paramOffset[i]) + '], xmm' + IntToStr(seenFloats) + #10);
+                                                    Inc(seenFloats);
+                                                end
+                                            else
+                                                begin
+                                                    WriteText('    mov [rbp-' + IntToStr(paramOffset[i]) + '], ' + intregs[seenInts] + #10);
+                                                    Inc(seenInts);
+                                                end;
+                                        end;
+                                    paramPending := False;
+                                end;
+                        end;
+                end;
             'RBRACE': begin 
                 consume;
-                if isLoop then
-                    isLoop := False
-                else
-                    emitFunctionTeardown(returnAddr);
+                    if isLoop then
+                        begin
+                            WriteText('    jmp ' + curLoopTop + #10);
+                            emitLabel(curLoopEnd);
+                            isLoop := False;
+                        end
+                    else
+                        emitFunctionTeardown(returnAddr);
             end;
             'IDENTIFIER': begin 
                 discriminateIdentifier();
@@ -1036,7 +1044,7 @@ begin
             'W': begin 
                 consume;
             end;
-            'I': begin 
+            'IF': begin 
                 consume;
             end;
             'E': begin 
@@ -1216,6 +1224,8 @@ begin
             end;
     
     i := 0; // POSITION TRACKER  
+
+    
   
     repeat
         isMultiple := False; 
@@ -1465,6 +1475,11 @@ begin
         end; 
         Inc(i); // Increment position in buffer
     until i >= bytes; // Runs until EOF
+
+    i := 0;
+for i := 0 to t_count - 1 do
+    WriteLn(IntToStr(i) + ': ' + t_type[i] + '  ' + t_val[i]);
+
     {// ARRAY PRINT DEBUG
     iii := 0;
    for iii := 0 to t_count - 1 do
@@ -1502,6 +1517,7 @@ begin
     deleteFile('intermediate.asm');
     deleteFile('text.tmp');
     deleteFile('data.tmp');
+    loopBodyNext := False;
     return_FCount := 0;
     symCount := 0;
     sp := 0;

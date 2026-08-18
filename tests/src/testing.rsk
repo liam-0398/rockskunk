@@ -1,9 +1,15 @@
 
 
 
+F calculation(a: f, b: f) {
+    c := a * b
+    r := c
+}
+
 F main() {
     a := 5.0f
-    c := 2.0f * a
+    b := 2.0f 
+    c := calculation(a: f, b: f)
     printf(c)
     r := 1 
     }

@@ -377,6 +377,44 @@ begin
         end;
 end;
 
+function foldCode(first: String; isFloat: boolean): String;
+var
+    result1: Double;
+    result2: Integer;
+    second, op: String;
+begin
+            op := peek(); // Operator
+            consume;
+            second := consume; // Operand
+
+            if isFloat then
+                begin
+                if op = 'PLUS' then
+                    result1 := StrToFloat(first) + StrToFloat(second)
+                else if op = 'MINUS' then
+                    result1 := StrToFloat(first) - StrToFloat(second)
+                else if op = 'STAR' then
+                    result1 := StrToFloat(first) * StrToFloat(second)
+                else if op = 'SLASH' then
+                    result1 := StrToFloat(first) / StrToFloat(second);
+                WriteLn('OPTIMIZATION - FLT');
+                foldCode := (FloatToStr(result1));
+                end 
+            else
+                begin
+                if op = 'PLUS' then
+                    result2 := StrToInt(first) + StrToInt(second)
+                else if op = 'MINUS' then
+                    result2 := StrToInt(first) - StrToInt(second)
+                else if op = 'STAR' then
+                    result2 := StrToInt(first) * StrToInt(second)
+                else if op = 'SLASH' then
+                    result2 := StrToInt(first) div StrToInt(second);
+                WriteLn('OPTIMIZATION - FPT');
+                foldCode := (IntToStr(result2));
+                end;
+end;
+
 function justMakeItAFuckingFloat(misformattedBastard: String): String;
 var
     isFloat: Boolean;
@@ -444,13 +482,15 @@ function addressOf(offset: Integer): String; begin addressOf := '[rbp-' + IntToS
 
 function evaluateExpression(isFloat: Boolean): String;
 var
-    first, second, op, argname, fname: String;
+    first, second, op, argname, fname, return: String;
     returnsFloat, isFloatArg: Boolean;
     result1: Double;
-    i, ii, result2: Integer;
+    i, ii, result2, seenFloats, seenInts: Integer;
 begin
     i := 0;
     ii := 0;
+    seenFloats := 0;
+    seenInts := 0;
     returnsFloat := False;
     isFloatArg := False;
 
@@ -458,29 +498,43 @@ begin
     begin
         fname := consume(); // function name
 
-        if WhoGoesTHere(fname) = 'FLOAT' then
+        if WhoGoesThere(fname) = 'FLOAT' then
             returnsFloat := True;
                     
         consume(); // (
 
         if peek() <> 'RPAR' then
             begin
-                argname := consume(); // single arg
-                if peek() = 'COLON' then
-                    begin
-                        consume; // :
-                        if peekV() = 'f' then
-                            isFloatArg := True;
-                        consume; // type marker 
-                    end;
-                if not isNumber(argname) then
+                seenFloats := 0;
+                seenInts := 0;
+                repeat  // VERIFY LOOP
+                    isFloatArg := False;
+                    argname := consume(); // single arg
+                    if peek() = 'COLON' then
+                        begin
+                            consume; // :
+                            if peekV() = 'f' then
+                                isFloatArg := True;
+                            consume; // type marker 
+                        end;
+                    if not isNumber(argname) then
                         argname := varToMem(argname);
 
-                if isFloatArg then 
-                    WriteText('    movsd xmm0, ' + argname + #10)
-                else
-                    WriteText('    mov rdi, ' + argname + #10);
+                    if isFloatArg then 
+                        begin
+                            WriteText('    movsd xmm' + IntToStr(seenFloats) + ', ' + argname + #10);
+                            Inc(seenFloats);
+                        end
+                    else
+                        begin
+                            WriteText('    mov ' + intRegs[seenInts] + ', ' + argname + #10);
+                            Inc(seenInts);
+                        end;
+                    if peek() = 'COMMA' then
+                        consume;
+                until peek() = 'RPAR';
             end;
+
         consume(); // )
 
         if returnsFloat then
@@ -510,39 +564,11 @@ begin
         end;
 
     if isNumber(first) and (peek2() = 'NUMBER') then // fold the code if 5 + 5, 5 * 5
-            begin
-            op := peek(); // Operator
-            consume;
-            second := consume; // Operand
-
-            if isFloat then
-                begin
-                if op = 'PLUS' then
-                    result1 := StrToFloat(first) + StrToFloat(second)
-                else if op = 'MINUS' then
-                    result1 := StrToFloat(first) - StrToFloat(second)
-                else if op = 'STAR' then
-                    result1 := StrToFloat(first) * StrToFloat(second)
-                else if op = 'SLASH' then
-                    result1 := StrToFloat(first) / StrToFloat(second);
-                WriteLn('OPTIMIZATION - FLT ARITHMATIC');
-                Exit(FloatToStr(result1));
-                end 
-            else
-                begin
-                if op = 'PLUS' then
-                    result2 := StrToInt(first) + StrToInt(second)
-                else if op = 'MINUS' then
-                    result2 := StrToInt(first) - StrToInt(second)
-                else if op = 'STAR' then
-                    result2 := StrToInt(first) * StrToInt(second)
-                else if op = 'SLASH' then
-                    result2 := StrToInt(first) div StrToInt(second);
-                WriteLn('OPTIMIZATION - FPT ARITHMATIC');
-                Exit(IntToStr(result2));
-                end;
-    end;
-
+        begin
+            return := foldCode(first, isFloat);
+            Exit(return);
+        end;
+          
     first := justMakeItAFuckingFloat(first);
 
     // if next token isnt operator return the first operand eg if var := 5 not var := 5 + b

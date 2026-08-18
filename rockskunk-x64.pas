@@ -35,7 +35,7 @@ var
     bytes: CInt;
     currentFN: String;
     fd, fd2, fd3, fd4: CInt;
-    filename, stdlib_filename, returnAddr: String;
+    filename, output_filename, stdlib_filename, returnAddr: String;
     paramPending: Boolean; 
     paramOffset: Array [0..128] of Integer;
     frameOffset, labelCounter, position, symCount, argCount, t_count: Integer;
@@ -1632,11 +1632,34 @@ begin
     sp := 0;
 end;
 
+procedure sendToNASM(outputName: String);
+var
+    cmd: String;
+    result: Integer;
+begin
+    cmd := 'nasm -f elf64 intermediate.asm -o ' + outputName + '.o';
+    result := fpSystem(cmd);
+    if result <> 0 then
+        begin
+            WriteLn('I CANT BELIEVE YOUVE DONE THIS - NASM FAILED');
+            Halt(1);
+        end;
+
+    cmd := 'ld ' + outputName + '.o -o ' + outputName;
+    result := fpSystem(cmd);
+    if result <> 0 then
+        begin
+            WriteLn('I CANT BELIEVE YOUVE DONE THIS - LINK FAILED');
+            Halt(1);
+        end;
+end;
+
 begin
 if ParamCount = 1 then
     begin
         filename := ParamStr(1);
         stdlib_filename := 'lib/standard.rsk';
+        output_filename := ChangeFileExt(ExtractFileName(filename), '');
         arrayInit;
         openFile;
         lexer;
@@ -1644,6 +1667,7 @@ if ParamCount = 1 then
         parser;
         closeIntermediateFile;
         writeASM;
+        sendToNASM(output_filename);
     end
 else
     begin

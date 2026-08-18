@@ -1668,6 +1668,7 @@ if ParamCount = 1 then
         closeIntermediateFile;
         writeASM;
         sendToNASM(output_filename);
+        deleteFile(output_filename + '.o')
     end
 else
     begin

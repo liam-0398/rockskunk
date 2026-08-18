@@ -1,5 +1,9 @@
+
+; syscall test - raw write(1, &ch, 1) via sys(), no array/string dependency
+; expected output: the single character A
+
 P main() {
-    a := 500
-    b := &a 
-    printw(b);
+    ch := 65            ; 'A' - low byte of this qword is what write() will read
+    buf := &ch          ; buf now holds ch's address
+    fake := sys(1, 1, buf, 1)   ; num=1 (SYS_write), a=1 (fd=stdout), b=buf (addr), c=1 (count)
 }

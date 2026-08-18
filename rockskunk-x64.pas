@@ -347,13 +347,14 @@ procedure emitLogicalOr(); begin end;
 
 // SYSTEM ----------------------------------
 
-procedure emitSyscall(num: String; a: String; b: String; c: String);
+function emitSyscall(num: String; a: String; b: String; c: String): String;
 begin 
     WriteText('    mov rax, ' + num + #10);
     WriteText('    mov rdi, ' + a + #10);
     WriteText('    mov rsi, ' + b + #10);
     WriteText('    mov rdx, ' + c + #10);
     WriteText('    syscall ' + #10);
+    emitSyscall := 'rax';
 end; 
 
 procedure functionPrintW(source: String);
@@ -645,6 +646,25 @@ begin
 
 end;
 
+function resolveSyscall(): String;
+var
+    argument: String;
+begin
+    if peek() = 'AMP' then
+        begin
+            consume;
+            resolveSyscall:= emitAddressOf(varToMem(consume));
+        end
+    else
+        begin
+            argument := consume;
+            if isNumber(argument) then
+                resolveSyscall:= argument
+            else
+                resolveSyscall:= varToMem(argument);
+        end;
+end;
+
 function computeOffset(offset: Integer): String; begin computeOffset := '[rbp-' + IntToStr(offset) + ']'; end;
 
 // symOffset, symName, symCount
@@ -654,6 +674,7 @@ function computeOffset(offset: Integer): String; begin computeOffset := '[rbp-' 
 function evaluateExpression(isFloat: Boolean): String;
 var
     first, second, op, argname, fname, return, math_ret, call_ret, ampaddr: String;
+    num, a, b, c: String;
     returnsFloat, isFloatArg: Boolean;
     result1: Double;
     i, ii, result2, seenFloats, seenInts: Integer;
@@ -672,10 +693,18 @@ begin
             Exit(emitAddressOf(ampaddr));
         end;
 
-    if (peekV() = 'sys') and (peek2 = 'LPAR') then
+    if (peekV() = 'sys') and (peek2() = 'LPAR') then
         begin
-
-
+            consume; consume; 
+            num := resolveSyscall();
+            consume; // ,
+            a := resolveSyscall();
+            consume; 
+            b := resolveSyscall();
+            consume; 
+            c := resolveSyscall();
+            consume; 
+            Exit(emitSyscall(num, a, b, c));
         end;
 
     if (peek() = 'IDENTIFIER') and (peek2() = 'LPAR') then 

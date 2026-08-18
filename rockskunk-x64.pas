@@ -908,8 +908,6 @@ begin
                 if peek() = 'LPAR' then // arg detection
                     begin
                         consume; // (
-                        if isLoop then
-                            isLoop := False;
                         if peek() <> 'RPAR' then 
                         begin
                         repeat 
@@ -978,7 +976,10 @@ begin
             end;
             'RBRACE': begin WriteLn('PARSER - }');
                 consume;
-                emitFunctionTeardown(returnAddr);
+                if isLoop then
+                    isLoop := False
+                else
+                    emitFunctionTeardown(returnAddr);
             end;
             'IDENTIFIER': begin WriteLn('PARSER - IDENT');
                 discriminateIdentifier();

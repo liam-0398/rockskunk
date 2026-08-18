@@ -29,11 +29,14 @@ another language attempt and reworking it to output NASM x86_64 assembly. WAY do
 - never mix floats and ints. use intfloat() or floatint()
 - Functions are always declared before they are called
 
+# Status
+
+I am writing the compiler while not having reasearched much besides "how to toeknize text" and "make proceudres happen when text is detected" all while not knowing assembly and learning it on the fly. The Gameplan is to get this pascal bootstrap compiler good enough to write my own compiler in rockskunk. Then is when im going to pay more attention to spilling registers into memory and inline optimization as I learn more and become more comfortable. Final compiler will still be single pass no AST.
+
 # Syntax
 
 ```
 ;  comment
-{{}} block comment
 
 ; file inclusion
 ADD("file.rsk")'
@@ -175,23 +178,23 @@ xor ;bitwise
 ; Dedicated streamlining functions
 
 ; Linear interpolation eg result := a + t * (b - a);
-result := lint(a, b, t)'
+result := lint(a, b, t)
 
 ; bitwise ROT eg unsigned int rotated = (x << n) | (x >> (32 - n));
-rotated := brot(x, n)'
+rotated := brot(x, n)
 
 
 ; Memory ops
 
-p := cm(size)' ; malloc
-fm(p)' ; free
+p := cm(size) ; malloc
+fm(p) ; free
 
 ; Addressing / Pointers
 
 ; treat normal ops as pointers as designated by compiler if posible with current memory
 ; model to avoid complexity
 
-p := &a' ; load specific address
+p := &a ; load specific address
 
 
 ; Misc
@@ -211,9 +214,9 @@ array := v(array) ;vectorize (auto width based on cpuflags)
     prevOut[4] := 0' |
 
 F lowpass4(sampleVec, cutoffVec) {
-    delta := v(sampleVec) -- v(prevOut)'
-    prevOut := v(prevOut) ++ (v(cutoffVec) ** delta)'
-    r := prevOut' 
+    delta := v(sampleVec) -- v(prevOut)
+    prevOut := v(prevOut) ++ (v(cutoffVec) ** delta)
+    r := prevOut
     }
 ```
 - C
@@ -234,14 +237,14 @@ __m256d lowpass4(LowpassState *state, __m256d sampleVec, __m256d cutoffVec) {
 - rockskunk
 ```
 F normalize(buf) {
-    peak := 0f'
+    peak := 0f
     LF (i := 0 until blockLen) {
-        peak := vmax(peak, vabs(v(buf)))'
-        i := i + 1'
+        peak := vmax(peak, vabs(v(buf)))
+        i := i + 1
     }
     LF (i := 0 until blockLen) {
-        buf[i] := v(buf) // v(peak)'
-        i := i + 1' }
+        buf[i] := v(buf) // v(peak)
+        i := i + 1 }
         }
 ```
 - Pascal

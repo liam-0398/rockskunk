@@ -972,6 +972,33 @@ begin
     WriteText('  mov rax, 60'+ #10);
     WriteText('  syscall'+ #10);
 
+
+    WriteText(#10 + 'print_qword_nosp:' + #10);        // print integer, no trailing space
+    WriteText('    mov rsi, digitbuf + 20' + #10);      // point past the end of the buffer
+    WriteText('    mov rcx, 0' + #10);                   // digit counter
+    WriteText('    cmp rax, 0' + #10);
+    WriteText('    jne .pqn_loop' + #10);
+    WriteText('    dec rsi' + #10);
+    WriteText('    mov byte [rsi], 48' + #10);           // just write '0'
+    WriteText('    inc rcx' + #10);
+    WriteText('    jmp .pqn_done' + #10);
+    WriteText('.pqn_loop:' + #10);
+    WriteText('    cmp rax, 0' + #10);
+    WriteText('    je .pqn_done' + #10);
+    WriteText('    cqo' + #10);
+    WriteText('    mov rbx, 10' + #10);
+    WriteText('    idiv rbx' + #10);
+    WriteText('    add rdx, 48' + #10);                  // remainder -> ASCII digit
+    WriteText('    dec rsi' + #10);
+    WriteText('    mov [rsi], dl' + #10);
+    WriteText('    inc rcx' + #10);
+    WriteText('    jmp .pqn_loop' + #10);
+    WriteText('.pqn_done:' + #10);
+    WriteText('    mov rax, 1' + #10);                   // syscall: write
+    WriteText('    mov rdi, 1' + #10);                   // fd: stdout
+    WriteText('    mov rdx, rcx' + #10);                 // length = digit count
+    WriteText('    syscall' + #10);
+    WriteText('    ret' + #10 + #10);
     // print_qword function NASM
     // word is in rax
     // NOT MY WORK NEED TO REWRITE WHEN I KNOW MORE ASM> FOR DEBUGGING ONLY ===========
@@ -1023,7 +1050,7 @@ begin
     WriteText('    cvtsd2si rbx, xmm0' + #10);          // frac digits -> rbx, ROUNDED not truncated
     WriteText('    pop rax' + #10);                     // restore integer part
     WriteText('    push rbx' + #10);                    // stash frac again
-    WriteText('    call print_qword' + #10);            // print integer part
+    WriteText('    call print_qword_nosp' + #10);            // print integer part
     WriteText('    mov rax, 46' + #10);                 // ASCII '.'
     WriteText('    mov [digitbuf], al' + #10);
     WriteText('    mov rax, 1' + #10);

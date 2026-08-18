@@ -19,6 +19,10 @@ var
     loopDepth: Integer;
     loopBodyNext: Boolean;
 
+    conditional_ELabel: array [0..64] of String;
+    conditionalDepth: Integer;
+    conditionalBodyNext: Boolean;
+
     // for capturing return types so assingment to function return knows whats up
     return_FName: array[0..255] of String; 
     return_FType: array[0..255] of String;
@@ -868,7 +872,7 @@ begin
     WriteText('    mov rax, ' + loopvar + #10);    
     WriteText('    cmp rax, ' + looplimit + #10);    
     
-    if loopcond = 'LESSEQUAL' then
+    if loopcond = 'LESSEQUAL' then  // all the shit is backwards here
         WriteText('    jg ' + endlabel + #10)       // jump if greater (i > limit)
     else if loopcond = 'LESS' then
         WriteText('    jge ' + endlabel + #10)      // jump if greater or equal
@@ -913,6 +917,40 @@ begin
     loop_ELabel[loopDepth] := endlabel;
     Inc(loopDepth);
     loopBodyNext := True;
+end;
+
+function condWhen(): Boolean;
+var
+    condvar, condition, condlimit, endlabel: String;
+begin
+    consume; //consume W
+    consume; // consume LPAR
+    condvar := varToMem(consume);
+    condition := peek; // grab TYPE not the damn value
+    consume; // now eat it
+    condlimit := consume; // 0
+    consume; // RPAR
+
+    endlabel := labelMaker('W');
+
+    WriteText('    mov rax, ' + condvar + #10);
+    WriteText('    cmp rax, ' + condlimit + #10);
+
+    if condition = 'LESSEQUAL' then  // all the shit is backwards here
+        WriteText('    jg ' + endlabel + #10)       // jump if greater (skip when i > limit)
+    else if condition = 'LESS' then
+        WriteText('    jge ' + endlabel + #10)      // jump if greater or equal
+    else if condition = 'GREQUAL' then
+        WriteText('    jl ' + endlabel + #10)       // jump if less
+    else if condition = 'MORE' then
+        WriteText('    jle ' + endlabel + #10)      // jump if less or equal
+    else if condition = 'EQUAL' then
+        WriteText('    jne ' + endlabel + #10);     // jump if not equal
+
+    conditional_ELabel[conditionalDepth] := endlabel;
+    Inc(conditionalDepth);
+    conditionalBodyNext := True;
+    condWhen := True;
 end;
 
 // PARSER -----------
@@ -984,8 +1022,11 @@ begin
             end;
            'LBRACE': begin 
                 consume;
-                    if loopBodyNext then
-                        loopBodyNext := False
+                if loopBodyNext or conditionalBodyNext then
+                    begin
+                        loopBodyNext := False;
+                        conditionalBodyNext := False;
+                    end
                     else
                         begin
                             emitFunctionSetup();
@@ -1018,6 +1059,11 @@ begin
                             WriteText('    jmp ' + loop_TLabel[loopDepth] + #10);
                             emitLabel(loop_ELabel[loopDepth]);
                         end
+                    else if conditionalDepth > 0 then
+                        begin
+                            Dec(conditionalDepth);
+                            emitLabel(conditional_ELabel[conditionalDepth]);
+                        end
                     else
                         emitFunctionTeardown(returnAddr);
             end;
@@ -1037,7 +1083,7 @@ begin
                 consume;
             end;
             'W': begin 
-                consume;
+                condWhen();
             end;
             'IF': begin 
                 consume;
@@ -1503,12 +1549,15 @@ begin
     FillChar(stack, SizeOf(stack), 0);
     FillChar(loop_TLabel, SizeOf(loop_TLabel), 0);
     FillChar(loop_ELabel, SizeOf(loop_ELabel), 0);
+    FillChar(conditional_ELabel, SizeOf(conditional_ELabel), 0);
     FillChar(return_FName, SizeOf(return_FName), 0);
     FillChar(return_FType, SizeOf(return_FType), 0);
     deleteFile('intermediate.asm');
     deleteFile('text.tmp');
-    deleteFile('data.tmp');
+    deleteFile('data.tmp'); 
+    conditionalBodyNext := False;
     loopBodyNext := False;
+    conditionalDepth := 0;
     loopDepth := 0;
     return_FCount := 0;
     symCount := 0;

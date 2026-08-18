@@ -451,6 +451,30 @@ begin
                 end
 end;
 
+procedure asmFunctionCalls(variable: String; argname: String);
+begin
+                    if variable = 'printw' then
+                    begin
+                        consume; // (
+                        argname := consume(); // the value to print
+                        if not isNumber(argname) then
+                                argname := varToMem(argname);
+                        consume; // )
+                        functionPrintW(argname);
+                    end
+                else if variable = 'printf' then
+                    begin
+                        consume; // (
+                        argname := consume(); // the value to print
+                        if not isNumber(argname) then
+                                argname := varToMem(argname);
+                        consume; // )
+                        functionPrintF(argname);
+                    end
+                else
+                    WriteText('call ' + variable + #10);
+end;
+
 
 
 function foldCode(first: String; isFloat: boolean): String;
@@ -583,6 +607,7 @@ begin
 
         if peek() <> 'RPAR' then
             begin
+                WriteLn('EEVAL - RPAR BRANCH'); // DEBUG
                 seenFloats := 0;
                 seenInts := 0;
                 repeat  // VERIFY LOOP
@@ -620,7 +645,7 @@ begin
     end
     else
         begin
-
+            WriteLn('EEVAL - NOT OP BRANCH'); // DEBUG
             first := consume; // first operand (the a in a + b)
 
             if isFloatLiteral(first) then
@@ -641,10 +666,7 @@ begin
 
             // if next token isnt operator return the first operand eg if var := 5 not var := 5 + b
             if not ((peek() = 'PLUS') or (peek() = 'MINUS') or (peek() = 'STAR') or (peek() = 'SLASH')) then
-                begin
-                evaluateExpression := first;
-                WriteLn('EEVAL - NOT OP BRANCH');
-                end
+                evaluateExpression := first
     else
         begin
             WriteLn('EEVAL - OP BRANCH');
@@ -783,26 +805,7 @@ begin
         end
         else
             begin //REPLACE THEESE
-                if variable = 'printw' then
-                    begin
-                        consume; // (
-                        argname := consume(); // the value to print
-                        if not isNumber(argname) then
-                                argname := varToMem(argname);
-                        consume; // )
-                        functionPrintW(argname);
-                    end
-                else if variable = 'printf' then
-                    begin
-                        consume; // (
-                        argname := consume(); // the value to print
-                        if not isNumber(argname) then
-                                argname := varToMem(argname);
-                        consume; // )
-                        functionPrintF(argname);
-                    end
-                else
-                    WriteText('call ' + variable + #10);
+               asmFunctionCalls(variable, argname);
             end;
 end;
 

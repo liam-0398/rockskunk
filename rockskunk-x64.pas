@@ -365,8 +365,11 @@ procedure varToMem(variable: String);
 var
     i: Integer;
 begin
-    if symName[i] = variable then
-        variable := '[rbp-' + IntToStr(symOffset[i]) + ']';
+    for i := 0 to symCount - 1 do
+        begin
+            if symName[i] = variable then
+                variable := '[rbp-' + IntToStr(symOffset[i]) + ']';
+        end;
 end;
 
 function justMakeItAFuckingFloat(misformattedBastard: String): String;
@@ -458,7 +461,6 @@ begin
                         consume; // type marker 
                     end;
                 if not isNumber(argname) then
-                    for i := 0 to symCount - 1 do
                         varToMem(argname);
 
                 if isFloatArg then 
@@ -488,7 +490,6 @@ begin
 
     if not isNumber(first) then // look up addr if identifier
         begin
-            for i := 0 to symCount - 1 do
                 varToMem(first);
         end;
 
@@ -552,7 +553,6 @@ begin
             i := 0;
             if not isNumber(second) then
             begin
-                for i := 0 to symCount - 1 do
                     varToMem(second);
             end;
 
@@ -692,7 +692,7 @@ begin
                     isFloat := (symType[symCount] = 'FLOAT');
                         symOffset[symCount] := frameOffset;
                         symName[symCount] := variable;
-                        varToMem(variable);  
+                        variable := '[rbp-' + IntToStr(symOffset[i]) + ']';  
 
                     if isReturn then
                         begin
@@ -726,7 +726,6 @@ begin
                         consume; // (
                         argname := consume(); // the value to print
                         if not isNumber(argname) then
-                            for i := 0 to symCount - 1 do
                                 varToMem(argname);
                         consume; // )
                         functionPrintW(argname);
@@ -736,7 +735,6 @@ begin
                         consume; // (
                         argname := consume(); // the value to print
                         if not isNumber(argname) then
-                            for i := 0 to symCount - 1 do
                                 varToMem(argname);
                         consume; // )
                         functionPrintF(argname);

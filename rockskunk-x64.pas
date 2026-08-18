@@ -1000,8 +1000,15 @@ begin
     WriteText('    mov rdi, 1' + #10);                   // fd: stdout
     WriteText('    mov rdx, rcx' + #10);                 // length = digit count
     WriteText('    syscall' + #10);
+    WriteText('    mov rax, 32' + #10);                  // ASCII space
+    WriteText('    mov [digitbuf], al' + #10);
+    WriteText('    mov rax, 1' + #10);                   // syscall: write
+    WriteText('    mov rdi, 1' + #10);                   // fd: stdout
+    WriteText('    mov rsi, digitbuf' + #10);
+    WriteText('    mov rdx, 1' + #10);                   // length = 1
+    WriteText('    syscall' + #10);                      // print separator space
     WriteText('    ret' + #10 + #10);
-     // NOT MY WORK NEED TO REWRITE WHEN I KNOW MORE ASM> FOR DEBUGGING ONLY ===========
+    // NOT MY WORK NEED TO REWRITE WHEN I KNOW MORE ASM> FOR DEBUGGING ONLY ===========
 
         // print_float - value in xmm0
     // NOT MY WORK NEED TO REWRITE WHEN I KNOW MORE ASM. FOR DEBUGGING ONLY ===========

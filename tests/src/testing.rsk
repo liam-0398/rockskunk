@@ -1,16 +1,28 @@
 
 
 
-F calculation(a: f, b: f) {
-    c := a * b
-    r := c
+F applyRate(amount: f, rate: f) {
+    grown := amount * rate
+    r := grown
+}
+
+F addFee(amount: f, fee: f) {
+    total := amount + fee
+    r := total
+}
+
+F compound(principal: f, rate: f, fee: f) {
+    step1 := applyRate(principal: f, rate: f)
+    step2 := addFee(step1: f, fee: f)
+    step3 := applyRate(step2: f, rate: f)
+    r := step3
 }
 
 F main() {
-    a := 5.0f
-    b := 2.0f 
-    c := calculation(a: f, b: f)
-    printf(c)
-    r := 1 
-    }
-
+    principal := 100.0f
+    rate := 1.1f
+    fee := 5.0f
+    result := compound(principal: f, rate: f, fee: f)
+    printf(result)
+    r := 1
+}

@@ -88,7 +88,10 @@ end;
 
 function isFloatLiteral(token: String): Boolean;
 begin
-    isFloatLiteral := (Pos('.', token) > 0) or (Pos('f', token) > 0);
+    if isNumber(token) then
+        isFloatLiteral := (Pos('.', token) > 0) or (Pos('f', token) > 0)
+    else
+        isFloatLiteral := False;
 end;
 
 procedure openFile; // Open rockskunk sourcefile
@@ -519,7 +522,7 @@ function justMakeItAFuckingFloat(misformattedBastard: String): String;
 var
     isFloat: Boolean;
 begin
-    isFloat := False;
+    isFloat := False;  // THROW IN ISFLOTLIT CHECK LATER
 
     if (Length(misformattedBastard) > 0) and (misformattedBastard[1] = '[') then
         begin
@@ -679,7 +682,8 @@ begin
                     consume;
                     second := consume(); // Second
 
-                    second := justMakeItAFuckingFloat(second);
+                    if isFloatLiteral(second) then
+                        second := justMakeItAFuckingFloat(second);
 
                     i := 0;
                     if not isNumber(second) then

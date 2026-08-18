@@ -7,7 +7,7 @@ F applyRate(amount: f, rate: f) {
 }
 
 F addFee(amount: f, fee: f) {
-    total := amount + fee
+    total := amount + fee + 100.0f
     r := total
 }
 

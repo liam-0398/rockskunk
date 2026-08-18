@@ -78,10 +78,15 @@ end;
 
 function isNumber(token: String): Boolean;
 var
-    i: Integer;
+    i, last: Integer;
 begin
+    isNumber := False;
+    last := Length(token);
+    if token[last] = 'f' then    // Not counting the f was pissing off the loop for multiple expressions
+        Dec(last);
+
     isNumber := True;
-    for i := 1 to Length(token) do
+    for i := 1 to last do
         if not (token[i] in ['0'..'9', '.']) then
             isNumber := False;
 end;
@@ -375,10 +380,16 @@ function varToMem(variable: String): String;
 var
     i: Integer;
 begin
+    varToMem := ''; 
     for i := 0 to symCount - 1 do
         begin
             if symName[i] = variable then
                 VarToMem := '[rbp-' + IntToStr(symOffset[i]) + ']';
+        end;
+    if varToMem = '' then
+        begin    
+            WriteLn('I CANT BELIEVE YOUVE DONE THIS - VAR_TO_MEM - UNK SYMBOL>> ' + variable);
+            Halt(1); // Loop for multiple opererators was getting pissed becuase '+' was making its way into here
         end;
 end;
 
@@ -478,8 +489,6 @@ begin
                     WriteText('call ' + variable + #10);
 end;
 
-
-
 function foldCode(first: String; isFloat: boolean): String;
 var
     result1: Double;
@@ -540,6 +549,14 @@ begin
             if misformattedBastard[Length(misformattedBastard)] = 'f' then misformattedBastard := copy(misformattedBastard, 1, Length(misformattedBastard) - 1); // strip f from float
             justMakeItAFuckingFloat := '[' + emitFloatConstant(misformattedBastard) + ']';
         end;
+end;
+
+function ifFloatIfVar(second: String): String;
+begin
+        if isFloatLiteral(second) then
+            ifFloatIfVar := justMakeItAFuckingFloat(second)
+        else if not isNumber(second) then    
+                            ifFloatIfVar := varToMem(second);
 end;
 
 function WhoGoesThere(intruder: String): String;
@@ -651,12 +668,9 @@ begin
             first := consume; // first operand (the a in a + b)
 
             if isFloatLiteral(first) then
-                first := justMakeItAFuckingFloat(first);
-
-            if not isNumber(first) then // look up addr if identifier
-                begin
+                first := justMakeItAFuckingFloat(first)
+            else if not isNumber(first) then // look up addr if identifier
                         first := varToMem(first);
-                end;
 
             if isNumber(first) and (peek2() = 'NUMBER') then // fold the code if 5 + 5, 5 * 5
                 begin
@@ -678,21 +692,16 @@ begin
                     else
                         loadRAX(first); 
 
-                    op := peek(); // Operator
-                    consume;
-                    second := consume(); // Second
-
-                    if isFloatLiteral(second) then
-                        second := justMakeItAFuckingFloat(second);
-
-                    i := 0;
-                    if not isNumber(second) then
-                    begin
-                            second := varToMem(second);
-                    end;
-
-                    // ASM emission for math
-                    math_ret := emitMath(op, second, isFloat);
+                    // BEHOLD THE CHAINER OR OPERATORS, SOLVER OF EXPRESSIONS
+                    while ((peek() = 'PLUS') or (peek() = 'MINUS') or (peek() = 'STAR') or (peek() = 'SLASH')) do 
+                        begin
+                            op := peek(); 
+                            consume;
+                            second := consume(); 
+                            second := ifFloatIfVar(second); // resolve assignment of var
+                            
+                            math_ret := emitMath(op, second, isFloat);
+                        end;
                     Exit(math_ret)
                 end;
     end;   

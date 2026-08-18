@@ -85,6 +85,11 @@ begin
             isNumber := False;
 end;
 
+function isFloatLiteral(token: String): Boolean;
+begin
+    isFloatLiteral := (Pos('.', token) > 0) or (Pos('f', token) > 0);
+end;
+
 procedure openFile; // Open rockskunk sourcefile
 begin
     FillChar(buf, SizeOf(buf), 0);
@@ -361,14 +366,14 @@ begin
     Inc(position);  // Increment counter to drop the token
 end;
 
-procedure varToMem(variable: String);
+function varToMem(variable: String): String;
 var
     i: Integer;
 begin
     for i := 0 to symCount - 1 do
         begin
             if symName[i] = variable then
-                variable := '[rbp-' + IntToStr(symOffset[i]) + ']';
+                VarToMem := '[rbp-' + IntToStr(symOffset[i]) + ']';
         end;
 end;
 
@@ -377,6 +382,12 @@ var
     isFloat: Boolean;
 begin
     isFloat := False;
+
+    if (Length(misformattedBastard) > 0) and (misformattedBastard[1] = '[') then
+        begin
+            justMakeItAFuckingFloat := misformattedBastard; 
+            Exit;
+        end;
 
     if (Pos('.', misformattedBastard) > 0) or (Pos('f', misformattedBastard) > 0) then
                         isFloat := True;
@@ -461,7 +472,7 @@ begin
                         consume; // type marker 
                     end;
                 if not isNumber(argname) then
-                        varToMem(argname);
+                        argname := varToMem(argname);
 
                 if isFloatArg then 
                     WriteText('    movsd xmm0, ' + argname + #10)
@@ -488,9 +499,12 @@ begin
 
     first := consume; // first operand (the a in a + b)
 
+    if isFloatLiteral(first) then
+        first := justMakeItAFuckingFloat(first);
+
     if not isNumber(first) then // look up addr if identifier
         begin
-                varToMem(first);
+                first := varToMem(first);
         end;
 
     if isNumber(first) and (peek2() = 'NUMBER') then // fold the code if 5 + 5, 5 * 5
@@ -553,7 +567,7 @@ begin
             i := 0;
             if not isNumber(second) then
             begin
-                    varToMem(second);
+                    second := varToMem(second);
             end;
 
             // ASM emission for math
@@ -692,7 +706,7 @@ begin
                     isFloat := (symType[symCount] = 'FLOAT');
                         symOffset[symCount] := frameOffset;
                         symName[symCount] := variable;
-                        variable := '[rbp-' + IntToStr(symOffset[i]) + ']';  
+                        variable := '[rbp-' + IntToStr(symOffset[symCount]) + ']';  
 
                     if isReturn then
                         begin
@@ -726,7 +740,7 @@ begin
                         consume; // (
                         argname := consume(); // the value to print
                         if not isNumber(argname) then
-                                varToMem(argname);
+                                argname := varToMem(argname);
                         consume; // )
                         functionPrintW(argname);
                     end
@@ -735,7 +749,7 @@ begin
                         consume; // (
                         argname := consume(); // the value to print
                         if not isNumber(argname) then
-                                varToMem(argname);
+                                argname := varToMem(argname);
                         consume; // )
                         functionPrintF(argname);
                     end

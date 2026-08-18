@@ -65,11 +65,11 @@ result := delayLine.wptr'
 
 
 ; assignments
-    a := b'
-    a, b := c, d' ; pair assignments
-    array[1] := 555' ; raw memory
-    array{1} := 23.4f' ; float
-    array(1) := "hello world" ; string
+    a := b
+    array[1] := 555 ; raw memory
+    array![1] := 3 ; byte array
+    array{1} := 23.4f ; float
+    array<1> := "hello world" ; string
 
 
 
@@ -152,7 +152,7 @@ vceil
 
 ; Syscall
 
-result := sys(a,b,c)'
+result := sys(num,a,b,c)'
 
 
 ; Conditionals

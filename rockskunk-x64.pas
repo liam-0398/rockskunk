@@ -41,8 +41,9 @@ var
     frameOffset, labelCounter, position, symCount, argCount, t_count: Integer;
 
 {
-    Ripped lexer and scaffolding from a Pascal -> C Transpiler for an old language I had
-    Undergoing massive restructuring to output rockskunk -> NASM
+   DO NOT FORGET LIST ====
+   REMEMBER REDO ASM OUTPUT PRIMITIVES AND LOOPS
+   REMEMBER IMPLMENT CALL WITHOUT TYPES
 }
 
 // Forward Declarations
@@ -334,7 +335,14 @@ procedure emitLogicalOr(); begin end;
 
 // SYSTEM ----------------------------------
 
-procedure emitSyscall(); begin end; // sys(a,b,c)
+procedure emitSyscall(num: String; a: String; b: String; c: String);
+begin 
+    WriteText('    mov rax, ' + num + #10);
+    WriteText('    mov rdi, ' + a + #10);
+    WriteText('    mov rsi, ' + b + #10);
+    WriteText('    mov rdx, ' + c + #10);
+    WriteText('    syscall ' + #10);
+end; 
 
 procedure functionPrintW(source: String);
 begin

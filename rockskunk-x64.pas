@@ -4,9 +4,9 @@ uses
 
 const
     intRegs: array[0..5] of String = ('rdi', 'rsi', 'rdx', 'rcx', 'r8', 'r9');
-    acceptedKeywords: array[0..13] of String = // MAKE SURE TO UPDATE KEYWORD CHECK WHEN ADDING
+    acceptedKeywords: array[0..14] of String = // MAKE SURE TO UPDATE KEYWORD CHECK WHEN ADDING
     ('ADD', 'V', 'S',
-     'F', 'LF', 'LW', 'W', 'IF', 'E',
+     'F', 'LF', 'LW', 'W', 'IF', 'E', 'P',
      'OR', 'AND', 'NOR', 'XOR', 'CALL');
 var
     buf, databuf, textbuf: Array[0..65535] of Char;
@@ -75,7 +75,7 @@ var
     i: Integer;
 begin
     keywordCheck := False;
-    for i := 0 to 13 do
+    for i := 0 to 14 do
         begin
             if word = acceptedKeywords[i] then 
                 begin
@@ -205,21 +205,23 @@ begin
     WriteText('    sub rsp, 128' + #10);
 end;
 
-procedure emitFunctionTeardown(result : String);
+procedure emitFunctionTeardown(result: String; isProcedure: Boolean);
 var
-rcheck: String;
-isFloat: Boolean;
-begin 
-    isFloat := False;
+    rcheck: String;
+    isFloat: Boolean;
+begin
+    if not isProcedure then // just ignore all this and do not return anything if its a procedure
+        begin
+            isFloat := False;
+            rcheck := WhoGoesThere(currentFN);
+            if rcheck = 'FLOAT' then
+                isFloat := True;
 
-    rcheck := WhoGoesThere(currentFN);
-    if rcheck = 'FLOAT' then
-        isFloat := True;
-
-    if not isFloat then
-        WriteText('    mov rax, ' + result + #10)
-    else
-        WriteText('    movsd xmm0, ' + result + #10);
+            if not isFloat then
+                WriteText('    mov rax, ' + result + #10)
+            else
+                WriteText('    movsd xmm0, ' + result + #10);
+        end;
 
     WriteText('    add rsp, 128' + #10);
     WriteText('    pop rbp' + #10);
@@ -271,10 +273,10 @@ procedure emitArrayReadFloat(); begin end;
 procedure emitArrayReadString(); begin end;
 procedure emitRecordFieldAccess(); begin end; // rec.field
 
-procedure emitAddressOf(variable: String); // &a
+function emitAddressOf(variable: String): String; // &a
 begin 
-    if variable <> 'rax' then
         WriteText('    lea rax, ' + variable + #10);
+        emitAddressOf := 'rax';
 end;         
 
 procedure emitMalloc(); begin end;            // cm(size)
@@ -651,7 +653,7 @@ function computeOffset(offset: Integer): String; begin computeOffset := '[rbp-' 
 
 function evaluateExpression(isFloat: Boolean): String;
 var
-    first, second, op, argname, fname, return, math_ret, call_ret: String;
+    first, second, op, argname, fname, return, math_ret, call_ret, ampaddr: String;
     returnsFloat, isFloatArg: Boolean;
     result1: Double;
     i, ii, result2, seenFloats, seenInts: Integer;
@@ -662,6 +664,19 @@ begin
     seenInts := 0;
     returnsFloat := False;
     isFloatArg := False;
+
+    if peek() = 'AMP' then
+        begin
+            consume;
+            ampaddr := VarToMem(consume);
+            Exit(emitAddressOf(ampaddr));
+        end;
+
+    if (peekV() = 'sys') and (peek2 = 'LPAR') then
+        begin
+
+
+        end;
 
     if (peek() = 'IDENTIFIER') and (peek2() = 'LPAR') then 
     begin
@@ -976,14 +991,15 @@ end;
 procedure parser();
 var
     argtypeident: String;
-    isFloat: Boolean;
+    isFloat, isProcedure: Boolean;
     i, seenFloats, seenInts: Integer;
 begin
     i := 0;
     position := 0;
     repeat
         case peek() of
-            'F': begin 
+            'F', 'P': begin 
+                isProcedure := (peek() = 'P');
                 consume;
                 currentFN := consume;
                 emitFN(currentFN);
@@ -1083,7 +1099,7 @@ begin
                             emitLabel(conditional_ELabel[conditionalDepth]);
                         end
                     else
-                        emitFunctionTeardown(returnAddr);
+                        emitFunctionTeardown(returnAddr, isProcedure);
             end;
             'IDENTIFIER': begin 
                 discriminateIdentifier();

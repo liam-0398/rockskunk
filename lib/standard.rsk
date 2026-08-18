@@ -1,2 +1,8 @@
 ; ROCKSKUNK
 ; STANDARD LIBRARY
+
+F main() {
+    a := 500
+    b := &a 
+    printw(b);
+}

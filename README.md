@@ -72,73 +72,75 @@ result := delayLine.wptr'
     array<1> := "hello world" ; string
 
 
-
-; Function
+; Functions
 ; Undeclared args are raw qword (so int or whatever you want), declare with (var: f) or 
 ; (var: s). No chained args for single type declaration. 
 ;fn(a, b: f, c, d, e: s, f: f)
 ; word, float, word, word, string, float
 
-F functionName(a1, a2: f) {
-    r := a1 * a2'
+F functionName(a1, a2: f) { ; FUNCTION, NEED TO RETURN
+    c := 5
+    r := a1 * a2
 }
 
-
+P functionName(a1, a2: f) { ; PROCEDURE, NO RETURN
+    c := a1 * a2
+}
 
 ; For Loop
 LF (i := 1 until 10) {
-    p("ANNOYING MESSAGE")'
-    i := i + 1'
+    p("ANNOYING MESSAGE")
+    i := i + 1
 }
 
 
 ; While loop
-LW (i <= 500){
-    i++'
+LW (i <= 500) {
+    i++
 }
 
 
 ; When (singluar if)
-W (i = 5){
-    consumeBeers'
+W (i = 5) {
+    consumeBeers
 }
 
 
 ; If (continues until else is seen)
 I ([i = 5] or [f = 69]) {
-    p("MATCH FOUND")'
+    p("MATCH FOUND")
 }
 
 
 ; Else
 E {
-    drinkWine'
+    drinkWine()
 }
 
 
 ; Mathermaticcs
 
-a := g + h'
-a := g * h'
-a := g / h'
-a := g % h'
-a :+= b'
-a :*= b'
+a := g + h
+a := g * h
+a := g / h
+a := g % h
+a :+= b
+a :*= b
 
 
 ; Vector operations
 ; AVX2 / SSSE3 / FMA3 auto-detect based on cpu flags
 
-a := c ++ b'
-a := c ** b'
-a := c // b'
-a := c %% b'
-a := c *+ b' ; FMA
+a := c ++ b
+a := c ** b
+a := c // b
+a := c %% b
+a := c *+ b ; FMA
 
-a :++= b'
-a :**= b'
+a :++= b
+a :**= b
 
-lf0 := vsin(phase_vector)'
+lf0 := vsin(phase_vector)
 
 vabs
 vsqrt
@@ -152,7 +154,7 @@ vceil
 
 ; Syscall
 
-result := sys(num,a,b,c)'
+result := sys(num,a,b,c)
 
 
 ; Conditionals

@@ -37,6 +37,10 @@ var
     Undergoing massive restructuring to output rockskunk -> NASM
 }
 
+// Forward Declarations
+
+function WhoGoesThere(intruder: String): String; forward;
+
 // HELPERS =================================================
 // ========================================================
 
@@ -168,18 +172,14 @@ end;
 
 procedure emitFunctionTeardown(result : String);
 var
+rcheck: String;
 isFloat: Boolean;
-i: Integer;
 begin 
     isFloat := False;
-    i := 0;
 
-    for i := 0 to return_FCount - 1 do
-        begin
-            if currentFN = return_FName[i] then
-                if return_FType[i] = 'FLOAT' then
-                    isFloat := True;
-        end;
+    rcheck := WhoGoesThere(currentFN);
+    if rcheck = 'FLOAT' then
+        isFloat := True;
 
     if not isFloat then
         WriteText('    mov rax, ' + result + #10)
@@ -379,7 +379,7 @@ begin
         end;
 end;
 
-function WhoGoesTHere(intruder: String): String;
+function WhoGoesThere(intruder: String): String;
 var
     isFloat: Boolean;
     i: Integer;
@@ -401,8 +401,7 @@ begin
                             isFloat := True;
                 end;
     end;
-
-    
+  
     for i := 0 to return_FCount - 1 do // Function
         begin
             if intruder = return_FName[i] then
@@ -435,14 +434,11 @@ begin
     begin
         fname := consume(); // function name
 
-        for ii := 0 to return_FCount - 1 do
-            begin
-                if fname = return_FName[ii] then
-                    if return_FType[ii] = 'FLOAT' then
-                        returnsFloat := True;
-            end;
+        if WhoGoesTHere(fname) = 'FLOAT' then
+            returnsFloat := True;
                     
         consume(); // (
+
         if peek() <> 'RPAR' then
             begin
                 argname := consume(); // single arg
@@ -492,8 +488,6 @@ begin
                 end;
         end;
 
-    first := justMakeItAFuckingFloat(first);
-
     if isNumber(first) and (peek2() = 'NUMBER') then // fold the code if 5 + 5, 5 * 5
             begin
             op := peek(); // Operator
@@ -527,6 +521,8 @@ begin
                 Exit(IntToStr(result2));
                 end;
     end;
+
+    first := justMakeItAFuckingFloat(first);
 
     // if next token isnt operator return the first operand eg if var := 5 not var := 5 + b
     if not ((peek() = 'PLUS') or (peek() = 'MINUS') or (peek() = 'STAR') or (peek() = 'SLASH')) then

@@ -16,8 +16,10 @@ var
 
     loop_IndexF: array [0..64] of Integer;
     loop_IndexW: array [0..64] of Integer;
-    loop_TLabel: array [0..64] of String;
-    loop_ELabel: array [0..64] of String;
+    loop_TLabelF: array [0..64] of String;
+    loop_ELabelF: array [0..64] of String;
+    loop_TLabelW: array [0..64] of String;
+    loop_ELabelW: array [0..64] of String;
 
     // for capturing return types so assingment to function return knows whats up
     return_FName: array[0..255] of String; 
@@ -387,6 +389,13 @@ begin
     Inc(position);  // Increment counter to drop the token
 end;
 
+function arrayToMem(varname: String; size: String; vartype: String): String;
+var
+    i: Integer;
+begin
+ 
+end;
+
 function varToMem(variable: String): String;
 var
     i: Integer;
@@ -474,6 +483,11 @@ begin
                             emitMath := 'rax';
                         end
                 end
+            else
+                begin
+                WriteLn('I CANT BELIEVE YOUVE DONE THIS - EMIT_MATH - UNK SYMBOL>> ' + second);
+                Halt(1);
+                end;
 end;
 
 procedure asmFunctionCalls(variable: String; argname: String);
@@ -538,7 +552,7 @@ begin
                 end;
 end;
 
-function justMakeItAFuckingFloat(misformattedBastard: String): String;
+function opResolver(misformattedBastard: String): String;
 var
     isFloat: Boolean;
 begin
@@ -546,7 +560,7 @@ begin
 
     if (Length(misformattedBastard) > 0) and (misformattedBastard[1] = '[') then
         begin
-            justMakeItAFuckingFloat := misformattedBastard; 
+            opResolver := misformattedBastard; 
             Exit;
         end;
 
@@ -554,18 +568,18 @@ begin
                         isFloat := True;
 
     if not isFloat then
-        Exit(misformattedBastard)
+            Exit(misformattedBastard)
     else
         begin
             if misformattedBastard[Length(misformattedBastard)] = 'f' then misformattedBastard := copy(misformattedBastard, 1, Length(misformattedBastard) - 1); // strip f from float
-            justMakeItAFuckingFloat := '[' + emitFloatConstant(misformattedBastard) + ']';
+            opResolver := '[' + emitFloatConstant(misformattedBastard) + ']';
         end;
 end;
 
 function ifFloatIfVar(second: String): String;
 begin
         if isFloatLiteral(second) then
-            ifFloatIfVar := justMakeItAFuckingFloat(second)
+            ifFloatIfVar := opResolver(second)
         else if not isNumber(second) then    
                             ifFloatIfVar := varToMem(second)
         else
@@ -681,7 +695,7 @@ begin
             first := consume; // first operand (the a in a + b)
 
             if isFloatLiteral(first) then
-                first := justMakeItAFuckingFloat(first)
+                first := opResolver(first)
             else if not isNumber(first) then // look up addr if identifier
                         first := varToMem(first);
 
@@ -691,7 +705,7 @@ begin
                     Exit(return);
                 end;
                 
-            first := justMakeItAFuckingFloat(first);
+            first := opResolver(first);
 
             // if next token isnt operator return the first operand eg if var := 5 not var := 5 + b
             if not ((peek() = 'PLUS') or (peek() = 'MINUS') or (peek() = 'STAR') or (peek() = 'SLASH')) then
@@ -850,11 +864,25 @@ begin
     toplabel := labelMaker('LW');
     endlabel := labelMaker('LW');
     emitLabel(toplabel); // it is I, the start of the loop
+    //loop_TLabelW[loop_IndexW] := toplabel;
+    //loop_ELabelW[loop_IndexW] := endlabel;
 
+    WriteText(toplabel + ':' + #10);
+    WriteText('    mov rax, ' + loopvar + #10);    
+    WriteText('    cmp rax, ' + looplimit + #10);    
     
+    if loopcond = 'LESSEQUAL' then
+        WriteText('    jg ' + endlabel + #10)       // jump if greater (i > limit)
+    else if loopcond = 'LESS' then
+        WriteText('    jge ' + endlabel + #10)      // jump if greater or equal
+    else if loopcond = 'GREQUAL' then
+        WriteText('    jl ' + endlabel + #10)       // jump if less
+    else if loopcond = 'GREATER' then
+        WriteText('    jle ' + endlabel + #10)      // jump if less or equal
+    else if loopcond = 'EQUAL' then
+        WriteText('    jne ' + endlabel + #10);     // jump if not equa  
 
-
-
+    //inc(loop_IndexW);
     loopWhile := True;
 end;
 
@@ -870,15 +898,22 @@ begin
     consume; // until
     looplimit := consume; 
     consume; // RPAR
-    toplabel := labelMaker('LW');
-    endlabel := labelMaker('LW');
+    toplabel := labelMaker('LF');
+    endlabel := labelMaker('LF');
+    //loop_TLabelF[loop_IndexF] := toplabel;
+    //loop_ELabelF[loop_IndexF] := endlabel;
     emitLabel(toplabel); // it is I, the start of the loop
 
+    WriteText('    mov rax, ' + loopstart + #10);
+    WriteText('    mov ' + loopvar + ', rax' + #10);
     
+    WriteText(toplabel + ':' + #10);
+    WriteText('    mov rax, ' + loopvar + #10);     // load loop variable
+    WriteText('    cmp rax, ' + looplimit + #10);   
+    WriteText('    jge ' + endlabel + #10);          // jump if i >= limit
 
-
-
-    loopFor:= True;
+    //Inc(loop_IndexF);
+    loopFor := True;
 end;
 
 // PARSER -----------
@@ -894,7 +929,7 @@ begin
     isLoop := False;
     repeat
         case peek() of
-            'F': begin WriteLn('PARSER - F');
+            'F': begin 
                 consume;
                 currentFN := consume;
                 emitFN(currentFN);
@@ -945,13 +980,13 @@ begin
                     
                     end;
             end;
-            'LPAR': begin WriteLn('PARSER - (');
+            'LPAR': begin
                 consume; // PLACEHOLDER
             end;
-            'RPAR': begin WriteLn('PARSER - )');
+            'RPAR': begin 
                 consume; // PLACEHOLDER
             end;
-            'LBRACE': begin WriteLn('PARSER - {');
+            'LBRACE': begin 
                 consume;
                 emitFunctionSetup();
                 if paramPending then
@@ -978,51 +1013,56 @@ begin
                         paramPending := False;
                     end;
             end;
-            'RBRACE': begin WriteLn('PARSER - }');
+            'RBRACE': begin 
                 consume;
                 if isLoop then
                     isLoop := False
                 else
                     emitFunctionTeardown(returnAddr);
             end;
-            'IDENTIFIER': begin WriteLn('PARSER - IDENT');
+            'IDENTIFIER': begin 
                 discriminateIdentifier();
             end;
-            'ASSIGN': begin WriteLn('PARSER - ASSIGN');
+            'ASSIGN': begin 
                 consume;
             end;
-            'TERMINATOR': begin WriteLn('PARSER - TERMINATOR');
+            'TERMINATOR': begin 
                 consume;
             end;
-            'V': begin WriteLn('PARSER - GLOBAL VARIABLES');
+            'V': begin 
                 consume;
             end;
-            'S': begin WriteLn('PARSER - STATIC');
+            'S': begin 
                 consume;
             end;
-            'W': begin WriteLn('PARSER - WHEN');
+            'W': begin 
                 consume;
             end;
-            'I': begin WriteLn('PARSER - IF');
+            'I': begin 
                 consume;
             end;
-            'E': begin WriteLn('PARSER - ELSE');
+            'E': begin 
                 consume;
             end;
-            'LF': begin WriteLn('PARSER - LOOP/FOR');
+            'LF': begin 
                 isLoop := loopFor();
             end;
-            'LW': begin WriteLn('PARSER - LOOP/WHILE');
+            'LW': begin 
                 isLoop := loopWhile();
             end;
-            'VARBLOCK': begin WriteLn('PARSER - GLOBAL VAR');
+            'VARBLOCK': begin 
                 consume; // consume '
             end;
-            'STATICBLOCK': begin WriteLn('PARSER - STATIC');
+            'STATICBLOCK': begin 
                 consume; // consume '
             end;
-            'RECORDBLOCK': begin WriteLn('PARSER - RECORD');
+            'RECORDBLOCK': begin 
                 consume; // consume '
+            end
+            else
+            begin
+                WriteLn('I CANT BELIEVE YOUVE DONE THIS - PARSER - YOU HAVE FED ME GARBAGE>> ' + peek() + ' ' + peekV());
+                Halt(1);
             end;
         
         end;
@@ -1187,63 +1227,63 @@ begin
 
         // MULTI CHARACHTER TOKENS
         case buf[i] + buf[i+1] of
-            ':=': begin WriteLn('ASSIGN');
+            ':=': begin 
                 t_type[t_count] := 'ASSIGN';
                 t_val[t_count] := ':=';
                 isMultiple := True;
                 Inc(t_count);
                 Inc(i);
             end;
-            '|V': begin WriteLn('VARBLOCK');
+            '|V': begin 
                 t_type[t_count] := 'VARBLOCK';
                 t_val[t_count] := '|V';
                 isMultiple := True;
                 Inc(t_count);
                 Inc(i);
             end;
-            '|S': begin WriteLn('STATICBLOCK');
+            '|S': begin 
                 t_type[t_count] := 'STATICBLOCK';
                 t_val[t_count] := '|S';
                 isMultiple := True;
                 Inc(t_count);
                 Inc(i);
             end;
-            '|D': begin WriteLn('DIRECTIVE');
+            '|D': begin 
                 t_type[t_count] := 'DIRECTIVE';
                 t_val[t_count] := '|D';
                 isMultiple := True;
                 Inc(t_count);
                 Inc(i);
             end;
-            '|R': begin WriteLn('RECORDBLOCK');
+            '|R': begin 
                 t_type[t_count] := 'RECORDBLOCK';
                 t_val[t_count] := '|R';
                 isMultiple := True;
                 Inc(t_count);
                 Inc(i);
             end;
-            '>=': begin WriteLn('GREQUAL');
+            '>=': begin 
                 t_type[t_count] := 'GREQUAL';
                 t_val[t_count] := '>=';
                 isMultiple := True;
                 Inc(t_count);
                 Inc(i);
             end;
-            '<=': begin WriteLn('LESSEQUAL');
+            '<=': begin 
                 t_type[t_count] := 'LESSEQUAL';
                 t_val[t_count] := '<=';
                 isMultiple := True;
                 Inc(t_count);
                 Inc(i);
             end;
-            '++': begin WriteLn('VADD');
+            '++': begin 
                 t_type[t_count] := 'VADD';
                 t_val[t_count] := '++';
                 isMultiple := True;
                 Inc(t_count);
                 Inc(i);
             end;
-            '**': begin WriteLn('VMUL');
+            '**': begin 
                 t_type[t_count] := 'VMUL';
                 t_val[t_count] := '**';
                 isMultiple := True;
@@ -1256,97 +1296,97 @@ begin
         if not isMultiple then 
         begin       
             case buf[i] of 
-                '=': begin WriteLn('EQUAL');
+                '=': begin 
                     t_type[t_count] := 'EQUAL';
                     t_val[t_count] := '=';
                     Inc(t_count);
                 end;
-                '+': begin WriteLn('PLUS');
+                '+': begin
                     t_type[t_count] := 'PLUS';
                     t_val[t_count] := '+';
                     Inc(t_count);
                 end;
-                '-': begin WriteLn('MINUS');
+                '-': begin 
                     t_type[t_count] := 'MINUS';
                     t_val[t_count] := '-';
                     Inc(t_count);
                 end;
-                '*': begin WriteLn('STAR');
+                '*': begin 
                     t_type[t_count] := 'STAR';
                     t_val[t_count] := '*';
                     Inc(t_count);
                 end;
-                '/': begin WriteLn('SLASH');
+                '/': begin 
                     t_type[t_count] := 'SLASH';
                     t_val[t_count] := '/';
                     Inc(t_count);
                 end;
-                '{': begin WriteLn('LBRACE');
+                '{': begin 
                     t_type[t_count] := 'LBRACE';
                     t_val[t_count] := '{';
                     Inc(t_count);
                 end;
-                '}': begin WriteLn('RBRACE');
+                '}': begin 
                     t_type[t_count] := 'RBRACE';
                     t_val[t_count] := '}';
                     Inc(t_count);
                 end;
-                '(': begin WriteLn('LPAR');
+                '(': begin 
                     t_type[t_count] := 'LPAR';
                     t_val[t_count] := '(';
                     Inc(t_count);
                 end;
-                ')': begin WriteLn('RPAR');
+                ')': begin 
                     t_type[t_count] := 'RPAR';
                     t_val[t_count] := ')';
                     Inc(t_count);
                 end;
-                '>': begin WriteLn('MORE');
+                '>': begin 
                     t_type[t_count] := 'MORE';
                     t_val[t_count] := '>';
                     Inc(t_count);
                 end;
-                '<': begin WriteLn('LESS');
+                '<': begin 
                     t_type[t_count] := 'LESS';
                     t_val[t_count] := '<';
                     Inc(t_count);
                 end;
-                '[': begin WriteLn('LBRAC');
+                '[': begin 
                     t_type[t_count] := 'LBRAC';
                     t_val[t_count] := '[';
                     Inc(t_count);
                 end;
-                ']': begin WriteLn('RBRAC');
+                ']': begin 
                     t_type[t_count] := 'RBRAC';
                     t_val[t_count] := ']';
                     Inc(t_count);
                 end;
-                #39: begin WriteLn('TERMINATOR');
+                #39: begin 
                     t_type[t_count] := 'TERMINATOR';
                     t_val[t_count] := #39;
                     Inc(t_count);
                 end;
-                #96: begin WriteLn('QUOTE');
+                #96: begin 
                     t_type[t_count] := 'QUOTE';
                     t_val[t_count] := #96;
                     Inc(t_count);
                 end;
-                ',': begin WriteLn('COMMA');
+                ',': begin 
                     t_type[t_count] := 'COMMA';
                     t_val[t_count] := ',';
                     Inc(t_count);
                 end;
-                '|': begin WriteLn('PIPE');
+                '|': begin 
                     t_type[t_count] := 'PIPE';
                     t_val[t_count] := '|';
                     Inc(t_count);
                 end;
-                ':': begin WriteLn('COLON');
+                ':': begin 
                     t_type[t_count] := 'COLON';
                     t_val[t_count] := ':';
                     Inc(t_count);
                 end;
-                ';': begin WriteLn('COMMENT');
+                ';': begin 
                     while (i < bytes) and (buf[i] <> #10) do
                         Inc(i);
                 end;
@@ -1371,7 +1411,6 @@ begin
                             else
                                 begin
                                 t_type[t_count] := 'IDENTIFIER';
-                                WriteLn('IDENTIFIER'); // DEBUG PRINT
                                 end;
 
                         t_val[t_count] := word;
@@ -1404,7 +1443,6 @@ begin
                         begin
                             t_type[t_count] := 'NUMBER'; // Store as type NUMBER
                             t_val[t_count] := word; // put number into value
-                            WriteLn('NUMBER');
                             Inc(t_count);
                             Dec(i); // Dec to counteract Inc at bottom of main loop
                         end;
@@ -1458,8 +1496,10 @@ begin
         end;
 
     FillChar(stack, SizeOf(stack), 0);
-    FillChar(loop_TLabel, SizeOf(loop_TLabel), 0);
-    FillChar(loop_ELabel, SizeOf(loop_ELabel), 0);
+    FillChar(loop_TLabelF, SizeOf(loop_TLabelF), 0);
+    FillChar(loop_ELabelF, SizeOf(loop_ELabelF), 0);
+    FillChar(loop_TLabelW, SizeOf(loop_TLabelW), 0);
+    FillChar(loop_ELabelW, SizeOf(loop_ELabelW), 0);
     FillChar(return_FName, SizeOf(return_FName), 0);
     FillChar(return_FType, SizeOf(return_FType), 0);
     deleteFile('intermediate.asm');

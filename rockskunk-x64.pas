@@ -270,7 +270,13 @@ procedure emitArrayReadWord(); begin end;
 procedure emitArrayReadFloat(); begin end;
 procedure emitArrayReadString(); begin end;
 procedure emitRecordFieldAccess(); begin end; // rec.field
-procedure emitAddressOf(); begin end;         // &a
+
+procedure emitAddressOf(variable: String); // &a
+begin 
+    if variable <> 'rax' then
+        WriteText('    lea rax, ' + variable + #10);
+end;         
+
 procedure emitMalloc(); begin end;            // cm(size)
 procedure emitFree(); begin end;              // fm(p)
 
@@ -281,12 +287,10 @@ procedure emitMul(dst, src: String); begin WriteText('    imul ' + dst + ', ' + 
 
 procedure emitDiv(dividend, divisor: String);
 begin
-    begin
         // Divide by zero and see what happens lol
         WriteText('    mov rax, ' + dividend + #10);
         WriteText('    cqo' + #10);
         WriteText('    idiv qword ' + divisor + #10);
-    end;
 end;
 
 procedure emitMod(); begin end;
@@ -639,7 +643,7 @@ begin
 
 end;
 
-function addressOf(offset: Integer): String; begin addressOf := '[rbp-' + IntToStr(offset) + ']'; end;
+function computeOffset(offset: Integer): String; begin computeOffset := '[rbp-' + IntToStr(offset) + ']'; end;
 
 // symOffset, symName, symCount
 
@@ -785,7 +789,7 @@ begin
         begin
             if isDeclared = True then
                 begin // turn into something nasm understands instead of just "variable"
-                    variable := addressOf(symOffset[symIndex]);
+                    variable := computeOffset(symOffset[symIndex]);
                     consume(); // :=
                         if symType[symIndex] = 'FLOAT' then
                                 begin
@@ -830,14 +834,14 @@ begin
                     isFloat := (symType[symCount] = 'FLOAT');
                         symOffset[symCount] := frameOffset;
                         symName[symCount] := variable;
-                        variable := addressOf(symOffset[symCount]);
+                        variable := computeOffset(symOffset[symCount]);
 
                     if isReturn then
                         begin
                         return_FName[return_FCount] := currentFN;
                         return_FType[return_FCount] := symType[symCount];
-                        variable := addressOf(symOffset[symCount]);
-                        returnAddr := addressOf(symOffset[symCount]);
+                        variable := computeOffset(symOffset[symCount]);
+                        returnAddr := computeOffset(symOffset[symCount]);
                         inc(return_FCount);
                         end;
 
@@ -1447,6 +1451,11 @@ begin
                 ':': begin 
                     t_type[t_count] := 'COLON';
                     t_val[t_count] := ':';
+                    Inc(t_count);
+                end;
+                '&': begin 
+                    t_type[t_count] := 'AMP';
+                    t_val[t_count] := '&';
                     Inc(t_count);
                 end;
                 ';': begin 

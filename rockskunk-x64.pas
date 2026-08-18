@@ -438,6 +438,8 @@ begin
 
 end;
 
+function addressOf(offset: Integer): String; begin addressOf := '[rbp-' + IntToStr(offset) + ']'; end;
+
 // symOffset, symName, symCount
 
 function evaluateExpression(isFloat: Boolean): String;
@@ -661,7 +663,7 @@ begin
         begin
             if isDeclared = True then
                 begin // turn into something nasm understands instead of just "variable"
-                    variable := '[rbp-' + IntToStr(symOffset[symIndex]) + ']';  // [rbp-8] etc
+                    variable := addressOf(symOffset[symIndex]);
                     consume(); // :=
                         if symType[symIndex] = 'FLOAT' then
                                 begin
@@ -706,13 +708,14 @@ begin
                     isFloat := (symType[symCount] = 'FLOAT');
                         symOffset[symCount] := frameOffset;
                         symName[symCount] := variable;
-                        variable := '[rbp-' + IntToStr(symOffset[symCount]) + ']';  
+                        variable := addressOf(symOffset[symCount]);
 
                     if isReturn then
                         begin
                         return_FName[return_FCount] := currentFN;
                         return_FType[return_FCount] := symType[symCount];
-                        returnAddr := '[rbp-' + IntToStr(symOffset[symCount]) + ']';
+                        variable := addressOf(symOffset[symCount]);
+                        returnAddr := addressOf(symOffset[symCount]);
                         inc(return_FCount);
                         end;
 

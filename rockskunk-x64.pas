@@ -379,6 +379,44 @@ begin
         end;
 end;
 
+function WhoGoesTHere(intruder: String): String;
+var
+    isFloat: Boolean;
+    i: Integer;
+begin
+    i := 0;
+    isFloat := False;
+
+    if isNumber(intruder) then // RAW NUM
+        begin
+        if Pos('.', intruder) > 0 then
+            isFloat := True;
+        end
+    else
+        begin // VAR
+            for i := 0 to symCount - 1 do
+                begin
+                    if intruder = symName[i] then
+                        if symType[i] = 'FLOAT' then
+                            isFloat := True;
+                end;
+    end;
+
+    
+    for i := 0 to return_FCount - 1 do // Function
+        begin
+            if intruder = return_FName[i] then
+                if return_FType[i] = 'FLOAT' then
+                    isFloat := True;
+        end;
+
+    if isFloat then
+        WhoGoesTHere := 'FLOAT'
+    else
+        WhoGoesTHere := 'QWORD';
+
+end;
+
 // symOffset, symName, symCount
 
 function evaluateExpression(isFloat: Boolean): String;

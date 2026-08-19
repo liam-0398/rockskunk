@@ -527,6 +527,7 @@ function peek(): String; begin peek := t_type[position]; end;
 function peek2(): String; begin peek2 := t_type[position+1]; end;
 function peek3(): String; begin peek3 := t_type[position+2]; end;
 function currentLine(): String; begin currentLine := intToStr(t_line[position]); end;
+function computeOffset(offset: Integer): String; begin computeOffset := '[rbp-' + IntToStr(offset) + ']'; end;
 
 function consume(): String; // Eat the next token and then remove it
 begin
@@ -656,7 +657,7 @@ begin
                     result2 := StrToInt(first) div StrToInt(second);
                 WriteLn('OPTIMIZATION - FPT');
                 foldCode := (IntToStr(result2));
-                end;
+            end;
 end;
 
 function opResolver(misformattedBastard: String): String;
@@ -748,10 +749,6 @@ begin
                 resolveSyscall:= varToMem(argument);
         end;
 end;
-
-function computeOffset(offset: Integer): String; begin computeOffset := '[rbp-' + IntToStr(offset) + ']'; end;
-
-// symOffset, symName, symCount
 
 // MAIN PARSER MACHINERY ====================================================
 

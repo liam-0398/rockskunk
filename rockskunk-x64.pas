@@ -788,42 +788,45 @@ begin
     eeNotOperatorBranch := math_ret;    
 end;  
 
-procedure arguementParser();
+procedure arguementParser(functionIndex: Integer);
 var
     isFloatArg: Boolean;
     argname: String;
-    seenFloats, seenInts: Integer;
-begin          
-                WriteLn('EXPRESSION EVAL - RPAR BRANCH (ARGUMENT PARSER)'); // DEBUG
-                seenFloats := 0;
-                seenInts := 0;
-                repeat  // VERIFY LOOP
-                    isFloatArg := False;
-                    argname := consume(); // single arg
+    seenFloats, seenInts, argcounter: Integer;
+begin
+    isFloatArg := False;
+    WriteLn('EXPRESSION EVAL - RPAR BRANCH (ARGUMENT PARSER)'); // DEBUG
+    seenFloats := 0;
+    seenInts := 0;
+    argcounter := 0;
 
-                    if stateFunction[functionIndex].paramType[argcounter] = 'FLOAT' then
-                        isFloatArg := True;
+    repeat  // VERIFY LOOP
+        isFloatArg := False;
+        argname := consume(); // single arg
 
-                    if not isNumber(argname) then
-                        argname := varToMem(argname);
+        if stateFunction[functionIndex].paramType[argcounter] = 'FLOAT' then
+            isFloatArg := True;
 
-                    if isFloatArg then 
-                        begin
-                            WriteText('    movsd xmm' + IntToStr(seenFloats) + ', ' + argname + #10);
-                            Inc(seenFloats);
-                        end
-                    else
-                        begin
-                            WriteText('    mov ' + intRegs[seenInts] + ', ' + argname + #10);
-                            Inc(seenInts);
-                        end;
+        if not isNumber(argname) then
+            argname := varToMem(argname);
 
-                    if peek() = 'COMMA' then
-                        consume;
+        if isFloatArg then
+            begin
+                WriteText('    movsd xmm' + IntToStr(seenFloats) + ', ' + argname + #10);
+                Inc(seenFloats);
+            end
+        else
+            begin
+                WriteText('    mov ' + intRegs[seenInts] + ', ' + argname + #10);
+                Inc(seenInts);
+            end;
 
-                    Inc(argcounter);
-                until peek() = 'RPAR';
-end
+        if peek() = 'COMMA' then
+            consume;
+
+        Inc(argcounter);
+    until peek() = 'RPAR';
+end;
 
 function evaluateExpression(isFloat: Boolean): String;
 var
@@ -836,7 +839,7 @@ begin
     seenFloats := 0;
     seenInts := 0;
     returnsFloat := False;
-    isFloatArg := False;
+
     first := '';
 
     if peek() = 'AMP' then
@@ -875,7 +878,7 @@ begin
         consume(); // (
         // ARGUMENT PARSING
         if peek() <> 'RPAR' then
-            arguementParser();
+            arguementParser(functionIndex);
 
         consume(); // )
         call_ret := call(fname, first, returnsFloat);

@@ -386,6 +386,36 @@ begin
     WriteText('    movsd ' + variable + ', xmm0' + #10);
 end;
 
+{function arrayToMem(varname: String; size: String): String;
+var
+    i: Integer;
+begin
+end;
+
+    TKind = (kNone, kReg, kMem, kData);
+    TValType = (vtNumber, vtFloat, vtString);
+
+    TValue = record
+        vKind:     TKind; // What type of info is passed to NASM, register, memory, literals?
+        vType:     TValType; // vtNumber, vtFloat, vtString
+        vWordPayload:  Int64; // the word
+        vFltPayload:  Double; // the float
+        vStringPayload:  String; // register names and data labels eg float_69
+        vOffset:    Integer; // the actual offset
+    end;}
+
+function emitFloatConstant(float: String): TValue;
+var
+    v: TValue;
+begin
+    WriteData('   float_' + IntToStr(labelCounter) + ': dq ' + float + #10);
+    v.vStringPayload := 'float_' + IntToStr(labelCounter);
+    // flagging entires in the record 
+    v.vKind := kData; // set type of output to data
+    v.vType := vtFloat; // set actual type to float
+    Inc(labelCounter);
+end;
+
 function emitFloatConstant(float: String): String;
 begin
         WriteData('   float_' + IntToStr(labelCounter) + ': dq ' + float + #10);
@@ -617,37 +647,6 @@ begin
     Inc(position);  // Increment counter to drop the token
 end;
 
-{function arrayToMem(varname: String; size: String): String;
-var
-    i: Integer;
-begin
-end;
-
-    TKind = (kNone, kReg, kMem, kData);
-    TValType = (vtNumber, vtFloat, vtString);
-
-    TValue = record
-        vKind:     TKind; // What type of info is passed to NASM, register, memory, literals?
-        vType:     TValType; // vtNumber, vtFloat, vtString
-        vWordPayload:  Int64; // the word
-        vFltPayload:  Double; // the float
-        vStringPayload:  String; // register names and data labels eg float_69
-        vOffset:    Integer; // the actual offset
-    end;}
-
-function varToMem(variable: String): String;
-var
-    i: Integer;
-begin
-    i := findLocalIndex(variable);
-    if i = -1 then
-        begin
-            WriteLn(currentLine + '- I CANT BELIEVE YOUVE DONE THIS - VAR_TO_MEM - UNK SYMBOL>> ' + variable);
-            Halt(1);
-        end;
-    varToMem := computeOffset(stateLocal[i].offset);
-end;
-
 function varToMem(variable: String): TValue;
 var
     i: Integer;
@@ -663,10 +662,6 @@ begin
     v.vType := stateLocal[i].varType;
     v.vKind := kMem;
     varToMem := v;
-
-
-
-
 end;
 
 function call(fname: String; first: String; returnsFloat: Boolean): String;

@@ -31,6 +31,7 @@ type
     end;
 
 var
+    // yes yes i know static arrays yeah yeah, in test enviorment its fine
     stateLocalCount, stateGlobalCount, stateFunctionCount: Integer;
     stateLocal: array[0..255] of TLocal;
     stateGlobal: array[0..255] of TGlobal;
@@ -58,11 +59,10 @@ var
 
 {
    DO NOT FORGET LIST ====
-   REMEMBER REDO ASM OUTPUT PRIMITIVES AND LOOPS
-   REMEMBER IMPLMENT CALL WITHOUT TYPES
+   REMEMBER REDO ASM OUTPUT PRIMITIVES AND FIX LOOPS
 }
 
-// Forward Declarations
+// Forward Declarations -----------------------------------------------------------
 
 function WhoGoesThere(intruder: String): String; forward;
 function evaluateExpression(isFloat: Boolean): String; forward;
@@ -216,11 +216,11 @@ var
     libBytes: CInt;
 begin
     libBytes := 0;
-   { WriteLn('LOADING STANDARD LIBRARY');
+    WriteLn('LOADING STANDARD LIBRARY');
     FillChar(buf, SizeOf(buf), 0);
     fd := fpOpen(stdlib_filename, O_RdOnly);
     libBytes := FpRead(fd, buf, SizeOf(buf));
-    fpClose(fd);}
+    fpClose(fd);
 
     WriteLn('LOADING SOURCEFILE LIBRARY');
     fd := fpOpen(filename, O_RdOnly);
@@ -261,11 +261,7 @@ begin
     fpClose(fd2);
 end;
 
-procedure closeIntermediateFile;
-begin  
-    fpClose(fd3);
-    fpClose(fd4);
-end;
+procedure closeIntermediateFile; begin fpClose(fd3); fpClose(fd4); end;
 
 // CODE GENERATION ===========================================
 // ========================================================
@@ -289,7 +285,7 @@ procedure emitFunctionSetup();
 begin 
     WriteText('    push rbp' + #10);
     WriteText('    mov rbp, rsp' + #10);
-    WriteText('    sub rsp, 128' + #10);
+    WriteText('    sub rsp, 128' + #10); // HARDCODED STACK, THE HORROR
 end;
 
 procedure emitFunctionTeardown(result: String; isProcedure: Boolean);
@@ -403,7 +399,6 @@ procedure functionPrintW(source: String);
 begin
     WriteText('    mov rax, ' + source + #10);
     WriteText('    call print_qword' + #10);
-
 end;
 
 procedure functionPrintF(source: String);
@@ -586,17 +581,10 @@ end;
 function call(fname: String; first: String; returnsFloat: Boolean): String;
 begin
           if returnsFloat then
-            begin
-                WriteText('    call ' + fname + #10);
-                first := 'xmm0';
-                call := 'xmm0';
-            end
-        else
-            begin
-                WriteText('    call ' + fname + #10);
-                first := 'rax';
-                call := 'rax';
-            end;
+            begin first := 'xmm0'; call := 'xmm0'; end
+        else begin first := 'rax'; call := 'rax'; end;
+
+        WriteText('    call ' + fname + #10);
 end;
 
 function emitMath(op: String; second: String; isFloat: Boolean): String;
@@ -767,7 +755,7 @@ end;
 
 function eeNotOperatorBranch(first: String; op: String; isFloat: Boolean): String;
 var
-    second, math_ret, return: String;
+    second, math_ret: String;
 begin
     WriteLn('EXPRESSION EVAL - OPERATOR BRANCH');
 
@@ -830,16 +818,12 @@ end;
 
 function evaluateExpression(isFloat: Boolean): String;
 var
-    first, second, op, argname, fname, return, math_ret, call_ret, ampaddr: String;
-    seenFloats, seenInts, functionIndex, argcounter: Integer;
-    returnsFloat, isFloatArg: Boolean;
+    first, op, fname, return, math_ret, call_ret, ampaddr: String;
+    functionIndex: Integer;
+    returnsFloat: Boolean;
     num, a, b, c: String;
-    
 begin
-    seenFloats := 0;
-    seenInts := 0;
     returnsFloat := False;
-
     first := '';
 
     if peek() = 'AMP' then
@@ -872,11 +856,7 @@ begin
 
         // Find start of params for a specific function
         functionIndex := findFunctionIndex(fname);
-        argcounter := 0;
-
-        
         consume(); // (
-        // ARGUMENT PARSING
         if peek() <> 'RPAR' then
             arguementParser(functionIndex);
 

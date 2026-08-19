@@ -605,26 +605,20 @@ end;
 
 procedure asmFunctionCalls(variable: String; argname: String);
 begin
-                    if variable = 'printw' then
-                    begin
-                        consume; // (
-                        argname := consume(); // the value to print
-                        if not isNumber(argname) then
-                                argname := varToMem(argname);
-                        consume; // )
-                        functionPrintW(argname);
-                    end
-                else if variable = 'printf' then
-                    begin
-                        consume; // (
-                        argname := consume(); // the value to print
-                        if not isNumber(argname) then
-                                argname := varToMem(argname);
-                        consume; // )
-                        functionPrintF(argname);
-                    end
-                else
-                    WriteText('call ' + variable + #10);
+    if (variable = 'printw') or (variable = 'printf') then
+        begin
+            consume; // (
+            argname := consume(); // the value to print
+            if not isNumber(argname) then
+                argname := varToMem(argname);
+            consume; // )
+                if variable = 'printf' then
+                    functionPrintF(argname);
+                if variable = 'printw' then
+                    functionPrintW(argname);
+        end
+    else
+        WriteText('call ' + variable + #10);
 end;
 
 function foldCode(first: String; isFloat: boolean): String;

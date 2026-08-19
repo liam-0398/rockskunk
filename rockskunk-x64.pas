@@ -271,7 +271,6 @@ end;
 // ========================================================
 
 // HELPERS ----------------------------------------------------------
-
 procedure loadRAX(addr: String); begin WriteText('    mov rax, ' + addr + #10); end;
 procedure loadRBX(addr: String); begin WriteText('    mov rbx, ' + addr + #10); end;
 procedure loadXMM0(addr: String); begin WriteText('    movsd xmm0, ' + addr + #10); end;
@@ -284,10 +283,7 @@ procedure emitDirectiveBlock(); begin end; // {D ...}
 procedure emitFileInclude(); begin end;   // ADD("file.rsk")
 
 // FUNCTIONS -----------------------------------------------------------
-procedure emitFN(fname : String);
-begin 
-    WriteText(fname + ':' + #10);
-end;
+procedure emitFN(fname : String); begin WriteText(fname + ':' + #10); end;
 
 procedure emitFunctionSetup();
 begin 
@@ -772,9 +768,10 @@ end;
 function evaluateExpression(isFloat: Boolean): String;
 var
     first, second, op, argname, fname, return, math_ret, call_ret, ampaddr: String;
-    num, a, b, c: String;
-    returnsFloat, isFloatArg: Boolean;
     seenFloats, seenInts, functionIndex, argcounter: Integer;
+    returnsFloat, isFloatArg: Boolean;
+    num, a, b, c: String;
+    
 begin
     seenFloats := 0;
     seenInts := 0;

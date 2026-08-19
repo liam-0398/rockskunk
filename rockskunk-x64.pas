@@ -1371,19 +1371,19 @@ var
     end;
 
 begin
-    linecount := 0;
+    linecount := 1;
     isKeyword := False;
     isFloat :=  False;
     word := '';
     t_count := 0;
-        for i := 0 to 1023 do
-            begin
-                t_type[i] := '';
-                t_val[i] := '';
-            end;
+
+    for i := 0 to 1023 do
+        begin
+            t_type[i] := '';
+            t_val[i] := '';
+        end;
     
     i := 0; // POSITION TRACKER  
-
     repeat
         isMultiple := False; 
 
@@ -1405,34 +1405,33 @@ begin
 
         // SINGLE CHARACHTER TOKENS 
         if not isMultiple then 
-        begin       
-            case buf[i] of 
-                '=': assignSingleChar('=', 'EQUAL');
-                '+': assignSingleChar('+', 'PLUS');
-                '-': assignSingleChar('-', 'MINUS');
-                '*': assignSingleChar('*', 'STAR');
-                '/': assignSingleChar('/', 'SLASH');
-                '{': assignSingleChar('{', 'LBRACE');
-                '}': assignSingleChar('}', 'RBRACE');
-                '(': assignSingleChar('(', 'LPAR');
-                ')': assignSingleChar(')', 'RPAR');
-                '>': assignSingleChar('>', 'MORE');
-                '<': assignSingleChar('<', 'LESS');
-                '[': assignSingleChar('[', 'LBRAC');
-                ']': assignSingleChar(']', 'RBRAC');
-                #39: assignSingleChar(#39, 'TERMINATOR');
-                #96: assignSingleChar(#96, 'QUOTE');
-                ',': assignSingleChar(',', 'COMMA');
-                '|': assignSingleChar('|', 'PIPE');
-                ':': assignSingleChar(':', 'COLON');
-                '&': assignSingleChar('&', 'AMP');
+            begin       
+                case buf[i] of 
+                    '=': assignSingleChar('=', 'EQUAL');
+                    '+': assignSingleChar('+', 'PLUS');
+                    '-': assignSingleChar('-', 'MINUS');
+                    '*': assignSingleChar('*', 'STAR');
+                    '/': assignSingleChar('/', 'SLASH');
+                    '{': assignSingleChar('{', 'LBRACE');
+                    '}': assignSingleChar('}', 'RBRACE');
+                    '(': assignSingleChar('(', 'LPAR');
+                    ')': assignSingleChar(')', 'RPAR');
+                    '>': assignSingleChar('>', 'MORE');
+                    '<': assignSingleChar('<', 'LESS');
+                    '[': assignSingleChar('[', 'LBRAC');
+                    ']': assignSingleChar(']', 'RBRAC');
+                    #39: assignSingleChar(#39, 'TERMINATOR');
+                    #96: assignSingleChar(#96, 'QUOTE');
+                    ',': assignSingleChar(',', 'COMMA');
+                    '|': assignSingleChar('|', 'PIPE');
+                    ':': assignSingleChar(':', 'COLON');
+                    '&': assignSingleChar('&', 'AMP');
 
-                ';': begin   // comment — skip to end of line, emits no token
-                    while (i < bytes) and (buf[i] <> #10) do
-                        Inc(i);
-                end          
-            // ' ', #9, #13: ; dont remeber what this was
-            else
+                    ';': begin   // comment — skip to end of line, emits no token
+                        while (i < bytes) and (buf[i] <> #10) do
+                            Inc(i);
+            end          
+        else
                 if buf[i] in ['a'..'z', 'A'..'Z', '_'] then // Handle letters
                     begin
                     word := '';
@@ -1472,15 +1471,12 @@ begin
                         isFloat := True;
 
                     if isFloat then
-                        begin
-                            assignSingleChar(word,'FLOAT');
-                            Dec(i); // Dec to counteract Inc at bottom of main loop
-                        end
+                            assignSingleChar(word,'FLOAT')
                     else
-                        begin
                             assignSingleChar(word,'NUMBER');
-                            Dec(i); // Dec to counteract Inc at bottom of main loop
-                        end;
+                            
+                    Dec(i);
+              
                 end
 
                 else if buf[i] = #96 then // Handle double quote strings

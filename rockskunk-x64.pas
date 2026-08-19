@@ -236,11 +236,11 @@ procedure openFile;
 var
     libBytes: CInt;
 begin
-    WriteLn('LOADING STANDARD LIBRARY');
+   { WriteLn('LOADING STANDARD LIBRARY');
     FillChar(buf, SizeOf(buf), 0);
     fd := fpOpen(stdlib_filename, O_RdOnly);
     libBytes := FpRead(fd, buf, SizeOf(buf));
-    fpClose(fd);
+    fpClose(fd);}
 
     WriteLn('LOADING SOURCEFILE LIBRARY');
     fd := fpOpen(filename, O_RdOnly);
@@ -1211,57 +1211,56 @@ end;
 
 function constructFunction(): Boolean;
 var
+    paramName, paramType: String;
+    functionIndex, paramIndex: Integer;
+    isProcedure: Boolean;
     i: Integer;
 begin
                 constructFunction := (peek() = 'P');
+                isProcedure := (peek() = 'P');
                 consume;
                 currentFN := consume;
                 emitFN(currentFN);
+                addFunctionParameter(currentFN, isProcedure);
                 frameOffset := 0;
                 argCount := 0;
-                symCount := 0;
-                    for i := 0 to 255 do
-                        begin
-                            symName[i] := '';
-                            symOffset[i] := 0;
-                            symType[i] := '';
-                        end;
+                stateLocalCount := 0;
+  
                 paramPending := False;
                 if peek() = 'LPAR' then // arg detection
                     begin
                         consume; // (
                         if peek() <> 'RPAR' then 
                         begin
-                        repeat 
-                                frameOffset := frameOffset + 8;
-                                symOffset[symCount] := frameOffset;
-                                param_FName[param_FCount] := currentFN;
-                                symName[symCount] := consume(); // grab param name
-                                symType[symCount] := 'NUMBER'; // int param for now
-                                param_FType[param_FCount] := 'NUMBER';
-                                param_FIndex[param_FCount] := param_FCount;
-                                inc(symCount);
-                                    if peek() = 'COLON' then
-                                        begin        
-                                            consume; // consume colon
-                                            if peekV() = 'f' then
-                                                begin
-                                                    symType[symCount - 1] := 'FLOAT'; // int param for now
-                                                    param_FType[param_FCount - 1] := 'FLOAT';
-                                                    consume; // consume f
-                                                end
-                                            else
-                                                begin
-                                                    // STRING EVENTUALLY
-                                                end;
+                       repeat
+                            paramName := consume;
+                            paramType := 'NUMBER';
+
+                            if peek() = 'COLON' then
+                                begin
+                                    consume; // consume colon
+                                    if peekV() = 'f' then
+                                        begin
+                                            paramType := 'FLOAT';
+                                            consume; // consume f
+                                        end
+                                    else
+                                        begin
+                                            // STRING EVENTUALLY
                                         end;
-                                paramPending := True;
-                                paramOffset[argCount] := frameOffset;
-                                inc(argCount);
-                                inc(param_FCount);
-                                if peek() = 'COMMA' then
-                                        consume;
-                            until peek() = 'RPAR';
+                                end;
+
+                            paramIndex := addLocalParameter(paramName, paramType);
+
+                            stateFunction[functionIndex].paramType[stateFunction[functionIndex].paramCount] := paramType;
+                            Inc(stateFunction[functionIndex].paramCount);
+
+                            paramPending := True;
+                            Inc(argCount);
+
+                            if peek() = 'COMMA' then
+                                consume;
+                        until peek() = 'RPAR';
                     end;
                         consume; // )
                     

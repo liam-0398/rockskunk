@@ -1343,12 +1343,8 @@ begin
             'E': begin 
                 consume;
             end;
-            'LF': begin 
-                loopFor();
-            end;
-            'LW': begin 
-                loopWhile();
-            end;
+            'LF': begin loopFor(); end;
+            'LW': begin loopWhile(); end;
             'VARBLOCK': begin 
                 consume; // placeholder
             end;
@@ -1359,11 +1355,10 @@ begin
                 consume; // placeholder
             end
             else
-            begin
-                WriteLn(currentLine + '- I CANT BELIEVE YOUVE DONE THIS - PARSER - YOU HAVE FED ME GARBAGE>> ' + peek() + ' ' + peekV());
-                Halt(1);
-            end;
-        
+                begin
+                    WriteLn(currentLine + '- I CANT BELIEVE YOUVE DONE THIS - PARSER - YOU HAVE FED ME GARBAGE>> ' + peek() + ' ' + peekV());
+                    Halt(1);
+                end;
         end;
     until position >= t_count;
     asmFoundations();

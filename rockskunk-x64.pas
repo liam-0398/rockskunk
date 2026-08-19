@@ -162,7 +162,7 @@ begin
             end;
 end;
 
-function addFunctionParameter(name: String; newIsProcedure: Boolean): Integer;
+function addFunctionParameter(name: String; IsProcedure: Boolean): Integer;
 begin
     if findFunctionParameter(name) <> -1 then
         begin
@@ -172,7 +172,7 @@ begin
 
     stateFunction[stateFunctionCount].name        := name;
     stateFunction[stateFunctionCount].returnType  := '';   // filled in later if 'r' assignment seen
-    stateFunction[stateFunctionCount].isProcedure := newIsProcedure;
+    stateFunction[stateFunctionCount].isProcedure := IsProcedure;
     stateFunction[stateFunctionCount].paramCount  := 0;
 
     addFunctionParameter := stateFunctionCount;

@@ -31,7 +31,7 @@ another language attempt and reworking it to output NASM x86_64 assembly. WAY do
 
 # Status
 
-I am writing the compiler while not having reasearched much besides "how to toeknize text" and "make proceudres happen when text is detected" all while not knowing assembly and learning it on the fly. The Gameplan is to get this pascal bootstrap compiler good enough to write my own compiler in rockskunk. Then is when im going to pay more attention to spilling registers into memory and inline optimization as I learn more and become more comfortable. 
+The Gameplan is to get this pascal bootstrap compiler good enough to write my own compiler in rockskunk. Then is when im going to pay more attention to spilling registers into memory and inline optimization as I learn more and become more comfortable. 
 
 # Syntax
 

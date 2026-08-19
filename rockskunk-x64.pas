@@ -1044,7 +1044,6 @@ begin
 
                     consume(); // :=
                         
-
                     if isFloat then // send to expression evaulator to find out what to do to right side
                         begin
                           rightside := evaluateExpression(isFloat);
@@ -1065,7 +1064,8 @@ begin
 end;
 
 // ONE-OFFS ------------
-
+// CURRENT STATUS
+// Loops? Fucked, Conditionals? Fucked.
 procedure loopWhile();
 var
     loopvar, loopcond, looplimit, toplabel, endlabel: String;
@@ -1134,6 +1134,74 @@ begin
 end;
 
 function condWhen(): Boolean;
+var
+    condvar, condition, condlimit, endlabel: String;
+begin
+    consume; //consume W
+    consume; // consume LPAR
+    condvar := varToMem(consume);
+    condition := peek; // grab TYPE not the damn value
+    consume; // now eat it
+    condlimit := consume; // 0
+    consume; // RPAR
+
+    endlabel := labelMaker('W');
+
+    WriteText('    mov rax, ' + condvar + #10);
+    WriteText('    cmp rax, ' + condlimit + #10);
+
+    if condition = 'LESSEQUAL' then  // all the shit is backwards here
+        WriteText('    jg ' + endlabel + #10)       // jump if greater (skip when i > limit)
+    else if condition = 'LESS' then
+        WriteText('    jge ' + endlabel + #10)      // jump if greater or equal
+    else if condition = 'GREQUAL' then
+        WriteText('    jl ' + endlabel + #10)       // jump if less
+    else if condition = 'MORE' then
+        WriteText('    jle ' + endlabel + #10)      // jump if less or equal
+    else if condition = 'EQUAL' then
+        WriteText('    jne ' + endlabel + #10);     // jump if not equal
+
+    conditional_ELabel[conditionalDepth] := endlabel;
+    Inc(conditionalDepth);
+    conditionalBodyNext := True;
+    condWhen := True;
+end;
+
+function condIf(): Boolean;
+var
+    condvar, condition, condlimit, endlabel: String;
+begin
+    consume; //consume W
+    consume; // consume LPAR
+    condvar := varToMem(consume);
+    condition := peek; // grab TYPE not the damn value
+    consume; // now eat it
+    condlimit := consume; // 0
+    consume; // RPAR
+
+    endlabel := labelMaker('W');
+
+    WriteText('    mov rax, ' + condvar + #10);
+    WriteText('    cmp rax, ' + condlimit + #10);
+
+    if condition = 'LESSEQUAL' then  // all the shit is backwards here
+        WriteText('    jg ' + endlabel + #10)       // jump if greater (skip when i > limit)
+    else if condition = 'LESS' then
+        WriteText('    jge ' + endlabel + #10)      // jump if greater or equal
+    else if condition = 'GREQUAL' then
+        WriteText('    jl ' + endlabel + #10)       // jump if less
+    else if condition = 'MORE' then
+        WriteText('    jle ' + endlabel + #10)      // jump if less or equal
+    else if condition = 'EQUAL' then
+        WriteText('    jne ' + endlabel + #10);     // jump if not equal
+
+    conditional_ELabel[conditionalDepth] := endlabel;
+    Inc(conditionalDepth);
+    conditionalBodyNext := True;
+    condWhen := True;
+end;
+
+function condElse(): Boolean;
 var
     condvar, condition, condlimit, endlabel: String;
 begin
@@ -1338,10 +1406,8 @@ begin
         
         end;
     until position >= t_count;
-
     asmFoundations();
-
-    end;
+end;
 
 // LEXER ==================================================
 // ========================================================

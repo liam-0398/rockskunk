@@ -765,6 +765,29 @@ end;
 
 // MAIN PARSER MACHINERY ====================================================
 
+function eeNotOperatorBranch(first: String; op: String; isFloat: Boolean): String;
+var
+    second, math_ret, return: String;
+begin
+    WriteLn('EXPRESSION EVAL - OPERATOR BRANCH');
+
+    if isFloat then
+        loadXMM0(first) // floats need Xtra Math Man
+    else
+        loadRAX(first);
+
+    // BEHOLD THE CHAINER OR OPERATORS, SOLVER OF EXPRESSIONS
+    while ((peek() = 'PLUS') or (peek() = 'MINUS') or (peek() = 'STAR') or (peek() = 'SLASH')) do
+        begin
+            op := peek();
+            consume;
+            second := consume();
+            second := ifFloatIfVar(second); // resolve assignment of var
+            math_ret := emitMath(op, second, isFloat);
+        end;
+    eeNotOperatorBranch := math_ret;    
+end;  
+
 function evaluateExpression(isFloat: Boolean): String;
 var
     first, second, op, argname, fname, return, math_ret, call_ret, ampaddr: String;
@@ -874,26 +897,10 @@ begin
                 evaluateExpression := first
             else
                 begin
-                    WriteLn('EXPRESSION EVAL - OPERATOR BRANCH');
-
-                    if isFloat then
-                        loadXMM0(first) // floats need Xtra Math Man
-                    else
-                        loadRAX(first); 
-
-                    // BEHOLD THE CHAINER OR OPERATORS, SOLVER OF EXPRESSIONS
-                    while ((peek() = 'PLUS') or (peek() = 'MINUS') or (peek() = 'STAR') or (peek() = 'SLASH')) do 
-                        begin
-                            op := peek(); 
-                            consume;
-                            second := consume(); 
-                            second := ifFloatIfVar(second); // resolve assignment of var
-                            
-                            math_ret := emitMath(op, second, isFloat);
-                        end;
-                    Exit(math_ret)
+                math_ret := eeNotOperatorBranch(first, op, isFloat);
+                Exit(math_ret);
                 end;
-        end;   
+        end;
 end;
 
 procedure discriminateIdentifier();
@@ -943,7 +950,7 @@ begin
                     if discoveredVariableType = 'QWORD' then
                         discoveredVariableType := 'NUMBER';
 
-                    if peek2() = 'IDENTIFIER' then
+                    if peek2() = 'IDENTIFIER' then // if var exists grab type info and flag for right assignment
                         begin
                             twoname := peekV2();
                             existingIndex := findLocalIndex(twoname);
@@ -951,7 +958,7 @@ begin
                                 discoveredVariableType := stateLocal[existingIndex].varType;
                         end;
 
-                    if (peek2() = 'IDENTIFIER') and (peek3() = 'LPAR') then
+                    if (peek2() = 'IDENTIFIER') and (peek3() = 'LPAR') then // grab function return val type and flag
                         begin
                             twoname := peekV2();
                             functionIndex := findFunctionIndex(twoname);
@@ -1354,9 +1361,9 @@ var
         Inc(i);
     end;
 
-    procedure collect(word: String);
+    function collect(word: String): String;
     begin
-        word := word + buf[i];  // Collect words, add charachters to word
+        collect := word + buf[i];  // Collect words, add charachters to word
         Inc(i); // Increment position in file, +1 charachter
     end;
 
@@ -1427,7 +1434,7 @@ begin
                     word := '';
                     while buf[i] in ['a'..'z', 'A'..'Z', '_', '0'..'9'] do
                         begin
-                            collect(word);
+                            word := collect(word);
                         end;
               
                         isKeyword := keywordCheck(UpperCase(word)); 
@@ -1452,7 +1459,7 @@ begin
                     isFloat := False;
                     while buf[i] in ['0'..'9', '.', 'f'] do
                         begin
-                            collect(word);
+                            word := collect(word);
                         end;
                     
                    if (Pos('.', word) > 0) or (Pos('f', word) > 0) then
@@ -1473,7 +1480,7 @@ begin
                     Inc(i); // skip opening quote
                     while buf[i] <> #96 do
                     begin
-                        collect(word);
+                        word := collect(word);
                     end;
                     // buf[i] is now closing quote
                     assignSingleChar(word,'STRING');

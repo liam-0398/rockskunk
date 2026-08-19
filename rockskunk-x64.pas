@@ -776,6 +776,7 @@ begin
     eeNotOperatorBranch := math_ret;    
 end;  
 
+// fucked, need to turn into evaluator and drop each arg result onto the stack
 procedure arguementParser(functionIndex: Integer);
 var
     isFloatArg: Boolean;
@@ -856,6 +857,9 @@ begin
 
         // Find start of params for a specific function
         functionIndex := findFunctionIndex(fname);
+        if functionIndex = -1 then
+            WriteLn(currentLine + '- I CANT BELIEVE YOUVE DONE THIS - EE - GARBAGE FUNCTION CALL >> ' + op);
+
         consume(); // (
         if peek() <> 'RPAR' then
             arguementParser(functionIndex);
@@ -923,8 +927,10 @@ begin
             if isDeclared = True then
                 begin // turn into something nasm understands instead of just "variable"
                     variable := computeOffset(stateLocal[symIndex].offset);
+                     isFloat := (stateLocal[symIndex].varType = 'FLOAT'); 
                     consume(); // :=
                     rightside := evaluateExpression(isFloat);
+                    isFloat := (stateLocal[symIndex].varType = 'FLOAT'); // wasnt verifiying
                         if stateLocal[symIndex].varType = 'FLOAT' then
                             emitAssignFloat(variable, rightside) // emit asm
                         else
@@ -934,8 +940,7 @@ begin
                 end
             else
                 begin
-                    frameOffset := frameOffset + 8; // vars need to occupy different memory, increment
-
+                    // not checking everything in the right side for a float, need to implement fix 
                     discoveredVariableType := WhoGoesTHere(peek2);
                     if discoveredVariableType = 'QWORD' then
                         discoveredVariableType := 'NUMBER';

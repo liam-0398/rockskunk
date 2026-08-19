@@ -1337,12 +1337,31 @@ end;
 // LEXER ==================================================
 // ========================================================
 
+
+
 procedure lexer();
 var
     i, linecount: Integer;
     word: String;
     isKeyword, isFloat: Boolean;
     isMultiple: Boolean;
+
+    procedure assignSingleChar(Tvalue: String; Ttype: String);
+    begin
+        t_type[t_count] := Ttype;
+        t_val[t_count] := Tvalue;
+        Inc(t_count);
+    end;
+
+    procedure assignDoubleChar(Tvalue: String; Ttype: String);
+    begin
+        t_type[t_count] := Ttype;
+        t_val[t_count] := Tvalue;
+        isMultiple := True;
+        Inc(t_count);
+        Inc(i);
+    end;
+
 begin
     linecount := 0;
     isKeyword := False;
@@ -1365,175 +1384,45 @@ begin
 
         // MULTI CHARACHTER TOKENS
         case buf[i] + buf[i+1] of
-            ':=': begin 
-                t_type[t_count] := 'ASSIGN';
-                t_val[t_count] := ':=';
-                isMultiple := True;
-                Inc(t_count);
-                Inc(i);
-            end;
-            '|V': begin 
-                t_type[t_count] := 'VARBLOCK';
-                t_val[t_count] := '|V';
-                isMultiple := True;
-                Inc(t_count);
-                Inc(i);
-            end;
-            '|S': begin 
-                t_type[t_count] := 'STATICBLOCK';
-                t_val[t_count] := '|S';
-                isMultiple := True;
-                Inc(t_count);
-                Inc(i);
-            end;
-            '|D': begin 
-                t_type[t_count] := 'DIRECTIVE';
-                t_val[t_count] := '|D';
-                isMultiple := True;
-                Inc(t_count);
-                Inc(i);
-            end;
-            '|R': begin 
-                t_type[t_count] := 'RECORDBLOCK';
-                t_val[t_count] := '|R';
-                isMultiple := True;
-                Inc(t_count);
-                Inc(i);
-            end;
-            '>=': begin 
-                t_type[t_count] := 'GREQUAL';
-                t_val[t_count] := '>=';
-                isMultiple := True;
-                Inc(t_count);
-                Inc(i);
-            end;
-            '<=': begin 
-                t_type[t_count] := 'LESSEQUAL';
-                t_val[t_count] := '<=';
-                isMultiple := True;
-                Inc(t_count);
-                Inc(i);
-            end;
-            '++': begin 
-                t_type[t_count] := 'VADD';
-                t_val[t_count] := '++';
-                isMultiple := True;
-                Inc(t_count);
-                Inc(i);
-            end;
-            '**': begin 
-                t_type[t_count] := 'VMUL';
-                t_val[t_count] := '**';
-                isMultiple := True;
-                Inc(t_count);
-                Inc(i);
-            end;
+            ':=': assignDoubleChar(':=', 'ASSIGN');
+            '|V': assignDoubleChar('|V', 'VARBLOCK');
+            '|S': assignDoubleChar('|S', 'STATICBLOCK');
+            '|D': assignDoubleChar('|D', 'DIRECTIVE');
+            '|R': assignDoubleChar('|R', 'RECORDBLOCK');
+            '>=': assignDoubleChar('>=', 'GREQUAL');
+            '<=': assignDoubleChar('<=', 'LESSEQUAL');
+            '++': assignDoubleChar('++', 'VADD');
+            '**': assignDoubleChar('**', 'VMUL');
         end;
 
         // SINGLE CHARACHTER TOKENS 
         if not isMultiple then 
         begin       
             case buf[i] of 
-                '=': begin 
-                    t_type[t_count] := 'EQUAL';
-                    t_val[t_count] := '=';
-                    Inc(t_count);
-                end;
-                '+': begin
-                    t_type[t_count] := 'PLUS';
-                    t_val[t_count] := '+';
-                    Inc(t_count);
-                end;
-                '-': begin 
-                    t_type[t_count] := 'MINUS';
-                    t_val[t_count] := '-';
-                    Inc(t_count);
-                end;
-                '*': begin 
-                    t_type[t_count] := 'STAR';
-                    t_val[t_count] := '*';
-                    Inc(t_count);
-                end;
-                '/': begin 
-                    t_type[t_count] := 'SLASH';
-                    t_val[t_count] := '/';
-                    Inc(t_count);
-                end;
-                '{': begin 
-                    t_type[t_count] := 'LBRACE';
-                    t_val[t_count] := '{';
-                    Inc(t_count);
-                end;
-                '}': begin 
-                    t_type[t_count] := 'RBRACE';
-                    t_val[t_count] := '}';
-                    Inc(t_count);
-                end;
-                '(': begin 
-                    t_type[t_count] := 'LPAR';
-                    t_val[t_count] := '(';
-                    Inc(t_count);
-                end;
-                ')': begin 
-                    t_type[t_count] := 'RPAR';
-                    t_val[t_count] := ')';
-                    Inc(t_count);
-                end;
-                '>': begin 
-                    t_type[t_count] := 'MORE';
-                    t_val[t_count] := '>';
-                    Inc(t_count);
-                end;
-                '<': begin 
-                    t_type[t_count] := 'LESS';
-                    t_val[t_count] := '<';
-                    Inc(t_count);
-                end;
-                '[': begin 
-                    t_type[t_count] := 'LBRAC';
-                    t_val[t_count] := '[';
-                    Inc(t_count);
-                end;
-                ']': begin 
-                    t_type[t_count] := 'RBRAC';
-                    t_val[t_count] := ']';
-                    Inc(t_count);
-                end;
-                #39: begin 
-                    t_type[t_count] := 'TERMINATOR';
-                    t_val[t_count] := #39;
-                    Inc(t_count);
-                end;
-                #96: begin 
-                    t_type[t_count] := 'QUOTE';
-                    t_val[t_count] := #96;
-                    Inc(t_count);
-                end;
-                ',': begin 
-                    t_type[t_count] := 'COMMA';
-                    t_val[t_count] := ',';
-                    Inc(t_count);
-                end;
-                '|': begin 
-                    t_type[t_count] := 'PIPE';
-                    t_val[t_count] := '|';
-                    Inc(t_count);
-                end;
-                ':': begin 
-                    t_type[t_count] := 'COLON';
-                    t_val[t_count] := ':';
-                    Inc(t_count);
-                end;
-                '&': begin 
-                    t_type[t_count] := 'AMP';
-                    t_val[t_count] := '&';
-                    Inc(t_count);
-                end;
-                ';': begin 
+                '=': assignSingleChar('=', 'EQUAL');
+                '+': assignSingleChar('+', 'PLUS');
+                '-': assignSingleChar('-', 'MINUS');
+                '*': assignSingleChar('*', 'STAR');
+                '/': assignSingleChar('/', 'SLASH');
+                '{': assignSingleChar('{', 'LBRACE');
+                '}': assignSingleChar('}', 'RBRACE');
+                '(': assignSingleChar('(', 'LPAR');
+                ')': assignSingleChar(')', 'RPAR');
+                '>': assignSingleChar('>', 'MORE');
+                '<': assignSingleChar('<', 'LESS');
+                '[': assignSingleChar('[', 'LBRAC');
+                ']': assignSingleChar(']', 'RBRAC');
+                #39: assignSingleChar(#39, 'TERMINATOR');
+                #96: assignSingleChar(#96, 'QUOTE');
+                ',': assignSingleChar(',', 'COMMA');
+                '|': assignSingleChar('|', 'PIPE');
+                ':': assignSingleChar(':', 'COLON');
+                '&': assignSingleChar('&', 'AMP');
+
+                ';': begin   // comment — skip to end of line, emits no token
                     while (i < bytes) and (buf[i] <> #10) do
                         Inc(i);
-                end;
-          
+                end          
             // ' ', #9, #13: ; dont remeber what this was
             else
                 if buf[i] in ['a'..'z', 'A'..'Z', '_'] then // Handle letters
@@ -1612,8 +1501,8 @@ begin
     until i >= bytes; // Runs until EOF
 
     i := 0;
-for i := 0 to t_count - 1 do
-    WriteLn(IntToStr(i) + ': ' + t_type[i] + '  ' + t_val[i]);
+    for i := 0 to t_count - 1 do
+        WriteLn(IntToStr(i) + ': ' + t_type[i] + '  ' + t_val[i]);
 
     {// ARRAY PRINT DEBUG
     iii := 0;

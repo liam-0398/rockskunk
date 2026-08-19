@@ -1,14 +1,37 @@
+; COMPILER MIGRATION VALIDATION
 
-; syscall test - raw write(1, &ch, 1) via sys(), no array/string dependency
-; expected output: the single character A
+F add(a, b) {
+    r := a + b
+}
 
-P main() {
-    ch := 65            ; 'A' - low byte of this qword is what write() will read
-    buf := &ch          ; buf now holds ch's address
-    i := 1
-        LF (i := 1 until 20) {
-            fake := write(1, buf, 1)   ; a=1 (fd=stdout), b=buf (addr), c=1 (count)
-} }
+F addf(a: f, b: f) {
+    r := a + b
+}
 
+F main() {
+    x := 5
+    y := 10
+    z := add(x, y)
+    printw(z)
 
+    fx := 2.5f
+    fy := 1.5f
+    fz := addf(fx, fy)
+    printf(fz)
 
+    i := 0
+    LF (i := 0 until 5) {
+        printw(i)
+    }
+
+    LW (i < 10) {
+        i := i + 1
+        printw(i)
+    }
+
+    W (x = 5) {
+        printw(x)
+    }
+
+    r := 0
+}

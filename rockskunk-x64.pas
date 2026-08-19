@@ -802,9 +802,10 @@ end;
 function WhoGoesThere(intruder: String): String;
 var
     isFloat: Boolean;
-    i: Integer;
+    i, r: Integer;
 begin
     i := 0;
+    r := 0;
     isFloat := False;
 
     if isNumber(intruder) then // RAW NUM
@@ -814,20 +815,16 @@ begin
         end
     else
         begin // VAR
-            for i := 0 to symCount - 1 do
-                begin
-                    if intruder = symName[i] then
-                        if symType[i] = 'FLOAT' then
-                            isFloat := True;
-                end;
-    end;
-  
-    for i := 0 to return_FCount - 1 do // Function
-        begin
-            if intruder = return_FName[i] then
-                if return_FType[i] = 'FLOAT' then
+            r := findLocalparameter(intruder);
+            if r <> -1 then
+                if stateLocal[r].varType = 'FLOAT' then
                     isFloat := True;
         end;
+  
+    r := findFunctionparameter(intruder);
+            if r <> -1 then
+                if stateFunction[r].returnType = 'FLOAT' then
+                    isFloat := True;
 
     if isFloat then
         WhoGoesTHere := 'FLOAT'

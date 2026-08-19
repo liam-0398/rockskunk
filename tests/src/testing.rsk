@@ -5,5 +5,10 @@
 P main() {
     ch := 65            ; 'A' - low byte of this qword is what write() will read
     buf := &ch          ; buf now holds ch's address
-    fake := sys(1, 1, buf, 1)   ; num=1 (SYS_write), a=1 (fd=stdout), b=buf (addr), c=1 (count)
-}
+    i := 1
+        LF (i := 1 until 20) {
+            fake := write(1, buf, 1)   ; a=1 (fd=stdout), b=buf (addr), c=1 (count)
+} }
+
+
+

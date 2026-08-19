@@ -3,21 +3,54 @@
 
 ; I/O ----------------------------------------------------------------
 
-F fOpen() {
-    r := sys(1,1,1,1)
+F read(fd, buf, count) {
+    r := sys(0,fd ,buf ,count)
 }
 
-F fRead() {
-    r := sys(1,1,1,1)
+F write(fd, buf, count) {
+    r := sys(1,fd ,buf ,count)
 }
 
-F fWrite() {
-    r := sys(1,1,1,1)
+F open(path, flags, mode) {
+    r := sys(1,path , flags, mode)
 }
+
+F lseek(fd, offset, whence) {
+    r := sys(8, fd, offset, whence)
+}
+
+F unlink(path) {
+    r := sys(87, path, 0, 0)
+}
+
+F fstat(fd, statbuf) {
+    r := sys(5, fd, statbuf, 0)
+}
+
+F mkdir(path, mode) {
+    r := sys(83, path, mode, 0)
+}
+
+
 
 ; STRINGS ----------------------------------------------------------------
 
 ; MATH ----------------------------------------------------------------
 
+
+; Misc --------------------------------------------------------------------
+
+F getpid() {
+    r := sys(39, 0, 0, 0)
+}
+
+F brk(addr) {
+    r := sys(12, addr, 0, 0)
+}
+
+
+F exit(code) {
+    r := sys(60, code, 0, 0)
+}
 
 ; END

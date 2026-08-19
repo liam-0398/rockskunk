@@ -28,6 +28,12 @@ var
     return_FType: array[0..255] of String;
     return_FCount: Integer;
 
+    // tracks types and persists with new functions so can fianlly just call func(a, b, c) typeless
+    param_FName:  array[0..255] of String;   // which function this param belongs to
+    param_FIndex: array[0..255] of Integer;  // which position (0, 1, 2...) within that function
+    param_FType:  array[0..255] of String;   
+    param_FCount: Integer;
+
     stack: Array [0..255] of String;
     sp: Integer;
 
@@ -678,10 +684,11 @@ function computeOffset(offset: Integer): String; begin computeOffset := '[rbp-' 
 function evaluateExpression(isFloat: Boolean): String;
 var
     first, second, op, argname, fname, return, math_ret, call_ret, ampaddr: String;
+    whosargsaretheese: String;
     num, a, b, c: String;
     returnsFloat, isFloatArg: Boolean;
     result1: Double;
-    i, ii, result2, seenFloats, seenInts: Integer;
+    i, ii, result2, seenFloats, seenInts, argfindex, argcounter: Integer;
 begin
     i := 0;
     ii := 0;
@@ -713,13 +720,23 @@ begin
 
     if (peek() = 'IDENTIFIER') and (peek2() = 'LPAR') then 
     begin
-        fname := consume(); // function name
+        fname := consume(); 
 
         if WhoGoesThere(fname) = 'FLOAT' then
             returnsFloat := True;
-                    
-        consume(); // (
 
+        for i := 0 to param_FCount - 1 do
+            if fname = param_FName[i] then
+                begin
+                    argfindex := param_FIndex[i];
+                    break;
+                end;
+
+        argcounter := 0;
+
+        
+        consume(); // (
+        // ARGUMENT PARSING
         if peek() <> 'RPAR' then
             begin
                 WriteLn('EXPRESSION EVAL - RPAR BRANCH'); // DEBUG
@@ -728,13 +745,10 @@ begin
                 repeat  // VERIFY LOOP
                     isFloatArg := False;
                     argname := consume(); // single arg
-                    if peek() = 'COLON' then
-                        begin
-                            consume; // :
-                            if peekV() = 'f' then
-                                isFloatArg := True;
-                            consume; // type marker 
-                        end;
+
+                    if param_FType[argfindex + argcounter] = 'FLOAT' then
+                        isFloatArg := True;
+
                     if not isNumber(argname) then
                         argname := varToMem(argname);
 
@@ -748,8 +762,11 @@ begin
                             WriteText('    mov ' + intRegs[seenInts] + ', ' + argname + #10);
                             Inc(seenInts);
                         end;
+
                     if peek() = 'COMMA' then
                         consume;
+
+                    Inc(argcounter);
                 until peek() = 'RPAR';
             end;
 
@@ -1054,8 +1071,11 @@ begin
                         repeat 
                                 frameOffset := frameOffset + 8;
                                 symOffset[symCount] := frameOffset;
+                                param_FName[param_FCount] := currentFN;
                                 symName[symCount] := consume(); // grab param name
                                 symType[symCount] := 'NUMBER'; // int param for now
+                                param_FType[param_FCount] := 'NUMBER';
+                                param_FIndex[param_FCount] := param_FCount;
                                 inc(symCount);
                                     if peek() = 'COLON' then
                                         begin        
@@ -1063,6 +1083,7 @@ begin
                                             if peekV() = 'f' then
                                                 begin
                                                     symType[symCount - 1] := 'FLOAT'; // int param for now
+                                                    param_FType[param_FCount - 1] := 'FLOAT';
                                                     consume; // consume f
                                                 end
                                             else
@@ -1073,6 +1094,7 @@ begin
                                 paramPending := True;
                                 paramOffset[argCount] := frameOffset;
                                 inc(argCount);
+                                inc(param_FCount);
                                 if peek() = 'COMMA' then
                                         consume;
                             until peek() = 'RPAR';
@@ -1615,6 +1637,7 @@ begin
     for i := 0 to 255 do
         begin
         symOffset[i] := 0;
+        param_FIndex[i] := 0;
         symName[i] := '';
         end;
 
@@ -1624,12 +1647,15 @@ begin
     FillChar(conditional_ELabel, SizeOf(conditional_ELabel), 0);
     FillChar(return_FName, SizeOf(return_FName), 0);
     FillChar(return_FType, SizeOf(return_FType), 0);
+    FillChar(param_FName, SizeOf(param_FName), 0);
+    FillChar(param_FType, SizeOf(param_FType), 0);
     deleteFile('intermediate.asm');
     deleteFile('text.tmp');
     deleteFile('data.tmp'); 
     conditionalBodyNext := False;
     loopBodyNext := False;
     conditionalDepth := 0;
+    param_FCount := 0;
     loopDepth := 0;
     return_FCount := 0;
     symCount := 0;

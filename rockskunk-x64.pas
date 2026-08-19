@@ -52,7 +52,7 @@ var
 
     filename, output_filename, stdlib_filename, returnAddr, currentFN: String;
     frameOffset, labelCounter, position, argCount, t_count: Integer;
-    fd, fd2, fd3, fd4: CInt;
+    fd, fd2, fd3, fd4, bytes: CInt;
     paramPending: Boolean; 
     
 
@@ -691,27 +691,19 @@ begin
 
             if isFloat then
                 begin
-                if op = 'PLUS' then
-                    result1 := StrToFloat(first) + StrToFloat(second)
-                else if op = 'MINUS' then
-                    result1 := StrToFloat(first) - StrToFloat(second)
-                else if op = 'STAR' then
-                    result1 := StrToFloat(first) * StrToFloat(second)
-                else if op = 'SLASH' then
-                    result1 := StrToFloat(first) / StrToFloat(second);
+                if op = 'PLUS' then result1 := StrToFloat(first) + StrToFloat(second)
+                else if op = 'MINUS' then result1 := StrToFloat(first) - StrToFloat(second)
+                else if op = 'STAR' then result1 := StrToFloat(first) * StrToFloat(second)
+                else if op = 'SLASH' then result1 := StrToFloat(first) / StrToFloat(second);
                 WriteLn('OPTIMIZATION - FLT');
                 foldCode := (FloatToStr(result1));
                 end 
             else
                 begin
-                if op = 'PLUS' then
-                    result2 := StrToInt(first) + StrToInt(second)
-                else if op = 'MINUS' then
-                    result2 := StrToInt(first) - StrToInt(second)
-                else if op = 'STAR' then
-                    result2 := StrToInt(first) * StrToInt(second)
-                else if op = 'SLASH' then
-                    result2 := StrToInt(first) div StrToInt(second);
+                if op = 'PLUS' then result2 := StrToInt(first) + StrToInt(second)
+                else if op = 'MINUS' then result2 := StrToInt(first) - StrToInt(second)
+                else if op = 'STAR' then result2 := StrToInt(first) * StrToInt(second)
+                else if op = 'SLASH' then result2 := StrToInt(first) div StrToInt(second);
                 WriteLn('OPTIMIZATION - FPT');
                 foldCode := (IntToStr(result2));
             end;
@@ -788,7 +780,7 @@ function resolveSyscall(): String;
 var
     argument: String;
 begin
-    if peek() = 'AMP' then
+    if peek() = 'AMP' then 
         begin
             consume;
             resolveSyscall:= emitAddressOf(varToMem(consume));
@@ -1076,6 +1068,7 @@ begin
     loopBodyNext := True;
 end;
 
+// broken
 procedure loopFor();
 var
     loopvar, loopstart, looplimit, toplabel, endlabel: String;
@@ -1105,6 +1098,7 @@ begin
     loopBodyNext := True;
 end;
 
+// broke
 function condWhen(): Boolean;
 var
     condvar, condition, condlimit, endlabel: String;
@@ -1139,6 +1133,7 @@ begin
     condWhen := True;
 end;
 
+// broken
 function condIf(): Boolean;
 var
     condvar, condition, condlimit, endlabel: String;
@@ -1170,9 +1165,10 @@ begin
     conditional_ELabel[conditionalDepth] := endlabel;
     Inc(conditionalDepth);
     conditionalBodyNext := True;
-    condWhen := True;
+    condIf := True;
 end;
 
+// broken
 function condElse(): Boolean;
 var
     condvar, condition, condlimit, endlabel: String;
@@ -1204,7 +1200,7 @@ begin
     conditional_ELabel[conditionalDepth] := endlabel;
     Inc(conditionalDepth);
     conditionalBodyNext := True;
-    condWhen := True;
+    condElse := True;
 end;
 
 function constructFunction(): Boolean;
@@ -1278,12 +1274,8 @@ begin
             'F', 'P': begin 
                 isProcedure := constructFunction();
             end;
-            'LPAR': begin
-                consume; // PLACEHOLDER
-            end;
-            'RPAR': begin 
-                consume; // PLACEHOLDER
-            end;
+            'LPAR': begin consume; end;
+            'RPAR': begin consume; end;
            'LBRACE': begin 
                 consume;
                 if loopBodyNext or conditionalBodyNext then
@@ -1340,12 +1332,8 @@ begin
             'TERMINATOR': begin 
                 consume;
             end;
-            'V': begin 
-                consume;
-            end;
-            'S': begin 
-                consume;
-            end;
+            'V': begin consume; end;
+            'S': begin consume; end;
             'W': begin 
                 condWhen();
             end;
@@ -1362,13 +1350,13 @@ begin
                 loopWhile();
             end;
             'VARBLOCK': begin 
-                consume; // consume '
+                consume; // placeholder
             end;
             'STATICBLOCK': begin 
-                consume; // consume '
+                consume; // placeholder
             end;
             'RECORDBLOCK': begin 
-                consume; // consume '
+                consume; // placeholder
             end
             else
             begin
@@ -1407,6 +1395,12 @@ var
         isMultiple := True;
         Inc(t_count);
         Inc(i);
+    end;
+
+    procedure collect(word: String);
+    begin
+        word := word + buf[i];  // Collect words, add charachters to word
+        Inc(i); // Increment position in file, +1 charachter
     end;
 
 begin
@@ -1476,8 +1470,7 @@ begin
                     word := '';
                     while buf[i] in ['a'..'z', 'A'..'Z', '_', '0'..'9'] do
                         begin
-                            word := word + buf[i];  // Collect words, add charachters to word
-                            Inc(i); // Increment position in file, +1 charachter
+                            collect(word);
                         end;
               
                         isKeyword := keywordCheck(UpperCase(word)); 
@@ -1502,8 +1495,7 @@ begin
                     isFloat := False;
                     while buf[i] in ['0'..'9', '.', 'f'] do
                         begin
-                            word := word + buf[i];
-                            Inc(i);
+                            collect(word);
                         end;
                     
                    if (Pos('.', word) > 0) or (Pos('f', word) > 0) then
@@ -1524,8 +1516,7 @@ begin
                     Inc(i); // skip opening quote
                     while buf[i] <> #96 do
                     begin
-                        word := word + buf[i];
-                        Inc(i);
+                        collect(word);
                     end;
                     // buf[i] is now closing quote
                     assignSingleChar(word,'STRING');
@@ -1535,10 +1526,10 @@ begin
             end; 
         end; 
         Inc(i); // Increment position in buffer
-    until i >= bytes; // Runs until EOF
+    until i >= bytes; 
 
     i := 0;
-    for i := 0 to t_count - 1 do
+    for i := 0 to t_count - 1 do // print the lexer output 
         WriteLn(IntToStr(i) + ': ' + t_type[i] + '  ' + t_val[i]);
 end;
 

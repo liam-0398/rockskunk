@@ -25,9 +25,21 @@ type
     TFunction = record
         name:        String;
         returnType:  String;
-        isProcedure: Boolean;
+        isProcedure: Booleasn;
         paramType:   array[0..7] of String;
         paramCount:  Integer;
+    end;
+
+    TKind = (kNone, kReg, kMem, kLit, kData);
+    TValType = (vtNumber, vtFloat, vtString);
+
+    TValue = record
+        vKind:     TKind; // What type of info is passed to NASM, register, memory, literals?
+        vType:     TValType; 
+        vWordPayload:  Int64;
+        vFltPayload:  Double;
+        vStringPayload:  String;
+        vOffset:    Integer;
     end;
 
 var
@@ -60,6 +72,35 @@ var
 {
    DO NOT FORGET LIST ====
    REMEMBER REDO ASM OUTPUT PRIMITIVES AND FIX LOOPS
+}
+
+{ ASM notes 
+
+    rax - int / syscall (scratch)
+    rbx - pool
+    rcx - arg 4 calls (must be freeable)
+    rdx - arg 3, 2nd return SASSY can clobber input, do research
+    rsi 0 arg 2 - pool
+    rdi - arg 1 - pool
+    rbp - frame pointer
+    rsp - stack pointer
+    r8 - arg 5 pool
+    r9 - arg 6 pool
+    r10 - arg 4 - pool 
+    r11 - clobbered by syscall (scratch)
+    r12-15 - pool, clean
+
+    // float reginsters are always destroyed by function calls, spill to stack
+    xmm0 - arg1 (float scratch, return)
+    xmm1 - arg 2 (2nd return) - pool
+    xmm2-7 - args - pool
+    xmm8-15 -pool, clean
+
+
+
+
+    Recrusive Decent Expression Parser
+
 }
 
 // Forward Declarations -----------------------------------------------------------
@@ -858,7 +899,10 @@ begin
         // Find start of params for a specific function
         functionIndex := findFunctionIndex(fname);
         if functionIndex = -1 then
-            WriteLn(currentLine + '- I CANT BELIEVE YOUVE DONE THIS - EE - GARBAGE FUNCTION CALL >> ' + op);
+            begin
+                WriteLn(currentLine + '- I CANT BELIEVE YOUVE DONE THIS - EE - GARBAGE FUNCTION CALL >> ' + op);
+                Halt(1);
+            end;
 
         consume(); // (
         if peek() <> 'RPAR' then

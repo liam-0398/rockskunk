@@ -10,9 +10,12 @@ const
      'OR', 'AND', 'NOR', 'XOR', 'CALL');
 var
     buf, databuf, textbuf: Array[0..65535] of Char;
+
     symName, symType: array[0..255] of String;
     symOffset: array[0..255] of Integer;
+
     t_type, t_val: Array[0..4096] of String;
+    t_line: Array[0..4096] of Integer;
 
     loop_TLabel: array [0..64] of String;
     loop_ELabel: array [0..64] of String;
@@ -420,6 +423,11 @@ function consume(): String; // Eat the next token and then remove it
 begin
     consume := t_val[position]; // pull value (actual content of token)
     Inc(position);  // Increment counter to drop the token
+end;
+
+function currentLine(): Integer;
+begin
+    currentLine := t_line[position];
 end;
 
 function arrayToMem(varname: String; size: String; vartype: String): String;
@@ -1337,8 +1345,6 @@ end;
 // LEXER ==================================================
 // ========================================================
 
-
-
 procedure lexer();
 var
     i, linecount: Integer;
@@ -1350,6 +1356,7 @@ var
     begin
         t_type[t_count] := Ttype;
         t_val[t_count] := Tvalue;
+        t_line[t_count] := linecount;
         Inc(t_count);
     end;
 
@@ -1357,6 +1364,7 @@ var
     begin
         t_type[t_count] := Ttype;
         t_val[t_count] := Tvalue;
+        t_line[t_count] := linecount;
         isMultiple := True;
         Inc(t_count);
         Inc(i);
@@ -1465,16 +1473,12 @@ begin
 
                     if isFloat then
                         begin
-                            t_type[t_count] := 'FLOAT'; // Store as type NUMBER
-                            t_val[t_count] := word; // put number into value
-                            Inc(t_count);
+                            assignSingleChar(word,'FLOAT');
                             Dec(i); // Dec to counteract Inc at bottom of main loop
                         end
                     else
                         begin
-                            t_type[t_count] := 'NUMBER'; // Store as type NUMBER
-                            t_val[t_count] := word; // put number into value
-                            Inc(t_count);
+                            assignSingleChar(word,'NUMBER');
                             Dec(i); // Dec to counteract Inc at bottom of main loop
                         end;
                 end
@@ -1489,9 +1493,7 @@ begin
                         Inc(i);
                     end;
                     // buf[i] is now closing quote
-                    t_type[t_count] := 'STRING';
-                    t_val[t_count] := word;
-                    Inc(t_count);
+                    assignSingleChar(word,'STRING');
                     // no Dec(i) needed, already on closing quote, main Inc(i) moves past it
                 end; 
                 
@@ -1528,6 +1530,7 @@ begin
         symOffset[i] := 0;
         param_FIndex[i] := 0;
         symName[i] := '';
+        t_line[i] := 0;
         end;
 
     FillChar(stack, SizeOf(stack), 0);

@@ -1044,20 +1044,11 @@ begin
     condWhen := True;
 end;
 
-// PARSER -----------
-
-procedure parser();
+function constructFunction(): Boolean;
 var
-    argtypeident: String;
-    isFloat, isProcedure: Boolean;
-    i, seenFloats, seenInts: Integer;
+    i: Integer;
 begin
-    i := 0;
-    position := 0;
-    repeat
-        case peek() of
-            'F', 'P': begin 
-                isProcedure := (peek() = 'P');
+                constructFunction := (peek() = 'P');
                 consume;
                 currentFN := consume;
                 emitFN(currentFN);
@@ -1110,6 +1101,22 @@ begin
                         consume; // )
                     
                     end;
+end;
+
+// PARSER -----------
+
+procedure parser();
+var
+    argtypeident: String;
+    isFloat, isProcedure: Boolean;
+    i, seenFloats, seenInts: Integer;
+begin
+    i := 0;
+    position := 0;
+    repeat
+        case peek() of
+            'F', 'P': begin 
+                isProcedure := constructFunction();
             end;
             'LPAR': begin
                 consume; // PLACEHOLDER
@@ -1474,7 +1481,7 @@ begin
                             assignSingleChar(word,'FLOAT')
                     else
                             assignSingleChar(word,'NUMBER');
-                            
+
                     Dec(i);
               
                 end
@@ -1493,7 +1500,7 @@ begin
                     // no Dec(i) needed, already on closing quote, main Inc(i) moves past it
                 end; 
                 
-        end; 
+            end; 
         end; 
         Inc(i); // Increment position in buffer
     until i >= bytes; // Runs until EOF
@@ -1501,15 +1508,6 @@ begin
     i := 0;
     for i := 0 to t_count - 1 do
         WriteLn(IntToStr(i) + ': ' + t_type[i] + '  ' + t_val[i]);
-
-    {// ARRAY PRINT DEBUG
-    iii := 0;
-   for iii := 0 to t_count - 1 do
-    Writeln(t_type[iii]);
-    iii := 0;
-    for iii := 0 to t_count - 1 do
-    Writeln(t_val[iii]);
-    // ARRAY PRINT DEBUG}
 end;
 
 // INIT ============================================

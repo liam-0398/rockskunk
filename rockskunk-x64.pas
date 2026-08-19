@@ -347,9 +347,6 @@ begin
     WriteText('    movsd ' + variable + ', xmm0' + #10);
 end;
 
-procedure emitPairAssign(); begin end;
-procedure emitCompoundAssign(); begin end; // :+=
-
 function emitFloatConstant(float: String): String;
 begin
         WriteData('   float_' + IntToStr(labelCounter) + ': dq ' + float + #10);
@@ -421,22 +418,6 @@ procedure emitVMin(); begin end;
 procedure emitVMax(); begin end;
 procedure emitVFloor(); begin end;
 procedure emitVCeil(); begin end;
-
-// STREAMLINING FUNCTIONS -----------------------------------------------------------
-procedure emitLint(); begin end;  // linear interpolation
-procedure emitBrot(); begin end;  // bitwise rotate
-
-// CONDITIONALS -----------------------------------------------------------
-procedure emitCmpLess(); begin end;
-procedure emitCmpGreater(); begin end;
-procedure emitCmpLessEqual(); begin end;
-procedure emitCmpGreaterEqual(); begin end;
-procedure emitBitAnd(); begin end;
-procedure emitBitOr(); begin end;
-procedure emitBitNor(); begin end;
-procedure emitBitXor(); begin end;
-procedure emitLogicalAnd(); begin end;
-procedure emitLogicalOr(); begin end;
 
 // SYSTEM ----------------------------------
 

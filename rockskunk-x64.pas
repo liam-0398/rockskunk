@@ -355,13 +355,6 @@ begin
 end;
 
 // ARRAYS / MEMORY -----------------------------------------------------------
-procedure emitArrayAssignWord(); begin end;   // array[i]
-procedure emitArrayAssignFloat(); begin end;  // array{i}
-procedure emitArrayAssignString(); begin end; // array(i)
-procedure emitArrayReadWord(); begin end;
-procedure emitArrayReadFloat(); begin end;
-procedure emitArrayReadString(); begin end;
-procedure emitRecordFieldAccess(); begin end; // rec.field
 
 function emitAddressOf(variable: String): String; // &a
 begin 
@@ -408,16 +401,6 @@ procedure emitVecDiv(); begin end;   // //
 procedure emitVecMod(); begin end;   // %%
 procedure emitVecFMA(); begin end;   // *+
 procedure emitVecCompoundAssign(); begin end; // :++=  :**=
-
-// VECTOR INTRINSICS -----------------------------------------------------------
-procedure emitVSin(); begin end;
-procedure emitVCos(); begin end;
-procedure emitVAbs(); begin end;
-procedure emitVSqrt(); begin end;
-procedure emitVMin(); begin end;
-procedure emitVMax(); begin end;
-procedure emitVFloor(); begin end;
-procedure emitVCeil(); begin end;
 
 // SYSTEM ----------------------------------
 

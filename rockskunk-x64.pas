@@ -330,15 +330,6 @@ begin
     WriteText('    ret' + #10 + #10);
 end;
 
-procedure emitReturn(); begin end;
-
-// CONTROL FLOW -----------------------------------------------------------
-procedure emitIF(); begin end;
-procedure emitELSE(); begin end;
-procedure emitWHEN(); begin end;
-procedure emitFORLoop(); begin end;   // LF
-procedure emitWHILELoop(); begin end; // LW
-
 procedure emitLabel(labelname: String); begin WriteText(labelname + ':' + #10) end;
 
 // ASSIGNMENT -----------------------------------------------------------

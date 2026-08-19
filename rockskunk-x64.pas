@@ -11,22 +11,30 @@ const
 
 type
     TLocal = record
-    name:   String
-    varType: String       
-    offset: Integer
-    end
+        name:    String;
+        varType: String;
+        offset:  Integer;
+    end;
 
     TGlobal = record
-        name:        String
-        returnType:  String
-        isProcedure: Boolean
-        paramType:   array[0..7] of String
-        paramCount:  Integer
-    end
+        name:     String;
+        varType:  String;
+        asmLabel: String;
+    end;
+
+    TFunction = record
+        name:        String;
+        returnType:  String;
+        isProcedure: Boolean;
+        paramType:   array[0..7] of String;
+        paramCount:  Integer;
+    end;
+
 var
     stateLocal: array[0..255] of TLocal;
     stateGlobal: array[0..255] of TGlobal;
-    stateLocalCount, stateGlobalCount: Integer;
+    stateFunction:   array[0..255] of TFunction;
+    stateLocalCount, stateGlobalCount, stateFunctionCount: Integer;
 
     buf, databuf, textbuf: Array[0..65535] of Char;
 
@@ -89,14 +97,14 @@ begin
     for i := 0 to stateLocalCount - 1 do
         if stateLocal[i].name = name then
             begin
-                findLocal := i;
+                findLocalParameter := i;
                 break;
             end;
 end;
 
 function addLocalParameter(name: String; vtype: String): Integer;
 begin
-    if findLocal(name) <> -1 then
+    if findLocalParameter(name) <> -1 then
         begin
             WriteLn('I CANT BELIEVE YOUVE DONE THIS - ADD_LOCAL - DUPLICATE >> ' + name);
             Halt(1);
@@ -127,7 +135,7 @@ end;
 
 function addGlobalParameter(name: String; vtype: String): Integer;
 begin
-    if findGlobal(name) <> -1 then
+    if findGlobalParameter(name) <> -1 then
         begin
             WriteLn('I CANT BELIEVE YOUVE DONE THIS - ADD_GLOBAL - DUPLICATE >> ' + name);
             Halt(1);
@@ -135,7 +143,7 @@ begin
 
     stateGlobal[stateGlobalCount].name    := name;
     stateGlobal[stateGlobalCount].varType := vtype;
-    stateGlobal[stateGlobalCount].label   := 'g_' + name;
+    stateGlobal[stateGlobalCount].asmLabel := 'g_' + name;
 
     addGlobalParameter := stateGlobalCount;
     Inc(stateGlobalCount);
@@ -145,46 +153,36 @@ function findFunctionParameter(name: String): Integer;
 var
     i: Integer;
 begin
-    findFuncParameter := -1;
-    for i := 0 to stateFuncCount - 1 do
-        if stateFunc[i].name = name then
+    findFunctionParameter := -1;
+    for i := 0 to stateFunctionCount - 1 do
+        if stateFunction[i].name = name then
             begin
-                findFuncParameter := i;
+                findFunctionParameter := i;
                 break;
             end;
 end;
 
 function addFunctionParameter(name: String; newIsProcedure: Boolean): Integer;
 begin
-    if findFunc(name) <> -1 then
+    if findFunctionParameter(name) <> -1 then
         begin
             WriteLn('I CANT BELIEVE YOUVE DONE THIS - ADD_FUNC - DUPLICATE >> ' + name);
             Halt(1);
         end;
 
-    stateFunc[stateFuncCount].name        := name;
-    stateFunc[stateFuncCount].returnType  := '';   // filled in later if 'r' assignment seen
-    stateFunc[stateFuncCount].isProcedure := newIsProcedure;
-    stateFunc[stateFuncCount].paramCount  := 0;
+    stateFunction[stateFunctionCount].name        := name;
+    stateFunction[stateFunctionCount].returnType  := '';   // filled in later if 'r' assignment seen
+    stateFunction[stateFunctionCount].isProcedure := newIsProcedure;
+    stateFunction[stateFunctionCount].paramCount  := 0;
 
-    addFuncParameter := stateFuncCount;
-    Inc(stateFuncCount);
+    addFunctionParameter := stateFunctionCount;
+    Inc(stateFunctionCount);
 end;
+
+
 
 // HELPERS =================================================
 // ========================================================
-
-procedure push(value: String); 
-begin 
-    stack[sp] := value;
-    Inc(sp);
-end;
-
-function pop(): String;
-begin 
-    Dec(sp);
-    pop := stack[sp];
-end;
 
 procedure writeOut(s: String); begin fpWrite(fd2, s[1], Length(s)); end;
 procedure writeText(s: String); begin fpWrite(fd3, s[1], Length(s)); end;
@@ -646,7 +644,7 @@ begin
     Inc(position);  // Increment counter to drop the token
 end;
 
-function arrayToMem(varname: String; size: String; vartype: String): String;
+function arrayToMem(varname: String; size: String): String;
 var
     i: Integer;
 begin
@@ -656,17 +654,13 @@ function varToMem(variable: String): String;
 var
     i: Integer;
 begin
-    varToMem := ''; 
-    for i := 0 to symCount - 1 do
+    i := findLocalParameter(variable);
+    if i = -1 then
         begin
-            if symName[i] = variable then
-                VarToMem := '[rbp-' + IntToStr(symOffset[i]) + ']';
-        end;
-    if varToMem = '' then
-        begin    
             WriteLn('I CANT BELIEVE YOUVE DONE THIS - VAR_TO_MEM - UNK SYMBOL>> ' + variable);
-            Halt(1); // Loop for multiple opererators was getting pissed becuase '+' was making its way into here
+            Halt(1);
         end;
+    varToMem := computeOffset(stateLocal[i].offset);
 end;
 
 function call(fname: String; first: String; returnsFloat: Boolean): String;
@@ -1575,14 +1569,12 @@ begin
         t_line[i] := 0;
         end;
 
-    FillChar(stack, SizeOf(stack), 0);
     FillChar(loop_TLabel, SizeOf(loop_TLabel), 0);
     FillChar(loop_ELabel, SizeOf(loop_ELabel), 0);
     FillChar(conditional_ELabel, SizeOf(conditional_ELabel), 0);
-    FillChar(return_FName, SizeOf(return_FName), 0);
-    FillChar(return_FType, SizeOf(return_FType), 0);
-    FillChar(param_FName, SizeOf(param_FName), 0);
-    FillChar(param_FType, SizeOf(param_FType), 0);
+    stateLocalCount := 0;
+    stateGlobalCount := 0;
+    stateFunctionCount := 0;
     deleteFile('intermediate.asm');
     deleteFile('text.tmp');
     deleteFile('data.tmp'); 

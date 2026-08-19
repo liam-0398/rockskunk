@@ -8,7 +8,26 @@ const
     ('ADD', 'V', 'S',
      'F', 'LF', 'LW', 'W', 'IF', 'E', 'P',
      'OR', 'AND', 'NOR', 'XOR', 'CALL');
+
+type
+    TLocal = record
+    name:   String
+    varType: String       
+    offset: Integer
+    end
+
+    TGlobal = record
+        name:        String
+        returnType:  String
+        isProcedure: Boolean
+        paramType:   array[0..7] of String
+        paramCount:  Integer
+    end
 var
+    stateLocal: array[0..255] of TLocal;
+    stateGlobal: array[0..255] of TGlobal;
+    stateLocalCount, stateGlobalCount: Integer;
+
     buf, databuf, textbuf: Array[0..65535] of Char;
 
     symName, symType: array[0..255] of String;
@@ -59,6 +78,98 @@ var
 
 function WhoGoesThere(intruder: String): String; forward;
 function evaluateExpression(isFloat: Boolean): String; forward;
+
+// RECORD MX ============================================================================
+
+function findLocalParameter(name: String): Integer;
+var
+    i: Integer;
+begin
+    findLocalParameter := -1;
+    for i := 0 to stateLocalCount - 1 do
+        if stateLocal[i].name = name then
+            begin
+                findLocal := i;
+                break;
+            end;
+end;
+
+function addLocalParameter(name: String; vtype: String): Integer;
+begin
+    if findLocal(name) <> -1 then
+        begin
+            WriteLn('I CANT BELIEVE YOUVE DONE THIS - ADD_LOCAL - DUPLICATE >> ' + name);
+            Halt(1);
+        end;
+
+    frameOffset := frameOffset + 8;
+
+    stateLocal[stateLocalCount].name    := name;
+    stateLocal[stateLocalCount].varType := vtype;
+    stateLocal[stateLocalCount].offset  := frameOffset;
+
+    addLocalParameter := stateLocalCount;
+    Inc(stateLocalCount);
+end;
+
+function findGlobalParameter(name: String): Integer;
+var
+    i: Integer;
+begin
+    findGlobalParameter := -1;
+    for i := 0 to stateGlobalCount - 1 do
+        if stateGlobal[i].name = name then
+            begin
+                findGlobalParameter := i;
+                break;
+            end;
+end;
+
+function addGlobalParameter(name: String; vtype: String): Integer;
+begin
+    if findGlobal(name) <> -1 then
+        begin
+            WriteLn('I CANT BELIEVE YOUVE DONE THIS - ADD_GLOBAL - DUPLICATE >> ' + name);
+            Halt(1);
+        end;
+
+    stateGlobal[stateGlobalCount].name    := name;
+    stateGlobal[stateGlobalCount].varType := vtype;
+    stateGlobal[stateGlobalCount].label   := 'g_' + name;
+
+    addGlobalParameter := stateGlobalCount;
+    Inc(stateGlobalCount);
+end;
+
+function findFunctionParameter(name: String): Integer;
+var
+    i: Integer;
+begin
+    findFuncParameter := -1;
+    for i := 0 to stateFuncCount - 1 do
+        if stateFunc[i].name = name then
+            begin
+                findFuncParameter := i;
+                break;
+            end;
+end;
+
+function addFunctionParameter(name: String; newIsProcedure: Boolean): Integer;
+begin
+    if findFunc(name) <> -1 then
+        begin
+            WriteLn('I CANT BELIEVE YOUVE DONE THIS - ADD_FUNC - DUPLICATE >> ' + name);
+            Halt(1);
+        end;
+
+    stateFunc[stateFuncCount].name        := name;
+    stateFunc[stateFuncCount].returnType  := '';   // filled in later if 'r' assignment seen
+    stateFunc[stateFuncCount].isProcedure := newIsProcedure;
+    stateFunc[stateFuncCount].paramCount  := 0;
+
+    addFuncParameter := stateFuncCount;
+    Inc(stateFuncCount);
+end;
 
 // HELPERS =================================================
 // ========================================================

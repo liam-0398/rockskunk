@@ -38,9 +38,6 @@ var
 
     buf, databuf, textbuf: Array[0..65535] of Char;
 
-    symName, symType: array[0..255] of String;
-    symOffset: array[0..255] of Integer;
-
     t_type, t_val: Array[0..4096] of String;
     t_line: Array[0..4096] of Integer;
 
@@ -53,28 +50,13 @@ var
     conditionalDepth: Integer;
     conditionalBodyNext: Boolean;
 
-    // for capturing return types so assingment to function return knows whats up
-    return_FName: array[0..255] of String; 
-    return_FType: array[0..255] of String;
-    return_FCount: Integer;
-
-    // tracks types and persists with new functions so can fianlly just call func(a, b, c) typeless
-    param_FName:  array[0..255] of String;   // which function this param belongs to
-    param_FIndex: array[0..255] of Integer;  // which position (0, 1, 2...) within that function
-    param_FType:  array[0..255] of String;   
-    param_FCount: Integer;
-
-    stack: Array [0..255] of String;
-    sp: Integer;
-
     braceEmitted: Boolean;
     bytes: CInt;
     currentFN: String;
     fd, fd2, fd3, fd4: CInt;
     filename, output_filename, stdlib_filename, returnAddr: String;
     paramPending: Boolean; 
-    paramOffset: Array [0..128] of Integer;
-    frameOffset, labelCounter, position, symCount, argCount, t_count: Integer;
+    frameOffset, labelCounter, position, argCount, t_count: Integer;
 
 {
    DO NOT FORGET LIST ====
@@ -861,7 +843,7 @@ var
     num, a, b, c: String;
     returnsFloat, isFloatArg: Boolean;
     result1: Double;
-    i, ii, result2, seenFloats, seenInts, argfindex, argcounter: Integer;
+    i, ii, result2, seenFloats, seenInts, functionIndex, argcounter: Integer;
 begin
     i := 0;
     ii := 0;
@@ -898,13 +880,8 @@ begin
         if WhoGoesThere(fname) = 'FLOAT' then
             returnsFloat := True;
 
-        for i := 0 to param_FCount - 1 do
-            if fname = param_FName[i] then
-                begin
-                    argfindex := param_FIndex[i];
-                    break;
-                end;
-
+        // Find start of params for a specific function
+        functionIndex := findFunctionParameter(fname);
         argcounter := 0;
 
         
@@ -919,7 +896,7 @@ begin
                     isFloatArg := False;
                     argname := consume(); // single arg
 
-                    if param_FType[argfindex + argcounter] = 'FLOAT' then
+                    if stateFunction[functionIndex].paramType[argcounter] = 'FLOAT' then
                         isFloatArg := True;
 
                     if not isNumber(argname) then
@@ -994,7 +971,8 @@ end;
 
 procedure discriminateIdentifier();
 var
-    variable, rightside, twoname, argname: String;
+    variable, rightside, twoname, argname, discoveredVariableType: String;
+    existingIndex, functionIndex: Integer;
     isDeclared, isReturn, isFloat: boolean;
     i, ii, symIndex: Integer;
 
@@ -1012,24 +990,18 @@ begin
 
     //WriteLn('discrim start: variable=' + variable + ' position=' + IntToStr(position)); // DEBUG
 
-    for i := 0 to 255 do  // scan to see if var is delclred already
-        begin
-            if symName[i] = variable then
-                begin
-                    isDeclared := True;
-                    symIndex := i;
-                    if symType[i] = 'FLOAT' then // if its a float take the float path
-                        isFloat := True;
-                end;
-        end;
+    symindex := findLocalParameter(variable);
+    if symindex <> -1 then
+        isDeclared := True;
+
 
     if peek() = 'ASSIGN' then // if its a := x etc etc
         begin
             if isDeclared = True then
                 begin // turn into something nasm understands instead of just "variable"
-                    variable := computeOffset(symOffset[symIndex]);
+                    variable := computeOffset(stateLocal[symIndex].offset);
                     consume(); // :=
-                        if symType[symIndex] = 'FLOAT' then
+                        if stateLocal[symIndex].varType = 'FLOAT' then
                                 begin
                                 rightside := evaluateExpression(isFloat);
                                 emitAssignFloat(variable, rightside); // emit asm
@@ -1046,45 +1018,38 @@ begin
                     frameOffset := frameOffset + 8; // vars need to occupy different memory, increment
 
                     if peek2() = 'FLOAT' then // determine what it is and make it so
-                        symType[symCount] := 'FLOAT';
+                        discoveredVariableType := 'FLOAT';
                     if peek2() = 'NUMBER' then
-                        symType[symCount] := 'NUMBER';
+                        discoveredVariableType := 'NUMBER';
                     if peek2() = 'IDENTIFIER' then
                         begin
                             twoname := peekV2();
-                            for ii := 0 to symCount-1 do 
-                                begin
-                                    if symName[ii] = twoname then
-                                        symType[symCount] := symType[ii];
-                                end;
+                            existingIndex := findLocalParameter(twoname);
+                            if existingIndex <> -1 then
+                                discoveredVariableType := stateLocal[existingIndex].varType;
                         end;
 
                     if (peek2() = 'IDENTIFIER') and (peek3() = 'LPAR') then
                         begin
                             twoname := peekV2();
-                            for ii := 0 to symCount-1 do 
-                                begin
-                                    if return_FName[ii] = twoname then
-                                        symType[symCount] := return_FType[ii];
-                                end;
+                            functionIndex := findFunctionParameter(twoname);
+                            if functionIndex <> -1 then
+                                discoveredVariableType := stateFunction[functionIndex].returnType;
                         end;
-                    
-                    isFloat := (symType[symCount] = 'FLOAT');
-                        symOffset[symCount] := frameOffset;
-                        symName[symCount] := variable;
-                        variable := computeOffset(symOffset[symCount]);
+
+                    isFloat := (discoveredVariableType = 'FLOAT');
+                    symIndex := addLocalParameter(variable, discoveredVariableType);
+                    variable := computeOffset(stateLocal[symIndex].offset);
 
                     if isReturn then
                         begin
-                        return_FName[return_FCount] := currentFN;
-                        return_FType[return_FCount] := symType[symCount];
-                        variable := computeOffset(symOffset[symCount]);
-                        returnAddr := computeOffset(symOffset[symCount]);
-                        inc(return_FCount);
+                            functionIndex := findFunctionParameter(currentFN);
+                            stateFunction[functionIndex].returnType := discoveredVariableType;
+                            variable := computeOffset(stateLocal[symIndex].offset);
+                            returnAddr := computeOffset(stateLocal[symIndex].offset);
                         end;
 
-                        inc(symCount);
-                        consume(); // :=
+                    consume(); // :=
                         
 
                     if isFloat then // send to expression evaulator to find out what to do to right side
@@ -1216,12 +1181,14 @@ var
     isProcedure: Boolean;
     i: Integer;
 begin
+                WriteLn('CF START');
                 constructFunction := (peek() = 'P');
                 isProcedure := (peek() = 'P');
                 consume;
                 currentFN := consume;
                 emitFN(currentFN);
-                addFunctionParameter(currentFN, isProcedure);
+                functionIndex := addFunctionParameter(currentFN, isProcedure);
+                WriteLn('CF REGISTERED FUNC: ' + currentFN);
                 frameOffset := 0;
                 argCount := 0;
                 stateLocalCount := 0;
@@ -1234,6 +1201,7 @@ begin
                         begin
                        repeat
                             paramName := consume;
+                            WriteLn('CF PARAM: ' + paramName);
                             paramType := 'NUMBER';
 
                             if peek() = 'COLON' then
@@ -1304,14 +1272,14 @@ begin
                                     seenInts := 0;
                                     for i := 0 to argCount - 1 do
                                         begin
-                                            if symType[i] = 'FLOAT' then
+                                            if stateLocal[i].varType = 'FLOAT' then
                                                 begin
-                                                    WriteText('   movsd [rbp-' + intToStr(paramOffset[i]) + '], xmm' + IntToStr(seenFloats) + #10);
+                                                    WriteText('   movsd [rbp-' + intToStr(stateLocal[i].offset) + '], xmm' + IntToStr(seenFloats) + #10);
                                                     Inc(seenFloats);
                                                 end
                                             else
                                                 begin
-                                                    WriteText('    mov [rbp-' + IntToStr(paramOffset[i]) + '], ' + intregs[seenInts] + #10);
+                                                    WriteText('    mov [rbp-' + IntToStr(stateLocal[i].offset) + '], ' + intregs[seenInts] + #10);
                                                     Inc(seenInts);
                                                 end;
                                         end;
@@ -1558,12 +1526,7 @@ begin
     frameOffset := 0;
 
     for i := 0 to 255 do
-        begin
-        symOffset[i] := 0;
-        param_FIndex[i] := 0;
-        symName[i] := '';
         t_line[i] := 0;
-        end;
 
     FillChar(loop_TLabel, SizeOf(loop_TLabel), 0);
     FillChar(loop_ELabel, SizeOf(loop_ELabel), 0);
@@ -1577,11 +1540,7 @@ begin
     conditionalBodyNext := False;
     loopBodyNext := False;
     conditionalDepth := 0;
-    param_FCount := 0;
     loopDepth := 0;
-    return_FCount := 0;
-    symCount := 0;
-    sp := 0;
 end;
 
 procedure sendToNASM(outputName: String);

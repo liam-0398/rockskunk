@@ -1,6 +1,6 @@
 ; COMPILER MIGRATION VALIDATION
 
-F add(a, b) {
+F addw(a, b) {
     r := a + b
 }
 
@@ -11,7 +11,7 @@ F addf(a: f, b: f) {
 F main() {
     x := 5
     y := 10
-    z := add(x, y)
+    z := addw(x, y)
     printw(z)
 
     fx := 2.5f
@@ -20,18 +20,18 @@ F main() {
     printf(fz)
 
     i := 0
-    LF (i := 0 until 5) {
-        printw(i)
-    }
+    ;LF (i := 0 until 5) {
+    ;    printw(i)
+    ;}
 
-    LW (i < 10) {
-        i := i + 1
-        printw(i)
-    }
+    ;LW (i < 10) {
+    ;    i := i + 1
+    ;    printw(i)
+    ;}
 
-    W (x = 5) {
-        printw(x)
-    }
+    ;W (x = 5) {
+    ;    printw(x)
+    ;}
 
     r := 0
 }

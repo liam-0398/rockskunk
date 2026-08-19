@@ -30,7 +30,7 @@ type
         paramCount:  Integer;
     end;
 
-    TKind = (kNone, kReg, kMem, kLit, kData);
+    TKind = (kNone, kReg, kMem, kData);
     TValType = (vtNumber, vtFloat, vtString);
 
     TValue = record
@@ -617,11 +617,23 @@ begin
     Inc(position);  // Increment counter to drop the token
 end;
 
-function arrayToMem(varname: String; size: String): String;
+{function arrayToMem(varname: String; size: String): String;
 var
     i: Integer;
 begin
 end;
+
+    TKind = (kNone, kReg, kMem, kData);
+    TValType = (vtNumber, vtFloat, vtString);
+
+    TValue = record
+        vKind:     TKind; // What type of info is passed to NASM, register, memory, literals?
+        vType:     TValType; // vtNumber, vtFloat, vtString
+        vWordPayload:  Int64; // the word
+        vFltPayload:  Double; // the float
+        vStringPayload:  String; // register names and data labels eg float_69
+        vOffset:    Integer; // the actual offset
+    end;}
 
 function varToMem(variable: String): String;
 var
@@ -634,6 +646,27 @@ begin
             Halt(1);
         end;
     varToMem := computeOffset(stateLocal[i].offset);
+end;
+
+function varToMem(variable: String): TValue;
+var
+    i: Integer;
+    v: TValue;
+begin
+    i := findLocalIndex(variable);
+    if i = -1 then
+        begin
+            WriteLn(currentLine + '- I CANT BELIEVE YOUVE DONE THIS - VAR_TO_MEM - UNK SYMBOL>> ' + variable);
+            Halt(1);
+        end;
+    v.vOffset := stateLocal[i].offset;
+    v.vType := stateLocal[i].varType;
+    v.vKind := kMem;
+    varToMem := v;
+
+
+
+
 end;
 
 function call(fname: String; first: String; returnsFloat: Boolean): String;

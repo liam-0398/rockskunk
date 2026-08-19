@@ -927,26 +927,22 @@ begin
                 begin // turn into something nasm understands instead of just "variable"
                     variable := computeOffset(stateLocal[symIndex].offset);
                     consume(); // :=
+                    rightside := evaluateExpression(isFloat);
                         if stateLocal[symIndex].varType = 'FLOAT' then
-                                begin
-                                rightside := evaluateExpression(isFloat);
-                                emitAssignFloat(variable, rightside); // emit asm
-                                end
-                            else
-                                begin
-                                rightside := evaluateExpression(isFloat);
-                                emitAssign(variable, rightside);
-                                end;
+                            emitAssignFloat(variable, rightside) // emit asm
+                        else
+                            emitAssign(variable, rightside);
+                    
                         WriteLn('ASSIGN BRANCH - DECLARED'); // DEBUG
                 end
             else
                 begin
                     frameOffset := frameOffset + 8; // vars need to occupy different memory, increment
 
-                    if peek2() = 'FLOAT' then // determine what it is and make it so
-                        discoveredVariableType := 'FLOAT';
-                    if peek2() = 'NUMBER' then
+                    discoveredVariableType := WhoGoesTHere(peek2);
+                    if discoveredVariableType = 'QWORD' then
                         discoveredVariableType := 'NUMBER';
+
                     if peek2() = 'IDENTIFIER' then
                         begin
                             twoname := peekV2();
@@ -976,17 +972,14 @@ begin
                         end;
 
                     consume(); // :=
-                        
+
+                    rightside := evaluateExpression(isFloat);
+                                     
                     if isFloat then // send to expression evaulator to find out what to do to right side
-                        begin
-                          rightside := evaluateExpression(isFloat);
-                          emitAssignFloat(variable, rightside);
-                        end
+                        emitAssignFloat(variable, rightside)
                     else
-                        begin
-                            rightside := evaluateExpression(isFloat);
-                            emitAssign(variable,rightside);
-                         end;
+                        emitAssign(variable,rightside);
+
                         WriteLn('ASSIGN BRANCH - UNDECLARED'); // DEBUG
                     end;
         end

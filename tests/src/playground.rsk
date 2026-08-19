@@ -1,0 +1,6 @@
+
+P main() {
+    a := 0 - 5
+    b := intAbs(a)
+    printw(b)
+}

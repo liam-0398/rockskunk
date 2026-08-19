@@ -3,54 +3,33 @@
 
 ; I/O ----------------------------------------------------------------
 
-F read(fd, buf, count) {
-    r := sys(0,fd ,buf ,count)
-}
-
-F write(fd, buf, count) {
-    r := sys(1,fd ,buf ,count)
-}
-
-F open(path, flags, mode) {
-    r := sys(1,path , flags, mode)
-}
-
-F lseek(fd, offset, whence) {
-    r := sys(8, fd, offset, whence)
-}
-
-F unlink(path) {
-    r := sys(87, path, 0, 0)
-}
-
-F fstat(fd, statbuf) {
-    r := sys(5, fd, statbuf, 0)
-}
-
-F mkdir(path, mode) {
-    r := sys(83, path, mode, 0)
-}
-
-
+F read(fd, buf, count) { r := sys(0,fd ,buf ,count) }
+F write(fd, buf, count) { r := sys(1,fd ,buf ,count) }
+F open(path, flags, mode) { r := sys(1,path , flags, mode) }
+F lseek(fd, offset, whence) { r := sys(8, fd, offset, whence) }
+F unlink(path) { r := sys(87, path, 0, 0) }
+F fstat(fd, statbuf) { r := sys(5, fd, statbuf, 0) }
+F mkdir(path, mode) { r := sys(83, path, mode, 0) }
 
 ; STRINGS ----------------------------------------------------------------
 
 ; MATH ----------------------------------------------------------------
 
-
-; Misc --------------------------------------------------------------------
-
-F getpid() {
-    r := sys(39, 0, 0, 0)
+F intAbs(value: f) {
+    W (value < 0) { r := 0 - value}
+    r := value
 }
 
-F brk(addr) {
-    r := sys(12, addr, 0, 0)
+F floatAbs(value: f) {
+   W (value < 0) { r := 0 - value}
+    r := value
 }
 
 
-F exit(code) {
-    r := sys(60, code, 0, 0)
-}
+; Utility --------------------------------------------------------------------
+
+F getpid() { r := sys(39, 0, 0, 0) }
+F brk(addr) { r := sys(12, addr, 0, 0) }
+F exit(code) { r := sys(60, code, 0, 0) }
 
 ; END

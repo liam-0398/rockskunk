@@ -31,10 +31,10 @@ type
     end;
 
 var
+    stateLocalCount, stateGlobalCount, stateFunctionCount: Integer;
     stateLocal: array[0..255] of TLocal;
     stateGlobal: array[0..255] of TGlobal;
     stateFunction:   array[0..255] of TFunction;
-    stateLocalCount, stateGlobalCount, stateFunctionCount: Integer;
 
     buf, databuf, textbuf: Array[0..65535] of Char;
 
@@ -50,13 +50,11 @@ var
     conditionalDepth: Integer;
     conditionalBodyNext: Boolean;
 
-    braceEmitted: Boolean;
-    bytes: CInt;
-    currentFN: String;
-    fd, fd2, fd3, fd4: CInt;
-    filename, output_filename, stdlib_filename, returnAddr: String;
-    paramPending: Boolean; 
+    filename, output_filename, stdlib_filename, returnAddr, currentFN: String;
     frameOffset, labelCounter, position, argCount, t_count: Integer;
+    fd, fd2, fd3, fd4: CInt;
+    paramPending: Boolean; 
+    
 
 {
    DO NOT FORGET LIST ====
@@ -68,27 +66,28 @@ var
 
 function WhoGoesThere(intruder: String): String; forward;
 function evaluateExpression(isFloat: Boolean): String; forward;
+function currentLine(): String; forward;
 
 // RECORD MX ============================================================================
 
-function findLocalParameter(name: String): Integer;
+function findLocalIndex(name: String): Integer;
 var
     i: Integer;
 begin
-    findLocalParameter := -1;
+    findLocalIndex := -1;
     for i := 0 to stateLocalCount - 1 do
         if stateLocal[i].name = name then
             begin
-                findLocalParameter := i;
+                findLocalIndex := i;
                 break;
             end;
 end;
 
-function addLocalParameter(name: String; vtype: String): Integer;
+function addLocalEntry(name: String; vtype: String): Integer;
 begin
-    if findLocalParameter(name) <> -1 then
+    if findLocalIndex(name) <> -1 then
         begin
-            WriteLn('I CANT BELIEVE YOUVE DONE THIS - ADD_LOCAL - DUPLICATE >> ' + name);
+            WriteLn(currentLine + '- I CANT BELIEVE YOUVE DONE THIS - ADD_LOCAL - DUPLICATE >> ' + name);
             Halt(1);
         end;
 
@@ -98,28 +97,28 @@ begin
     stateLocal[stateLocalCount].varType := vtype;
     stateLocal[stateLocalCount].offset  := frameOffset;
 
-    addLocalParameter := stateLocalCount;
+    addLocalEntry := stateLocalCount;
     Inc(stateLocalCount);
 end;
 
-function findGlobalParameter(name: String): Integer;
+function findGlobalIndex(name: String): Integer;
 var
     i: Integer;
 begin
-    findGlobalParameter := -1;
+    findGlobalIndex := -1;
     for i := 0 to stateGlobalCount - 1 do
         if stateGlobal[i].name = name then
             begin
-                findGlobalParameter := i;
+                findGlobalIndex := i;
                 break;
             end;
 end;
 
-function addGlobalParameter(name: String; vtype: String): Integer;
+function addGlobalEntry(name: String; vtype: String): Integer;
 begin
-    if findGlobalParameter(name) <> -1 then
+    if findGlobalIndex(name) <> -1 then
         begin
-            WriteLn('I CANT BELIEVE YOUVE DONE THIS - ADD_GLOBAL - DUPLICATE >> ' + name);
+            WriteLn(currentLine + '- I CANT BELIEVE YOUVE DONE THIS - ADD_GLOBAL - DUPLICATE >> ' + name);
             Halt(1);
         end;
 
@@ -127,28 +126,28 @@ begin
     stateGlobal[stateGlobalCount].varType := vtype;
     stateGlobal[stateGlobalCount].asmLabel := 'g_' + name;
 
-    addGlobalParameter := stateGlobalCount;
+    addGlobalEntry := stateGlobalCount;
     Inc(stateGlobalCount);
 end;
 
-function findFunctionParameter(name: String): Integer;
+function findFunctionIndex(name: String): Integer;
 var
     i: Integer;
 begin
-    findFunctionParameter := -1;
+    findFunctionIndex := -1;
     for i := 0 to stateFunctionCount - 1 do
         if stateFunction[i].name = name then
             begin
-                findFunctionParameter := i;
+                findFunctionIndex := i;
                 break;
             end;
 end;
 
-function addFunctionParameter(name: String; IsProcedure: Boolean): Integer;
+function addFunctionEntry(name: String; IsProcedure: Boolean): Integer;
 begin
-    if findFunctionParameter(name) <> -1 then
+    if findFunctionIndex(name) <> -1 then
         begin
-            WriteLn('I CANT BELIEVE YOUVE DONE THIS - ADD_FUNC - DUPLICATE >> ' + name);
+            WriteLn(currentLine + '- I CANT BELIEVE YOUVE DONE THIS - ADD_FUNC - DUPLICATE >> ' + name);
             Halt(1);
         end;
 
@@ -157,11 +156,9 @@ begin
     stateFunction[stateFunctionCount].isProcedure := IsProcedure;
     stateFunction[stateFunctionCount].paramCount  := 0;
 
-    addFunctionParameter := stateFunctionCount;
+    addFunctionEntry := stateFunctionCount;
     Inc(stateFunctionCount);
 end;
-
-
 
 // HELPERS =================================================
 // ========================================================
@@ -218,6 +215,7 @@ procedure openFile;
 var
     libBytes: CInt;
 begin
+    libBytes := 0;
    { WriteLn('LOADING STANDARD LIBRARY');
     FillChar(buf, SizeOf(buf), 0);
     fd := fpOpen(stdlib_filename, O_RdOnly);
@@ -636,10 +634,10 @@ function varToMem(variable: String): String;
 var
     i: Integer;
 begin
-    i := findLocalParameter(variable);
+    i := findLocalIndex(variable);
     if i = -1 then
         begin
-            WriteLn('I CANT BELIEVE YOUVE DONE THIS - VAR_TO_MEM - UNK SYMBOL>> ' + variable);
+            WriteLn(currentLine + '- I CANT BELIEVE YOUVE DONE THIS - VAR_TO_MEM - UNK SYMBOL>> ' + variable);
             Halt(1);
         end;
     varToMem := computeOffset(stateLocal[i].offset);
@@ -673,7 +671,7 @@ begin
             else if op = 'SLASH' then emitDivFloat('xmm0', second)
             else
                 begin
-                    WriteLn('I CANT BELIEVE YOUVE DONE THIS - EMIT_MATH - UNK OP >> ' + op);
+                    WriteLn(currentLine + '- I CANT BELIEVE YOUVE DONE THIS - EMIT_MATH - UNK OP >> ' + op);
                     Halt(1);
                 end;
         end
@@ -685,7 +683,7 @@ begin
             else if op = 'SLASH' then emitDiv('rax', second)
             else
                 begin
-                    WriteLn('I CANT BELIEVE YOUVE DONE THIS - EMIT_MATH - UNK OP >> ' + op);
+                    WriteLn(currentLine + '- I CANT BELIEVE YOUVE DONE THIS - EMIT_MATH - UNK OP >> ' + op);
                     Halt(1);
                 end;
         end;
@@ -784,9 +782,8 @@ end;
 function WhoGoesThere(intruder: String): String;
 var
     isFloat: Boolean;
-    i, r: Integer;
+    r: Integer;
 begin
-    i := 0;
     r := 0;
     isFloat := False;
 
@@ -797,13 +794,13 @@ begin
         end
     else
         begin // VAR
-            r := findLocalparameter(intruder);
+            r := findLocalIndex(intruder);
             if r <> -1 then
                 if stateLocal[r].varType = 'FLOAT' then
                     isFloat := True;
         end;
   
-    r := findFunctionparameter(intruder);
+    r := findFunctionIndex(intruder);
             if r <> -1 then
                 if stateFunction[r].returnType = 'FLOAT' then
                     isFloat := True;
@@ -839,18 +836,15 @@ end;
 function evaluateExpression(isFloat: Boolean): String;
 var
     first, second, op, argname, fname, return, math_ret, call_ret, ampaddr: String;
-    whosargsaretheese: String;
     num, a, b, c: String;
     returnsFloat, isFloatArg: Boolean;
-    result1: Double;
-    i, ii, result2, seenFloats, seenInts, functionIndex, argcounter: Integer;
+    seenFloats, seenInts, functionIndex, argcounter: Integer;
 begin
-    i := 0;
-    ii := 0;
     seenFloats := 0;
     seenInts := 0;
     returnsFloat := False;
     isFloatArg := False;
+    first := '';
 
     if peek() = 'AMP' then
         begin
@@ -881,7 +875,7 @@ begin
             returnsFloat := True;
 
         // Find start of params for a specific function
-        functionIndex := findFunctionParameter(fname);
+        functionIndex := findFunctionIndex(fname);
         argcounter := 0;
 
         
@@ -974,15 +968,14 @@ var
     variable, rightside, twoname, argname, discoveredVariableType: String;
     existingIndex, functionIndex: Integer;
     isDeclared, isReturn, isFloat: boolean;
-    i, ii, symIndex: Integer;
+    symIndex: Integer;
 
 begin
-    i := 0;
-    ii := 0;
     symIndex := 0;
     isDeclared := False;
     isReturn := False;
     isFloat := False;
+    argname := '';
 
     variable := consume(); // consume the a in a := 5
 
@@ -990,7 +983,7 @@ begin
 
     //WriteLn('discrim start: variable=' + variable + ' position=' + IntToStr(position)); // DEBUG
 
-    symindex := findLocalParameter(variable);
+    symindex := findLocalIndex(variable);
     if symindex <> -1 then
         isDeclared := True;
 
@@ -1024,7 +1017,7 @@ begin
                     if peek2() = 'IDENTIFIER' then
                         begin
                             twoname := peekV2();
-                            existingIndex := findLocalParameter(twoname);
+                            existingIndex := findLocalIndex(twoname);
                             if existingIndex <> -1 then
                                 discoveredVariableType := stateLocal[existingIndex].varType;
                         end;
@@ -1032,18 +1025,18 @@ begin
                     if (peek2() = 'IDENTIFIER') and (peek3() = 'LPAR') then
                         begin
                             twoname := peekV2();
-                            functionIndex := findFunctionParameter(twoname);
+                            functionIndex := findFunctionIndex(twoname);
                             if functionIndex <> -1 then
                                 discoveredVariableType := stateFunction[functionIndex].returnType;
                         end;
 
                     isFloat := (discoveredVariableType = 'FLOAT');
-                    symIndex := addLocalParameter(variable, discoveredVariableType);
+                    symIndex := addLocalEntry(variable, discoveredVariableType);
                     variable := computeOffset(stateLocal[symIndex].offset);
 
                     if isReturn then
                         begin
-                            functionIndex := findFunctionParameter(currentFN);
+                            functionIndex := findFunctionIndex(currentFN);
                             stateFunction[functionIndex].returnType := discoveredVariableType;
                             variable := computeOffset(stateLocal[symIndex].offset);
                             returnAddr := computeOffset(stateLocal[symIndex].offset);
@@ -1073,7 +1066,7 @@ end;
 
 // ONE-OFFS ------------
 
-function loopWhile(): Boolean;
+procedure loopWhile();
 var
     loopvar, loopcond, looplimit, toplabel, endlabel: String;
 begin
@@ -1111,7 +1104,7 @@ begin
     loopBodyNext := True;
 end;
 
-function loopFor(): Boolean;
+procedure loopFor();
 var
     loopvar, loopstart, looplimit, toplabel, endlabel: String;
 begin
@@ -1179,16 +1172,13 @@ var
     paramName, paramType: String;
     functionIndex, paramIndex: Integer;
     isProcedure: Boolean;
-    i: Integer;
 begin
-                WriteLn('CF START');
                 constructFunction := (peek() = 'P');
                 isProcedure := (peek() = 'P');
                 consume;
                 currentFN := consume;
                 emitFN(currentFN);
-                functionIndex := addFunctionParameter(currentFN, isProcedure);
-                WriteLn('CF REGISTERED FUNC: ' + currentFN);
+                functionIndex := addFunctionEntry(currentFN, isProcedure);
                 frameOffset := 0;
                 argCount := 0;
                 stateLocalCount := 0;
@@ -1201,7 +1191,6 @@ begin
                         begin
                        repeat
                             paramName := consume;
-                            WriteLn('CF PARAM: ' + paramName);
                             paramType := 'NUMBER';
 
                             if peek() = 'COLON' then
@@ -1218,7 +1207,7 @@ begin
                                         end;
                                 end;
 
-                            paramIndex := addLocalParameter(paramName, paramType);
+                            paramIndex := addLocalEntry(paramName, paramType);
 
                             stateFunction[functionIndex].paramType[stateFunction[functionIndex].paramCount] := paramType;
                             Inc(stateFunction[functionIndex].paramCount);
@@ -1239,8 +1228,7 @@ end;
 
 procedure parser();
 var
-    argtypeident: String;
-    isFloat, isProcedure: Boolean;
+    isProcedure: Boolean;
     i, seenFloats, seenInts: Integer;
 begin
     i := 0;
@@ -1344,7 +1332,7 @@ begin
             end
             else
             begin
-                WriteLn('I CANT BELIEVE YOUVE DONE THIS - PARSER - YOU HAVE FED ME GARBAGE>> ' + peek() + ' ' + peekV());
+                WriteLn(currentLine + '- I CANT BELIEVE YOUVE DONE THIS - PARSER - YOU HAVE FED ME GARBAGE>> ' + peek() + ' ' + peekV());
                 Halt(1);
             end;
         

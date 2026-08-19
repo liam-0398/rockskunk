@@ -383,6 +383,138 @@ begin
     WriteText('    call print_float' + #10);
 end;
 
+procedure asmFoundations();
+begin
+    // placed at bottom for file
+    WriteText(#10 + 'global _start' + #10);  // entry point so linker can do linker things
+    WriteText('_start:'+ #10);
+    WriteText('  call main'+ #10);
+    WriteText('  mov rdi, rax'+ #10);
+    WriteText('  mov rax, 60'+ #10);
+    WriteText('  syscall'+ #10);
+
+    // print_qword function NASM no space for float use
+    // word is in rax
+    // NOT MY WORK NEED TO REWRITE WHEN I KNOW MORE ASM> FOR DEBUGGING ONLY ===========
+    WriteText(#10 + 'print_qword_nosp:' + #10);        // print integer, no trailing space
+    WriteText('    mov rsi, digitbuf + 20' + #10);      // point past the end of the buffer
+    WriteText('    mov rcx, 0' + #10);                   // digit counter
+    WriteText('    cmp rax, 0' + #10);
+    WriteText('    jne .pqn_loop' + #10);
+    WriteText('    dec rsi' + #10);
+    WriteText('    mov byte [rsi], 48' + #10);           // just write '0'
+    WriteText('    inc rcx' + #10);
+    WriteText('    jmp .pqn_done' + #10);
+    WriteText('.pqn_loop:' + #10);
+    WriteText('    cmp rax, 0' + #10);
+    WriteText('    je .pqn_done' + #10);
+    WriteText('    cqo' + #10);
+    WriteText('    mov rbx, 10' + #10);
+    WriteText('    idiv rbx' + #10);
+    WriteText('    add rdx, 48' + #10);                  // remainder -> ASCII digit
+    WriteText('    dec rsi' + #10);
+    WriteText('    mov [rsi], dl' + #10);
+    WriteText('    inc rcx' + #10);
+    WriteText('    jmp .pqn_loop' + #10);
+    WriteText('.pqn_done:' + #10);
+    WriteText('    mov rax, 1' + #10);                   // syscall: write
+    WriteText('    mov rdi, 1' + #10);                   // fd: stdout
+    WriteText('    mov rdx, rcx' + #10);                 // length = digit count
+    WriteText('    syscall' + #10);
+    WriteText('    ret' + #10 + #10);
+    // print_qword function NASM
+    // word is in rax
+    // NOT MY WORK NEED TO REWRITE WHEN I KNOW MORE ASM> FOR DEBUGGING ONLY ===========
+    WriteText(#10 + 'print_qword:' + #10);
+    WriteText('    mov rsi, digitbuf + 20' + #10);      // point past the end of the buffer
+    WriteText('    mov rcx, 0' + #10);                   // digit counter
+    WriteText('    cmp rax, 0' + #10);
+    WriteText('    jne .pq_loop' + #10);
+    WriteText('    dec rsi' + #10);
+    WriteText('    mov byte [rsi], 48' + #10);           // just write '0'
+    WriteText('    inc rcx' + #10);
+    WriteText('    jmp .pq_done' + #10);
+    WriteText('.pq_loop:' + #10);
+    WriteText('    cmp rax, 0' + #10);
+    WriteText('    je .pq_done' + #10);
+    WriteText('    cqo' + #10);
+    WriteText('    mov rbx, 10' + #10);
+    WriteText('    idiv rbx' + #10);
+    WriteText('    add rdx, 48' + #10);                  // remainder -> ASCII digit
+    WriteText('    dec rsi' + #10);
+    WriteText('    mov [rsi], dl' + #10);
+    WriteText('    inc rcx' + #10);
+    WriteText('    jmp .pq_loop' + #10);
+    WriteText('.pq_done:' + #10);
+    WriteText('    mov rax, 1' + #10);                   // syscall: write
+    WriteText('    mov rdi, 1' + #10);                   // fd: stdout
+    WriteText('    mov rdx, rcx' + #10);                 // length = digit count
+    WriteText('    syscall' + #10);
+    WriteText('    mov rax, 32' + #10);                  // ASCII space
+    WriteText('    mov [digitbuf], al' + #10);
+    WriteText('    mov rax, 1' + #10);                   // syscall: write
+    WriteText('    mov rdi, 1' + #10);                   // fd: stdout
+    WriteText('    mov rsi, digitbuf' + #10);
+    WriteText('    mov rdx, 1' + #10);                   // length = 1
+    WriteText('    syscall' + #10);                      // print separator space
+    WriteText('    ret' + #10 + #10);
+    // NOT MY WORK NEED TO REWRITE WHEN I KNOW MORE ASM> FOR DEBUGGING ONLY ===========
+
+        // print_float - value in xmm0
+    // NOT MY WORK NEED TO REWRITE WHEN I KNOW MORE ASM. FOR DEBUGGING ONLY ===========
+    WriteText(#10 + 'print_float:' + #10);
+    WriteText('    cvttsd2si rax, xmm0' + #10);        // integer part -> rax
+    WriteText('    push rax' + #10);                    // save it
+    WriteText('    cvtsi2sd xmm1, rax' + #10);          // int part back to float
+    WriteText('    subsd xmm0, xmm1' + #10);            // xmm0 = fractional part
+    WriteText('    mov rax, 1000' + #10);
+    WriteText('    cvtsi2sd xmm1, rax' + #10);
+    WriteText('    mulsd xmm0, xmm1' + #10);            // frac * 1000
+    WriteText('    cvtsd2si rbx, xmm0' + #10);          // frac digits -> rbx, ROUNDED not truncated
+    WriteText('    pop rax' + #10);                     // restore integer part
+    WriteText('    push rbx' + #10);                    // stash frac again
+    WriteText('    call print_qword_nosp' + #10);            // print integer part
+    WriteText('    mov rax, 46' + #10);                 // ASCII '.'
+    WriteText('    mov [digitbuf], al' + #10);
+    WriteText('    mov rax, 1' + #10);
+    WriteText('    mov rdi, 1' + #10);
+    WriteText('    mov rsi, digitbuf' + #10);
+    WriteText('    mov rdx, 1' + #10);
+    WriteText('    syscall' + #10);                     // print '.'
+    WriteText('    pop rax' + #10);                     // frac digits
+    WriteText('    call print_frac3' + #10);            // print them, zero padded to 3
+    WriteText('    mov rax, 32' + #10);                 // ASCII space
+    WriteText('    mov [digitbuf], al' + #10);
+    WriteText('    mov rax, 1' + #10);
+    WriteText('    mov rdi, 1' + #10);
+    WriteText('    mov rsi, digitbuf' + #10);
+    WriteText('    mov rdx, 1' + #10);
+    WriteText('    syscall' + #10);                     // print separator space
+    WriteText('    ret' + #10 + #10);
+
+    // print_frac3 - value 0..999 in rax, always prints exactly 3 digits
+    // needed because print_qword drops leading zeros, so 0.05 printed as ".5"
+    WriteText(#10 + 'print_frac3:' + #10);
+    WriteText('    mov rsi, digitbuf + 3' + #10);       // one past the 3 digit field
+    WriteText('    mov rcx, 3' + #10);                  // always write 3, no early exit
+    WriteText('.pf_loop:' + #10);
+    WriteText('    cqo' + #10);
+    WriteText('    mov rbx, 10' + #10);
+    WriteText('    idiv rbx' + #10);                    // rax = quotient, rdx = remainder
+    WriteText('    add rdx, 48' + #10);                 // remainder -> ASCII digit
+    WriteText('    dec rsi' + #10);
+    WriteText('    mov [rsi], dl' + #10);
+    WriteText('    dec rcx' + #10);
+    WriteText('    jnz .pf_loop' + #10);                // loop exactly 3 times, zeros included
+    WriteText('    mov rax, 1' + #10);                  // syscall: write
+    WriteText('    mov rdi, 1' + #10);                  // fd: stdout
+    WriteText('    mov rsi, digitbuf' + #10);
+    WriteText('    mov rdx, 3' + #10);                  // fixed length 3
+    WriteText('    syscall' + #10);
+    WriteText('    ret' + #10 + #10);
+
+end;
+
 // PARSER =================================================
 // ========================================================
 // Helpers ------------------------------------
@@ -1100,7 +1232,7 @@ begin
                     end;
                         consume; // )
                     
-                    end;
+         end;
 end;
 
 // PARSER -----------
@@ -1219,135 +1351,9 @@ begin
         end;
     until position >= t_count;
 
-    // placed at bottom for file
-    WriteText(#10 + 'global _start' + #10);  // entry point so linker can do linker things
-    WriteText('_start:'+ #10);
-    WriteText('  call main'+ #10);
-    WriteText('  mov rdi, rax'+ #10);
-    WriteText('  mov rax, 60'+ #10);
-    WriteText('  syscall'+ #10);
+    asmFoundations();
 
-    // print_qword function NASM no space for float use
-    // word is in rax
-    // NOT MY WORK NEED TO REWRITE WHEN I KNOW MORE ASM> FOR DEBUGGING ONLY ===========
-    WriteText(#10 + 'print_qword_nosp:' + #10);        // print integer, no trailing space
-    WriteText('    mov rsi, digitbuf + 20' + #10);      // point past the end of the buffer
-    WriteText('    mov rcx, 0' + #10);                   // digit counter
-    WriteText('    cmp rax, 0' + #10);
-    WriteText('    jne .pqn_loop' + #10);
-    WriteText('    dec rsi' + #10);
-    WriteText('    mov byte [rsi], 48' + #10);           // just write '0'
-    WriteText('    inc rcx' + #10);
-    WriteText('    jmp .pqn_done' + #10);
-    WriteText('.pqn_loop:' + #10);
-    WriteText('    cmp rax, 0' + #10);
-    WriteText('    je .pqn_done' + #10);
-    WriteText('    cqo' + #10);
-    WriteText('    mov rbx, 10' + #10);
-    WriteText('    idiv rbx' + #10);
-    WriteText('    add rdx, 48' + #10);                  // remainder -> ASCII digit
-    WriteText('    dec rsi' + #10);
-    WriteText('    mov [rsi], dl' + #10);
-    WriteText('    inc rcx' + #10);
-    WriteText('    jmp .pqn_loop' + #10);
-    WriteText('.pqn_done:' + #10);
-    WriteText('    mov rax, 1' + #10);                   // syscall: write
-    WriteText('    mov rdi, 1' + #10);                   // fd: stdout
-    WriteText('    mov rdx, rcx' + #10);                 // length = digit count
-    WriteText('    syscall' + #10);
-    WriteText('    ret' + #10 + #10);
-    // print_qword function NASM
-    // word is in rax
-    // NOT MY WORK NEED TO REWRITE WHEN I KNOW MORE ASM> FOR DEBUGGING ONLY ===========
-    WriteText(#10 + 'print_qword:' + #10);
-    WriteText('    mov rsi, digitbuf + 20' + #10);      // point past the end of the buffer
-    WriteText('    mov rcx, 0' + #10);                   // digit counter
-    WriteText('    cmp rax, 0' + #10);
-    WriteText('    jne .pq_loop' + #10);
-    WriteText('    dec rsi' + #10);
-    WriteText('    mov byte [rsi], 48' + #10);           // just write '0'
-    WriteText('    inc rcx' + #10);
-    WriteText('    jmp .pq_done' + #10);
-    WriteText('.pq_loop:' + #10);
-    WriteText('    cmp rax, 0' + #10);
-    WriteText('    je .pq_done' + #10);
-    WriteText('    cqo' + #10);
-    WriteText('    mov rbx, 10' + #10);
-    WriteText('    idiv rbx' + #10);
-    WriteText('    add rdx, 48' + #10);                  // remainder -> ASCII digit
-    WriteText('    dec rsi' + #10);
-    WriteText('    mov [rsi], dl' + #10);
-    WriteText('    inc rcx' + #10);
-    WriteText('    jmp .pq_loop' + #10);
-    WriteText('.pq_done:' + #10);
-    WriteText('    mov rax, 1' + #10);                   // syscall: write
-    WriteText('    mov rdi, 1' + #10);                   // fd: stdout
-    WriteText('    mov rdx, rcx' + #10);                 // length = digit count
-    WriteText('    syscall' + #10);
-    WriteText('    mov rax, 32' + #10);                  // ASCII space
-    WriteText('    mov [digitbuf], al' + #10);
-    WriteText('    mov rax, 1' + #10);                   // syscall: write
-    WriteText('    mov rdi, 1' + #10);                   // fd: stdout
-    WriteText('    mov rsi, digitbuf' + #10);
-    WriteText('    mov rdx, 1' + #10);                   // length = 1
-    WriteText('    syscall' + #10);                      // print separator space
-    WriteText('    ret' + #10 + #10);
-    // NOT MY WORK NEED TO REWRITE WHEN I KNOW MORE ASM> FOR DEBUGGING ONLY ===========
-
-        // print_float - value in xmm0
-    // NOT MY WORK NEED TO REWRITE WHEN I KNOW MORE ASM. FOR DEBUGGING ONLY ===========
-    WriteText(#10 + 'print_float:' + #10);
-    WriteText('    cvttsd2si rax, xmm0' + #10);        // integer part -> rax
-    WriteText('    push rax' + #10);                    // save it
-    WriteText('    cvtsi2sd xmm1, rax' + #10);          // int part back to float
-    WriteText('    subsd xmm0, xmm1' + #10);            // xmm0 = fractional part
-    WriteText('    mov rax, 1000' + #10);
-    WriteText('    cvtsi2sd xmm1, rax' + #10);
-    WriteText('    mulsd xmm0, xmm1' + #10);            // frac * 1000
-    WriteText('    cvtsd2si rbx, xmm0' + #10);          // frac digits -> rbx, ROUNDED not truncated
-    WriteText('    pop rax' + #10);                     // restore integer part
-    WriteText('    push rbx' + #10);                    // stash frac again
-    WriteText('    call print_qword_nosp' + #10);            // print integer part
-    WriteText('    mov rax, 46' + #10);                 // ASCII '.'
-    WriteText('    mov [digitbuf], al' + #10);
-    WriteText('    mov rax, 1' + #10);
-    WriteText('    mov rdi, 1' + #10);
-    WriteText('    mov rsi, digitbuf' + #10);
-    WriteText('    mov rdx, 1' + #10);
-    WriteText('    syscall' + #10);                     // print '.'
-    WriteText('    pop rax' + #10);                     // frac digits
-    WriteText('    call print_frac3' + #10);            // print them, zero padded to 3
-    WriteText('    mov rax, 32' + #10);                 // ASCII space
-    WriteText('    mov [digitbuf], al' + #10);
-    WriteText('    mov rax, 1' + #10);
-    WriteText('    mov rdi, 1' + #10);
-    WriteText('    mov rsi, digitbuf' + #10);
-    WriteText('    mov rdx, 1' + #10);
-    WriteText('    syscall' + #10);                     // print separator space
-    WriteText('    ret' + #10 + #10);
-
-    // print_frac3 - value 0..999 in rax, always prints exactly 3 digits
-    // needed because print_qword drops leading zeros, so 0.05 printed as ".5"
-    WriteText(#10 + 'print_frac3:' + #10);
-    WriteText('    mov rsi, digitbuf + 3' + #10);       // one past the 3 digit field
-    WriteText('    mov rcx, 3' + #10);                  // always write 3, no early exit
-    WriteText('.pf_loop:' + #10);
-    WriteText('    cqo' + #10);
-    WriteText('    mov rbx, 10' + #10);
-    WriteText('    idiv rbx' + #10);                    // rax = quotient, rdx = remainder
-    WriteText('    add rdx, 48' + #10);                 // remainder -> ASCII digit
-    WriteText('    dec rsi' + #10);
-    WriteText('    mov [rsi], dl' + #10);
-    WriteText('    dec rcx' + #10);
-    WriteText('    jnz .pf_loop' + #10);                // loop exactly 3 times, zeros included
-    WriteText('    mov rax, 1' + #10);                  // syscall: write
-    WriteText('    mov rdi, 1' + #10);                  // fd: stdout
-    WriteText('    mov rsi, digitbuf' + #10);
-    WriteText('    mov rdx, 3' + #10);                  // fixed length 3
-    WriteText('    syscall' + #10);
-    WriteText('    ret' + #10 + #10);
-
-end;
+    end;
 
 // LEXER ==================================================
 // ========================================================

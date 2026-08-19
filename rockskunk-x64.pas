@@ -520,36 +520,13 @@ end;
 // Helpers ------------------------------------
 
 // Used to check type (identifier) and value of words for decision making
-function peekV(): String; // Look at the next token non-destructively
-begin
-    peekV := t_val[position]; 
-end;
-
-function peekV2(): String; // Look at the next token non-destructively
-begin
-    peekV2 := t_val[position+1]; 
-end;
-
-function peekV3(): String; // Look at the next token non-destructively
-begin
-    peekV3 := t_val[position+2]; 
-end;
-
-function peek(): String; // Look at the next token non-destructively
-begin
-    peek := t_type[position]; 
-end;
-
-function peek2(): String; // Look at the next token non-destructively
-begin
-    peek2 := t_type[position+1]; 
-end;
-
-function peek3(): String; // Look at the next token non-destructively
-begin
-    peek3 := t_type[position+2]; 
-end;
-
+function peekV(): String; begin peekV := t_val[position]; end;
+function peekV2(): String; begin peekV2 := t_val[position+1]; end;
+function peekV3(): String; begin peekV3 := t_val[position+2]; end;
+function peek(): String; begin peek := t_type[position]; end;
+function peek2(): String; begin peek2 := t_type[position+1]; end;
+function peek3(): String; begin peek3 := t_type[position+2]; end;
+function currentLine(): String; begin currentLine := intToStr(t_line[position]); end;
 
 function consume(): String; // Eat the next token and then remove it
 begin
@@ -557,16 +534,10 @@ begin
     Inc(position);  // Increment counter to drop the token
 end;
 
-function currentLine(): Integer;
-begin
-    currentLine := t_line[position];
-end;
-
 function arrayToMem(varname: String; size: String; vartype: String): String;
 var
     i: Integer;
 begin
- 
 end;
 
 function varToMem(variable: String): String;
@@ -604,63 +575,32 @@ end;
 
 function emitMath(op: String; second: String; isFloat: Boolean): String;
 begin
-            if op = 'PLUS' then
-                begin    
-                    if isFloat then
-                        begin
-                          emitAddFloat('xmm0', second);
-                          emitMath := 'xmm0';  
-                        end
-                    else
-                        begin        
-                            emitAdd('rax', second);
-                            emitMath := 'rax';
-                        end
-                end
-            else if op = 'MINUS' then
-                begin    
-                    if isFloat then
-                        begin
-                          emitSubFloat('xmm0', second);
-                          emitMath := 'xmm0';  
-                        end
-                    else
-                        begin        
-                            emitSub('rax', second);
-                            emitMath := 'rax';
-                        end
-                end
-            else if op = 'STAR' then
-                begin    
-                    if isFloat then
-                        begin
-                          emitMulFloat('xmm0', second);
-                          emitMath := 'xmm0';  
-                        end
-                    else
-                        begin        
-                            emitMul('rax', second);
-                            emitMath := 'rax';
-                        end
-                end
-            else if op = 'SLASH' then
-                begin    
-                    if isFloat then
-                        begin
-                          emitDivFloat('xmm0', second);
-                          emitMath := 'xmm0';  
-                        end
-                    else
-                        begin        
-                            emitDiv('rax', second);
-                            emitMath := 'rax';
-                        end
-                end
+    if isFloat then emitMath := 'xmm0' else emitMath := 'rax';
+
+    if isFloat then
+        begin
+            if      op = 'PLUS'  then emitAddFloat('xmm0', second)
+            else if op = 'MINUS' then emitSubFloat('xmm0', second)
+            else if op = 'STAR'  then emitMulFloat('xmm0', second)
+            else if op = 'SLASH' then emitDivFloat('xmm0', second)
             else
                 begin
-                WriteLn('I CANT BELIEVE YOUVE DONE THIS - EMIT_MATH - UNK SYMBOL>> ' + second);
-                Halt(1);
+                    WriteLn('I CANT BELIEVE YOUVE DONE THIS - EMIT_MATH - UNK OP >> ' + op);
+                    Halt(1);
                 end;
+        end
+    else
+        begin
+            if      op = 'PLUS'  then emitAdd('rax', second)
+            else if op = 'MINUS' then emitSub('rax', second)
+            else if op = 'STAR'  then emitMul('rax', second)
+            else if op = 'SLASH' then emitDiv('rax', second)
+            else
+                begin
+                    WriteLn('I CANT BELIEVE YOUVE DONE THIS - EMIT_MATH - UNK OP >> ' + op);
+                    Halt(1);
+                end;
+        end;
 end;
 
 procedure asmFunctionCalls(variable: String; argname: String);

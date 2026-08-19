@@ -35,11 +35,11 @@ type
 
     TValue = record
         vKind:     TKind; // What type of info is passed to NASM, register, memory, literals?
-        vType:     TValType; 
-        vWordPayload:  Int64;
-        vFltPayload:  Double;
-        vStringPayload:  String;
-        vOffset:    Integer;
+        vType:     TValType; // vtNumber, vtFloat, vtString
+        vWordPayload:  Int64; // the word
+        vFltPayload:  Double; // the float
+        vStringPayload:  String; // register names and data labels eg float_69
+        vOffset:    Integer; // the actual offset
     end;
 
 var
@@ -306,6 +306,23 @@ procedure closeIntermediateFile; begin fpClose(fd3); fpClose(fd4); end;
 
 // CODE GENERATION ===========================================
 // ========================================================
+
+// Local records set data that is then passed to the emit procs using this function
+// goes through v (TValue) .vKind and uses
+// that to decided what to put into the emit procedure
+function recordToText(v: TValue): String;
+begin   
+    case v.vKind of
+        kNone: begin WriteLn(currentLine + '- I CANT BELIEVE YOUVE DONE THIS - R2T - YOU PROMISED ME DATA AND GAVE ME NOTHING'); Halt(1); end;
+        kReg: begin 
+            if v.vType = vtFloat then
+                recordToText := 'xmm0'
+            else
+                recordToText := 'rax';
+        end;
+        kMem: begin recordToText := '[rbp-' + IntToStr(v.vOffset) + ']'; end;
+        kData: begin recordToText := v.vStringPayload; end;
+end;
 
 // HELPERS ----------------------------------------------------------
 procedure loadRAX(addr: String); begin WriteText('    mov rax, ' + addr + #10); end;

@@ -386,24 +386,6 @@ begin
     WriteText('    movsd ' + variable + ', xmm0' + #10);
 end;
 
-{function arrayToMem(varname: String; size: String): String;
-var
-    i: Integer;
-begin
-end;
-
-    TKind = (kNone, kReg, kMem, kData);
-    TValType = (vtNumber, vtFloat, vtString);
-
-    TValue = record
-        vKind:     TKind; // What type of info is passed to NASM, register, memory, literals?
-        vType:     TValType; // vtNumber, vtFloat, vtString
-        vWordPayload:  Int64; // the word
-        vFltPayload:  Double; // the float
-        vStringPayload:  String; // register names and data labels eg float_69
-        vOffset:    Integer; // the actual offset
-    end;}
-
 function emitFloatConstant(float: String): TValue;
 var
     v: TValue;
@@ -673,16 +655,26 @@ begin
         WriteText('    call ' + fname + #10);
 end;
 
-function emitMath(op: String; second: String; isFloat: Boolean): String;
+function emitMath(op: String; second: TValue; isFloat: Boolean): TValue;
+var
+    v: TValue;
+    operand: String;
 begin
-    if isFloat then emitMath := 'xmm0' else emitMath := 'rax';
+    v.vKind := kReg;
+
+    if isFloat then
+        v.vType := vtFloat
+    else
+        v.vType := vtNumber;
+
+    operand := recordToText(second);
 
     if isFloat then
         begin
-            if      op = 'PLUS'  then emitAddFloat('xmm0', second)
-            else if op = 'MINUS' then emitSubFloat('xmm0', second)
-            else if op = 'STAR'  then emitMulFloat('xmm0', second)
-            else if op = 'SLASH' then emitDivFloat('xmm0', second)
+            if      op = 'PLUS'  then emitAddFloat('xmm0', operand)
+            else if op = 'MINUS' then emitSubFloat('xmm0', operand)
+            else if op = 'STAR'  then emitMulFloat('xmm0', operand)
+            else if op = 'SLASH' then emitDivFloat('xmm0', operand)
             else
                 begin
                     WriteLn(currentLine + '- I CANT BELIEVE YOUVE DONE THIS - EMIT_MATH - UNK OP >> ' + op);
@@ -691,16 +683,18 @@ begin
         end
     else
         begin
-            if      op = 'PLUS'  then emitAdd('rax', second)
-            else if op = 'MINUS' then emitSub('rax', second)
-            else if op = 'STAR'  then emitMul('rax', second)
-            else if op = 'SLASH' then emitDiv('rax', second)
+            if      op = 'PLUS'  then emitAdd('rax', operand)
+            else if op = 'MINUS' then emitSub('rax', operand)
+            else if op = 'STAR'  then emitMul('rax', operand)
+            else if op = 'SLASH' then emitDiv('rax', operand)
             else
                 begin
                     WriteLn(currentLine + '- I CANT BELIEVE YOUVE DONE THIS - EMIT_MATH - UNK OP >> ' + op);
                     Halt(1);
                 end;
         end;
+
+    emitMath := v;
 end;
 
 procedure asmFunctionCalls(variable: String; argname: String);
@@ -839,9 +833,28 @@ end;
 
 // MAIN PARSER MACHINERY ====================================================
 
-function eeNotOperatorBranch(first: String; op: String; isFloat: Boolean): String;
+{function arrayToMem(varname: String; size: String): String;
+var
+    i: Integer;
+begin
+end;
+
+    TKind = (kNone, kReg, kMem, kData);
+    TValType = (vtNumber, vtFloat, vtString);
+
+    TValue = record
+        vKind:     TKind; // What type of info is passed to NASM, register, memory, literals?
+        vType:     TValType; // vtNumber, vtFloat, vtString
+        vWordPayload:  Int64; // the word
+        vFltPayload:  Double; // the float
+        vStringPayload:  String; // register names and data labels eg float_69
+        vOffset:    Integer; // the actual offset
+    end;}
+
+function eeNotOperatorBranch(first: TValue; op: String; isFloat: Boolean): TValue;
 var
     second, math_ret: String;
+    v: TValue;
 begin
     WriteLn('EXPRESSION EVAL - OPERATOR BRANCH');
 

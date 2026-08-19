@@ -272,20 +272,9 @@ end;
 
 // HELPERS ----------------------------------------------------------
 
-procedure loadRAX(addr: String);
-begin
-    WriteText('    mov rax, ' + addr + #10);
-end;
-
-procedure loadRBX(addr: String);
-begin
-    WriteText('    mov rbx, ' + addr + #10);
-end;
-
-procedure loadXMM0(addr: String);
-begin
-    WriteText('    movsd xmm0, ' + addr + #10);
-end;
+procedure loadRAX(addr: String); begin WriteText('    mov rax, ' + addr + #10); end;
+procedure loadRBX(addr: String); begin WriteText('    mov rbx, ' + addr + #10); end;
+procedure loadXMM0(addr: String); begin WriteText('    movsd xmm0, ' + addr + #10); end;
 
 // BLOCKS -----------------------------------------------------------
 procedure emitGlobalBlock(); begin end;   // {V ...}

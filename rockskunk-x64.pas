@@ -896,10 +896,41 @@ function tokenAssignment(): TValue;
 var
     token: String;
     stripped: String;
-    i: Integer;
-    v: TValue;
+    i, arrayIndex: Integer;
+    v, indexVal: TValue;
 begin
     token := consume;
+
+    if (peek() = 'LBRAC') or (peek() = 'LBRACE') or (peek() = 'BANG') then
+        begin
+            arrayIndex := findArrayIndex(token);
+            if arrayIndex = -1 then
+                begin
+                    WriteLn(currentLine + '- I CANT BELIEVE YOUVE DONE THIS - TA - UNK ARRAY >> ' + token);
+                    Halt(1);
+                end;
+
+            if (peek() = 'LBRAC') and (stateArray[arrayIndex].elementType <> vtNumber) then
+                begin WriteLn(currentLine + '- YOU HAVE FRUSTRATED THE COMPILER - CHECK ARRAY TYPE >> ' + token); Halt(1); end;
+            if (peek() = 'LBRACE') and (stateArray[arrayIndex].elementType <> vtFloat) then
+                begin WriteLn(currentLine + '- YOU HAVE FRUSTRATED THE COMPILER - CHECK ARRAY TYPE >> ' + token); Halt(1); end;
+            if (peek() = 'BANG') and (stateArray[arrayIndex].elementType <> vtByte) then
+                begin WriteLn(currentLine + '- YOU HAVE FRUSTRATED THE COMPILER - CHECK ARRAY TYPE >> ' + token); Halt(1); end;
+
+            consume;                          // eat [ { or !
+            indexVal := evaluateExpression(False);
+            WriteText('    mov rbx, ' + makeParserSpeakASM(indexVal) + #10);
+            consume;                          // eat closing ] or }
+
+            v.vKind          := kArray;
+            v.vType          := stateArray[arrayIndex].elementType;
+            v.vStringPayload := stateArray[arrayIndex].asmLabel;
+            v.vIndexReg      := 'rbx';
+            v.vAScale        := arrayElemWidth(stateArray[arrayIndex].elementType);
+
+            tokenAssignment := v;
+            Exit;
+    end;
 
     if isFloatLiteral(token) then // If it is a float then strip it and fill out the record
         begin

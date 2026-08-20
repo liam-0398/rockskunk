@@ -1,6 +1,8 @@
 
+|V a[10] |
+
 P main() {
-    a := 0 - 5
-    b := intAbs(a)
-    printw(b)
+a[2] := 5
+x := a[2]
+printw(x)
 }

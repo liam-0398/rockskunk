@@ -2,6 +2,18 @@ program rockskunk_x64;
 uses
     BaseUnix, SysUtils, Unix;
 
+    { NOTES TO SELF FOR FUTURE COMPILER / LITTLE OVERVIEW
+    This bootstrap compiler has been the experimental test dummy for the real rockskunk compiler. I greatly prefer the old array tracking
+    for states over the new record tracking even though it is to be more versitle. Its much harder for me to keep track of and I have to 
+    constantly look at the top of the file or copy record shapes into the place above where I am working or take notes outside of the code.I 
+    regret the refacator but i think over time I will get used to it, currently I am devloping much slower due to it. Rockskunk currently doesnt even have records
+    and I want to just get started making the real compiler so I am going the old school way again. 
+
+    THis compiler is pretty much done and meets all the requirements I set for bootstrap but most certainly does not implement all the features that
+    the language will have when I am done with it. Additional work will be done to comment it and to bugfix as I encounter problems compiling
+    the new compiler. The assembly for the prints and intrisnics was copy pasted and the rest of the assembly is pretty much tutorial level. The new 
+    compiler will have everything written by hand and no code that is not mine with a real focus on performance and efficiency. 
+    }
 const
     intRegs: array[0..5] of String = ('rdi', 'rsi', 'rdx', 'rcx', 'r8', 'r9');
     acceptedKeywords: array[0..14] of String = // MAKE SURE TO UPDATE KEYWORD CHECK WHEN ADDING

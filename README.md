@@ -1,8 +1,7 @@
 ## rockskunk
 # A terse, typeless (ish), no-bullshit language
 
-Compiles VERY simple test programs to NASM thus far. Using old C transpiler I had written for
-another language attempt and reworking it to output NASM x86_64 assembly. WAY down the line I want to do a ppc32 version as well.
+Bootstrap compiler is kind of a mess. Using old C transpiler I had written for another language attempt and reworking it to output NASM x86_64 assembly, so far I am successful. WAY down the line I want to do a ppc32 version as well.
 
 # Core tenants 
 
@@ -14,8 +13,7 @@ another language attempt and reworking it to output NASM x86_64 assembly. WAY do
 6. variable "r" inside function is always return, doesnt need declared
 7. Compiler auto-executes NASM so its a one shot compile
 8. floats are just defined with number ending in f for easy type check. a := 52.222f
-9. raw memory is just treated as 8 byte word.
-10. local variables auto declared on assignment
+9. local variables auto declared on assignment
 
 # Conventions
 
@@ -47,21 +45,21 @@ ADD("dir/ofile.rsk")'
 |V
     a := 500
     b := 42342/0f
-    string := "bigfootisreal"
+    string := 'bigfootisreal'
     array[1] := 333' |
 
 
 ; Static assignments (before first function)
-|S'
-    password := "mustardstains"' |
+|S
+    password := 'mustardstains' |
 
 
 ; records
-|R' delayLine'
-    buf := 0'      ; offset 0, N floats
-    wptr := N'      ; offset N
-    len := N+1'
-    fb := N+2' |
+|R delayLine
+    buf := 0      ; offset 0, N floats
+    wptr := N      ; offset N
+    len := N+1
+    fb := N+2 |
 
 delayLine.buf := 5'
 result := delayLine.wptr'
@@ -212,7 +210,7 @@ array := v(array) ;vectorize (auto width based on cpuflags)
 ```
 ; one-pole lowpass, N voices in parallel (SIMD lanes), auto-width via v()
 |V'
-    prevOut[4] := 0' |
+    prevOut[4] := 0 |
 
 F lowpass4(sampleVec, cutoffVec) {
     delta := v(sampleVec) -- v(prevOut)

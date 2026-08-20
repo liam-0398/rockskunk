@@ -24,6 +24,11 @@ P writeLn(s) {
 	r2 := sys(1, 1, nldata, nllen)
 }
 
+F ccmp(p, q) {
+    ; walk both byte-by-byte until mismatch or double null
+    ; needs the byte-deref primitive either way
+}
+
 
 ; MATH ----------------------------------------------------------------
 
@@ -43,5 +48,18 @@ F floatAbs(value: f) {
 F getpid() { r := sys(39, 0, 0, 0) }
 F brk(addr) { r := sys(12, addr, 0, 0) }
 F exit(code) { r := sys(60, code, 0, 0) }
+
+F argCount() {
+    r := argc
+}
+
+F argPtr(i) {
+    r := argv + (i * 8)     ; address of the argv[i] slot itself
+}
+
+F argRaw(i) {
+    p := argPtr(i)
+    r := p^                 ; the actual char* — a C string, null-terminated
+}
 
 ; END

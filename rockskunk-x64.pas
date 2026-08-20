@@ -350,6 +350,8 @@ begin
     fd4 := fpOpen('data.tmp', O_RdOnly, 438);
     WriteOut('section .bss' + #10);
     WriteOut('   digitbuf: resb 32' + #10);
+    WriteOut('__argc: resq 1' + #10);
+    WriteOut('__argv: resq 1' + #10);
     fd5 := fpOpen('bss.tmp', O_RdOnly, 438);
     bbytes := fpRead(fd5, bssbuf, SizeOf(bssbuf));
     fpWrite(fd2, bssbuf, bbytes);
@@ -586,8 +588,12 @@ end;
 procedure asmFoundations();
 begin
     // placed at bottom for file
-    WriteText(#10 + 'global _start' + #10);  // entry point so linker can do linker things
+    WriteText(#10 + 'global _start' + #10);
     WriteText('_start:'+ #10);
+    WriteText('  mov rax, [rsp]'+ #10);      // argc
+    WriteText('  lea rbx, [rsp+8]'+ #10);    // argv
+    WriteText('  mov [__argc], rax'+ #10);
+    WriteText('  mov [__argv], rbx'+ #10);
     WriteText('  call main'+ #10);
     WriteText('  mov rdi, rax'+ #10);
     WriteText('  mov rax, 60'+ #10);

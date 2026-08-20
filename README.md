@@ -193,7 +193,7 @@ fm(p) ; free
 p := &a ; load specific address
 v := p^        ; v now holds whatever qword lives at that address
 
-; strings are length-prefixed pointers, so:
+; strings are length-prefixed pointers, null terminated for C compat
 len := s^         ; length of string s
 data := s + 8     ; address of s's character data
 

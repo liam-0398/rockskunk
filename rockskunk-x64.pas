@@ -1031,7 +1031,7 @@ begin
 
             tokenAssignment := v;
             Exit;
-end;
+    end;
 
     if isFloatLiteral(token) then // If it is a float then strip it and fill out the record
         begin
@@ -1048,6 +1048,18 @@ end;
             v.vKind         := kLit;
             v.vType         := vtNumber;
             v.vWordPayload  := StrToInt(token);
+        end
+    else if token = 'argc' then
+        begin
+            v.vKind          := kData;
+            v.vType          := vtNumber;
+            v.vStringPayload := '__argc';
+        end
+    else if token = 'argv' then
+        begin
+            v.vKind          := kData;
+            v.vType          := vtNumber;
+            v.vStringPayload := '__argv';
         end
     else
         begin

@@ -1,6 +1,10 @@
 ; ROCKSKUNK COMPILER
 ; 
 
+|V  buffer![4096]
+
+|
+
 
 ; Utilities ============================================================
 
@@ -13,7 +17,21 @@
 
 ; Input/Output ==========================================================
 
-P openFiles() {}
+P openFiles() {
+    path := '/NFS/Code/rockskunk/src/playground.rsk'
+    dataptr := path + 8
+    fd := open(dataptr, 0, 0)
+
+    IF (fd < 0)  {
+        r := 0 - 1
+    } E {
+        n := read(fd, buffer, 65536)
+        close(fd)
+        r := n
+    }
+}
+
+P closeFiles() {}
 
 ; Sub-Components ======================================================
 
@@ -33,13 +51,35 @@ P parser() {}
 
 ; Lexer ===============================================================
 
-P lexer() {}
+P lexer() {
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+}
 
 ; INIT ================================================================
 
 F main() {
+    msg_init := 'RSKC - INIT'
+    writeLn(msg_init)
     openFiles()
     lexer()
     parser()
-    
+
 }

@@ -10,6 +10,7 @@ F lseek(fd, offset, whence) { r := sys(8, fd, offset, whence) }
 F unlink(path) { r := sys(87, path, 0, 0) }
 F fstat(fd, statbuf) { r := sys(5, fd, statbuf, 0) }
 F mkdir(path, mode) { r := sys(83, path, mode, 0) }
+F close(fd) { r := sys(3, fd, 0, 0) }
 
 ; STRINGS ----------------------------------------------------------------
 

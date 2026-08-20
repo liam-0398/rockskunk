@@ -1087,7 +1087,7 @@ procedure arguementParser(functionIndex: Integer);
 var
     isFloatArg: Boolean;
     argname: String;
-    seenFloats, seenInts, argcounter: Integer;
+    seenFloats, seenInts, argcounter, arrayIndex: Integer;
 begin
     isFloatArg := False;
     WriteLn('EXPRESSION EVAL - RPAR BRANCH (ARGUMENT PARSER)'); // DEBUG
@@ -1102,7 +1102,10 @@ begin
         if stateFunction[functionIndex].paramType[argcounter] = 'FLOAT' then
             isFloatArg := True;
 
-        if not isNumber(argname) then
+        arrayIndex := findArrayIndex(argname);
+        if arrayIndex <> -1 then
+            argname := stateArray[arrayIndex].asmLabel     // bare label = its address
+        else if not isNumber(argname) then
             argname := makeParserSpeakASM(varToMem(argname));
 
         if isFloatArg then

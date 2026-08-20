@@ -10,6 +10,11 @@ const
      'OR', 'AND', 'NOR', 'XOR', 'CALL');
 
 type
+
+    TKind = (kNone, kReg, kMem, kData, kLit, kArray);
+    TValType = (vtNumber, vtFloat, vtString, vtByte);
+    TFrameKind = (fkLoopW, fkLoopF, fkCond, fkCondIf, fkCondElse);
+
     TLocal = record
         name:    String;
         varType: String;
@@ -30,8 +35,6 @@ type
         paramCount:  Integer;
     end;
 
-    type
-    TFrameKind = (fkLoopF, fkLoopW, fkCond);
     TFrame = record
         kind: TFrameKind;
         topLabel: String;   // only loops use this, cond leaves it blank
@@ -39,16 +42,12 @@ type
         loopvaro: String;
     end;
 
-    type
     TArray = record
         name:      String;
         elementCount: Integer;   // max size, from array[100] declaration
         elementType:  TValType;  // vtNumber, vtFloat — reuse existing enum, byte is a separate access-width concern, not a separate elemType
         asmLabel:  String;
     end;
-
-    TKind = (kNone, kReg, kMem, kData, kLit, kArray);
-    TValType = (vtNumber, vtFloat, vtString);
 
     // new to records and enums so this will probably be a shitshow
     TValue = record
@@ -71,7 +70,7 @@ var
     stateArray: array[0..255] of TArray;
     stateArrayCount: Integer;
 
-    buf, databuf, textbuf: Array[0..65535] of Char;
+    buf, databuf, textbuf, bssbuf: Array[0..65535] of Char;
 
     t_type, t_val: Array[0..4096] of String;
     t_line: Array[0..4096] of Integer;
@@ -79,6 +78,8 @@ var
     frames: array[0..63] of TFrame;
     frameDepth: Integer;
     bodyPending: Boolean;
+    chainEndLabel: String;
+    inChain: Boolean;
 
     loop_TLabel: array [0..64] of String;
     loop_ELabel: array [0..64] of String;
@@ -91,7 +92,7 @@ var
 
     filename, output_filename, stdlib_filename, returnAddr, currentFN: String;
     frameOffset, labelCounter, position, argCount, t_count: Integer;
-    fd, fd2, fd3, fd4, bytes: CInt;
+    fd, fd2, fd3, fd4, fd5, bbytes, bytes: CInt;
     paramPending: Boolean; 
     
 
@@ -221,12 +222,51 @@ begin
     Inc(stateFunctionCount);
 end;
 
+function findArrayIndex(name: String): Integer;
+var
+    i: Integer;
+begin
+    findArrayIndex := -1;
+    for i := 0 to stateArrayCount - 1 do
+        if stateArray[i].name = name then
+            begin
+                findArrayIndex := i;
+                break;
+            end;
+end;
+
+function addArrayEntry(name: String; count: Integer; etype: TValType): Integer;
+begin
+    if findArrayIndex(name) <> -1 then
+        begin
+            WriteLn(currentLine + '- I CANT BELIEVE YOUVE DONE THIS - ADD_ARRAY - DUPLICATE >> ' + name);
+            Halt(1);
+        end;
+
+    stateArray[stateArrayCount].name      := name;
+    stateArray[stateArrayCount].elementCount := count;
+    stateArray[stateArrayCount].elementType  := etype;
+    stateArray[stateArrayCount].asmLabel  := 'arr_' + name;
+
+    addArrayEntry := stateArrayCount;
+    Inc(stateArrayCount);
+end;
+
+function arrayElemWidth(etype: TValType): Integer;
+begin
+    if etype = vtByte then
+        arrayElemWidth := 1
+    else
+        arrayElemWidth := 8;  // vtNumber, vtFloat both 8 bytes
+end;
+
 // HELPERS =================================================
 // ========================================================
 
 procedure writeOut(s: String); begin fpWrite(fd2, s[1], Length(s)); end;
 procedure writeText(s: String); begin fpWrite(fd3, s[1], Length(s)); end;
 procedure writeData(s: String); begin fpWrite(fd4, s[1], Length(s)); end;
+procedure writeBSS(s: String); begin fpWrite(fd5, s[1], Length(s)); end;
 
 function keywordCheck(word: String): Boolean; // Flag keywords
 var
@@ -295,6 +335,7 @@ procedure openIntermediateFile; // open temp sourcefile
 begin
     fd3 := fpOpen('text.tmp',O_WRONLY OR O_CREAT OR O_TRUNC, 438);
     fd4 := fpOpen('data.tmp',O_WRONLY OR O_CREAT OR O_TRUNC, 438);
+    fd5 := fpOpen('bss.tmp', O_WRONLY OR O_CREAT OR O_TRUNC, 438);
     FillChar(databuf, SizeOf(databuf), 0);
     FillChar(textbuf, SizeOf(textbuf), 0);
 end;
@@ -308,6 +349,10 @@ begin
     fd4 := fpOpen('data.tmp', O_RdOnly, 438);
     WriteOut('section .bss' + #10);
     WriteOut('   digitbuf: resb 32' + #10);
+    fd5 := fpOpen('bss.tmp', O_RdOnly, 438);
+    bbytes := fpRead(fd5, bssbuf, SizeOf(bssbuf));
+    fpWrite(fd2, bssbuf, bbytes);
+    fpClose(fd5);
     WriteOut(#10 + 'section .data' + #10);
     dbytes := fpRead(fd4, databuf, SizeOf(databuf));
     fpWrite(fd2, databuf, dbytes);
@@ -322,7 +367,7 @@ begin
     fpClose(fd2);
 end;
 
-procedure closeIntermediateFile; begin fpClose(fd3); fpClose(fd4); end;
+procedure closeIntermediateFile; begin fpClose(fd3); fpClose(fd4); fpClose(fd5); end;
 
 // CODE GENERATION ===========================================
 // ========================================================
@@ -343,7 +388,7 @@ begin
         kLit: begin makeParserSpeakASM := IntToStr(v.vWordPayload); end;
         kMem: begin makeParserSpeakASM := '[rbp-' + IntToStr(v.vOffset) + ']'; end;
         kData: begin makeParserSpeakASM := '[' + v.vStringPayload + ']'; end;
-        kArray: begin makeParserSpeakASM := '[' + v.vStringPayload + ' + ' + v.vIndexReg + '*' + IntToStr(v.vScale) + ']'; end;
+        kArray: begin makeParserSpeakASM := '[' + v.vStringPayload + ' + ' + v.vIndexReg + '*' + IntToStr(v.vAScale) + ']'; end;
     end;
 end;
 
@@ -1026,11 +1071,12 @@ end;
 
 procedure discriminateIdentifier();
 var
-    variable, twoname, argname, discoveredVariableType: String;
+    variable, twoname, argname, discoveredVariableType, addr: String;
     rightside: TValue;
-    existingIndex, functionIndex: Integer;
+    existingIndex, functionIndex, arrayIndex: Integer;
     isDeclared, isReturn, isFloat: boolean;
     symIndex: Integer;
+    v, indexVal: TValue;
 
 begin
     symIndex := 0;
@@ -1049,7 +1095,51 @@ begin
     if symindex <> -1 then
         isDeclared := True;
 
-    if peek() = 'ASSIGN' then // if its a := x etc etc
+    if (peek() = 'LBRAC') or (peek() = 'LBRACE') or (peek() = 'BANG') then
+        begin
+            arrayIndex := findArrayIndex(variable);
+            if arrayIndex = -1 then
+                begin
+                    WriteLn(currentLine + '- I CANT BELIEVE YOUVE DONE THIS - DI - I DONT KNOW WHAT THIS IS BUT ITS NOT AN ARRAY >>' + variable);
+                    Halt(1);
+                end;
+
+            if (peek() = 'LBRAC') and (stateArray[arrayIndex].elementType <> vtNumber) then
+                begin WriteLn(currentLine + '- YOU HAVE FRUSTRATED THE COMPILER - CHECK ARRAY TYPE >> ' + variable); Halt(1); end;
+            if (peek() = 'LBRACE') and (stateArray[arrayIndex].elementType <> vtFloat) then
+                begin WriteLn(currentLine + '- YOU HAVE FRUSTRATED THE COMPILER - CHECK ARRAY TYPE >> ' + variable); Halt(1); end;
+            if (peek() = 'BANG') and (stateArray[arrayIndex].elementType <> vtByte) then
+                begin WriteLn(currentLine + '- YOU HAVE FRUSTRATED THE COMPILER - CHECK ARRAY TYPE >> ' + variable); Halt(1); end;
+
+            consume;                          // eat [ { or !
+            indexVal := evaluateExpression(False);
+            WriteText('    mov rbx, ' + makeParserSpeakASM(indexVal) + #10);
+            consume;                          // eat closing ] or }
+
+            v.vKind           := kArray;
+            v.vType           := stateArray[arrayIndex].elementType;
+            v.vStringPayload  := stateArray[arrayIndex].asmLabel;
+            v.vIndexReg       := 'rbx';
+            v.vAScale         := arrayElemWidth(stateArray[arrayIndex].elementType);
+
+            consume;                          // eat :=
+            rightside := evaluateExpression(stateArray[arrayIndex].elementType = vtFloat);
+
+            addr := makeParserSpeakASM(v);
+
+            if stateArray[arrayIndex].elementType = vtFloat then
+                emitAssignFloat(addr, makeParserSpeakASM(rightside))
+            else if stateArray[arrayIndex].elementType = vtByte then
+                begin
+                    if makeParserSpeakASM(rightside) <> 'rax' then
+                        WriteText('    mov rax, ' + makeParserSpeakASM(rightside) + #10);
+                    WriteText('    mov ' + addr + ', al' + #10);
+                end
+            else
+                emitAssign(addr, makeParserSpeakASM(rightside));
+        end
+
+    else if peek() = 'ASSIGN' then // if its a := x etc etc
         begin
             if isDeclared = True then
                 begin // turn into something nasm understands instead of just "variable"
@@ -1131,6 +1221,8 @@ begin
     loopcond := peek; // grab TYPE not the damn value
     consume; // now eat it
     looplimit := consume;
+    if not isNumber(looplimit) then
+        looplimit := makeParserSpeakASM(varToMem(looplimit)); // prevents the loop from getting sassy with var limit
     consume; // RPAR
     toplabel := labelMaker('LW');
     endlabel := labelMaker('LW');
@@ -1170,7 +1262,9 @@ begin
     consume; // :=
     loopstart := consume; // 0
     consume; // until
-    looplimit := consume; 
+    looplimit := consume;
+    if not isNumber(looplimit) then
+        looplimit := makeParserSpeakASM(varToMem(looplimit));
     consume; // RPAR
     WriteText('    mov rax, ' + loopstart + #10);
     WriteText('    mov ' + loopvar + ', rax' + #10);
@@ -1190,7 +1284,6 @@ begin
     bodyPending := True;
 end;
 
-// broke
 function condWhen(): Boolean;
 var
     condvar, condition, condlimit, endlabel: String;
@@ -1225,12 +1318,13 @@ begin
     bodyPending := True;
 end;
 
-// broken
+// chains: consecutive IFs act as if/elseif, closed by a mandatory E
+// if you try and nest if else within if else expect heartache
 function condIf(): Boolean;
 var
     condvar, condition, condlimit, endlabel: String;
 begin
-    consume; //consume W
+    consume; //consume I
     consume; // consume LPAR
     condvar := makeParserSpeakASM(varToMem(consume));
     condition := peek; // grab TYPE not the damn value
@@ -1238,61 +1332,52 @@ begin
     condlimit := consume; // 0
     consume; // RPAR
 
-    endlabel := labelMaker('W');
+    if not isNumber(condlimit) then
+        condlimit := makeParserSpeakASM(varToMem(condlimit));
+
+    endlabel := labelMaker('I');   // false-jump target: next IF/E in the chain
+
+    if not inChain then
+        begin
+            chainEndLabel := labelMaker('IEND'); // whole chain shares one exit
+            inChain := True;
+        end;
 
     WriteText('    mov rax, ' + condvar + #10);
     WriteText('    cmp rax, ' + condlimit + #10);
 
     if condition = 'LESSEQUAL' then  // all the shit is backwards here
-        WriteText('    jg ' + endlabel + #10)       // jump if greater (skip when i > limit)
+        WriteText('    jg ' + endlabel + #10)
     else if condition = 'LESS' then
-        WriteText('    jge ' + endlabel + #10)      // jump if greater or equal
+        WriteText('    jge ' + endlabel + #10)
     else if condition = 'GREQUAL' then
-        WriteText('    jl ' + endlabel + #10)       // jump if less
+        WriteText('    jl ' + endlabel + #10)
     else if condition = 'MORE' then
-        WriteText('    jle ' + endlabel + #10)      // jump if less or equal
+        WriteText('    jle ' + endlabel + #10)
     else if condition = 'EQUAL' then
-        WriteText('    jne ' + endlabel + #10);     // jump if not equal
+        WriteText('    jne ' + endlabel + #10);
 
-    frames[frameDepth].kind := fkCond;
-    frames[frameDepth].endLabel := endlabel;
+    frames[frameDepth].kind     := fkCondIf;
+    frames[frameDepth].endLabel := endlabel;      // this branch's false-jump target
+    frames[frameDepth].topLabel := chainEndLabel;  // reused field: whole chain's shared exit
     Inc(frameDepth);
     bodyPending := True;
+
+    condIf := True;
 end;
 
-// broken
 function condElse(): Boolean;
 var
     condvar, condition, condlimit, endlabel: String;
 begin
-    consume; //consume W
-    consume; // consume LPAR
-    condvar := makeParserSpeakASM(varToMem(consume));
-    condition := peek; // grab TYPE not the damn value
-    consume; // now eat it
-    condlimit := consume; // 0
-    consume; // RPAR
+    consume; 
 
-    endlabel := labelMaker('W');
-
-    WriteText('    mov rax, ' + condvar + #10);
-    WriteText('    cmp rax, ' + condlimit + #10);
-
-    if condition = 'LESSEQUAL' then  // all the shit is backwards here
-        WriteText('    jg ' + endlabel + #10)       // jump if greater (skip when i > limit)
-    else if condition = 'LESS' then
-        WriteText('    jge ' + endlabel + #10)      // jump if greater or equal
-    else if condition = 'GREQUAL' then
-        WriteText('    jl ' + endlabel + #10)       // jump if less
-    else if condition = 'MORE' then
-        WriteText('    jle ' + endlabel + #10)      // jump if less or equal
-    else if condition = 'EQUAL' then
-        WriteText('    jne ' + endlabel + #10);     // jump if not equal
-
-    frames[frameDepth].kind := fkCond;
-    frames[frameDepth].endLabel := endlabel;
+    frames[frameDepth].kind     := fkCondElse;
+    frames[frameDepth].endLabel := chainEndLabel; // E's close lands the whole chain here
     Inc(frameDepth);
     bodyPending := True;
+    inChain := False; 
+    condElse := True;
 end;
 
 function constructFunction(): Boolean;
@@ -1357,7 +1442,8 @@ end;
 procedure parser();
 var
     isProcedure: Boolean;
-    i, seenFloats, seenInts: Integer;
+    i, seenFloats, seenInts, arrIndex: Integer;
+    varname, countStr, valStr: String;
 begin
     i := 0;
     position := 0;
@@ -1407,6 +1493,13 @@ begin
                             WriteText('    inc qword ' + frames[frameDepth].loopvaro + #10);
                         if (frames[frameDepth].kind = fkLoopW) or (frames[frameDepth].kind = fkLoopF) then
                             WriteText('    jmp ' + frames[frameDepth].topLabel + #10);
+                        if frames[frameDepth].kind = fkCondIf then
+                            begin
+                                WriteText('    jmp ' + frames[frameDepth].topLabel + #10); 
+                                emitLabel(frames[frameDepth].endLabel);                    
+                            end
+                        else if frames[frameDepth].kind = fkCondElse then
+                            emitLabel(frames[frameDepth].endLabel); 
                         emitLabel(frames[frameDepth].endLabel);
                     end
                 else
@@ -1428,27 +1521,59 @@ begin
             'E': begin condElse; end;
             'LF': begin loopFor(); end;
             'LW': begin loopWhile(); end;
-            'VARBLOCK': begin 
+            'VARBLOCK': begin
                 consume; // |V
                 while peek() <> 'PIPE' do
                     begin
-                        if (peek() = 'IDENTIFIER') and (peek2() = 'LBRAC') then  // words
-                            begin
+                        varname := consume;
 
-                            end;
-                        if (peek() = 'IDENTIFIER') and (peek2() = 'BANG') then   // byte arrays
+                        if peek() = 'LBRAC' then          // qword array
                             begin
-                                consume; // [
-                            end;
-                        if (peek() = 'IDENTIFIER') and (peek2() = 'LBRACE') then   // float arrays
+                                consume; 
+                                countStr := consume;      
+                                consume; 
+                                arrIndex := addArrayEntry(varname, StrToInt(countStr), vtNumber);
+                                WriteBSS('    ' + stateArray[arrIndex].asmLabel + ': resb ' +
+                                    IntToStr(StrToInt(countStr) * arrayElemWidth(vtNumber)) + #10);
+                            end
+                        else if peek() = 'BANG' then       // byte array
                             begin
+                                consume; 
+                                if peek() <> 'LBRAC' then
+                                    begin
+                                        WriteLn(currentLine + '- I CANT BELIEVE YOUVE DONE THIS - VARBLOCK - YOU TRYNA GET WEIRD WITH ME BOY? >> ' + peek());
+                                        Halt(1);
+                                    end;
                                 consume; // [
-                            end;
-                        if (peek() = 'IDENTIFIER') and (peek2() = 'ASSIGN') then   // assignments
+                                countStr := consume;
+                                consume; // ]
+                                arrIndex := addArrayEntry(varname, StrToInt(countStr), vtByte);
+                                WriteBSS('    ' + stateArray[arrIndex].asmLabel + ': resb ' +
+                                    IntToStr(StrToInt(countStr) * arrayElemWidth(vtByte)) + #10);
+                            end
+                        else if peek() = 'LBRACE' then     // float array
                             begin
-                                consume; // [
+                                consume; // {
+                                countStr := consume;
+                                consume; // }
+                                arrIndex := addArrayEntry(varname, StrToInt(countStr), vtFloat);
+                                WriteBSS('    ' + stateArray[arrIndex].asmLabel + ': resb ' +
+                                    IntToStr(StrToInt(countStr) * arrayElemWidth(vtFloat)) + #10);
+                            end
+                        else if peek() = 'ASSIGN' then     // global var BROKEN BROKEN NOT DONE 
+                            begin
+                                consume; // :=
+                                valStr := consume;
+                                //addGlobalEntry(varname, 'NUMBER');
+                                //WriteData('   g_' + varname + ': dq ' + valStr + #10);
+                            end
+                        else
+                            begin
+                                WriteLn(currentLine + '- I CANT BELIEVE YOUVE DONE THIS - VARBLOCK - YOU HAVE DISGRACED MY DECLARATIONS WITH YOUR FILTH>> ' + peek() + ' ' + peekV());
+                                Halt(1);
                             end;
                     end;
+                consume; 
             end;
             'STATICBLOCK': begin 
                 consume; // placeholder

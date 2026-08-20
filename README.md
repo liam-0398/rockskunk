@@ -45,9 +45,9 @@ ADD("dir/ofile.rsk")'
 
 ; global variables (before first function)
 |V
-    a := 500'
-    b := 42342'
-    string ::= "bigfootisreal"'
+    a := 500
+    b := 42342/0f
+    string := "bigfootisreal"
     array[1] := 333' |
 
 
@@ -110,7 +110,7 @@ W (i = 5) {
 
 
 ; If (continues until else is seen)
-I ([i = 5] or [f = 69]) {
+IF ([i = 5] or [f = 69]) {
     p("MATCH FOUND")
 }
 

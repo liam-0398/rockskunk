@@ -1,4 +1,6 @@
-; COMPILER MIGRATION VALIDATION
+; COMPILER MIGRATION VALIDATION — TORTURE TEST
+
+|V a{10} |
 
 F addw(a, b) {
 r := a + b
@@ -8,12 +10,92 @@ F addf(a: f, b: f) {
 r := a + b
 }
 
+F factorial(n) {
+r := 1
+i := 1
+LW (i <= n) {
+r := r * i
+i := i + 1
+}
+}
+
+P write(fd, buf, count) {
+r := sys(1, fd, buf, count)
+}
+
 F main() {
-; --- TEST 3: LF, manual increment (auto-increment not implemented yet) ---
+; --- basic sanity: scalar math + calls, unchanged from before ---
+x := 5
+a{2} := 5.0f
+y := 10
+z := addw(x, y)
+printw(z)
+
+fx := 2.5f
+fy := 1.5f
+fz := addf(fx, fy)
+printf(fz)
+
+; --- deep nesting: LF containing LW containing W containing W ---
+; outer LF counts 1..3
+; inner LW counts 0..2 each outer pass
+; innermost W fires only when outer=2 AND inner=1 -> exactly one hit
+outer := 1
+LF (outer := 1 until 4) {
+    inner := 0
+    LW (inner <= 2) {
+        W (outer = 2) {
+            W (inner = 1) {
+                printw(777)
+            }
+        }
+        printw(outer)
+        printw(inner)
+        inner := inner + 1
+    }
+}
+
+n := 5
+
+IF (n = 5) {
+    printw(111)
+}
+E {
+    printw(222)
+}
+
+n := 9
+
+IF (n = 5) {
+    printw(333)
+}
+E {
+    printw(444)
+}
+
+; --- LF auto-increment alone, no manual increment anywhere ---
 k := 1
-LF (k := 1 until 10) {
+LF (k := 1 until 6) {
     printw(k)
 }
 
+; --- function call inside a loop body ---
+total := 0
+LW (total <= 20) {
+    total := addw(total, 5)
+    printw(total)
+}
+
+; --- factorial: recursion-free but exercises nested LW inside a called function ---
+f5 := factorial(5)
+printw(f5)
+
+; --- W with no match at all: should print nothing extra ---
+never := 0
+W (never = 999) {
+    printw(666666)
+}
+
+; --- syscall-backed procedure call: write "OK\n" to stdout directly ---
 r := 0
 }

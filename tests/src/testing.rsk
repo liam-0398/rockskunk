@@ -1,101 +1,122 @@
-; COMPILER MIGRATION VALIDATION — TORTURE TEST
+; COMPILER MIGRATION VALIDATION — FULL ONSLAUGHT
 
-|V a{10} |
+|V
+	nums[10]
+	temps{10}
+	flags![20]
+|
 
 F addw(a, b) {
-r := a + b
+	r := a + b
 }
 
 F addf(a: f, b: f) {
-r := a + b
+	r := a + b
 }
 
 F factorial(n) {
-r := 1
-i := 1
-LW (i <= n) {
-r := r * i
-i := i + 1
-}
-}
-
-P write(fd, buf, count) {
-r := sys(1, fd, buf, count)
+	r := 1
+	i := 1
+	LW (i <= n) {
+		r := r * i
+		i := i + 1
+	}
 }
 
-F main() {
-; --- basic sanity: scalar math + calls, unchanged from before ---
-x := 5
-a{2} := 5.0f
-y := 10
-z := addw(x, y)
-printw(z)
+P main() {
+	; --- scalar math + calls ---
+	x := 5
+	y := 10
+	z := addw(x, y)
+	printw(z)
 
-fx := 2.5f
-fy := 1.5f
-fz := addf(fx, fy)
-printf(fz)
+	fx := 2.5f
+	fy := 1.5f
+	fz := addf(fx, fy)
+	printf(fz)
 
-; --- deep nesting: LF containing LW containing W containing W ---
-; outer LF counts 1..3
-; inner LW counts 0..2 each outer pass
-; innermost W fires only when outer=2 AND inner=1 -> exactly one hit
-outer := 1
-LF (outer := 1 until 4) {
-    inner := 0
-    LW (inner <= 2) {
-        W (outer = 2) {
-            W (inner = 1) {
-                printw(777)
-            }
-        }
-        printw(outer)
-        printw(inner)
-        inner := inner + 1
-    }
-}
+	; --- qword array: fill via LF, read back via LW ---
+	i := 0
+	LF (i := 0 until 10) {
+		nums[i] := i * i
+	}
+	j := 0
+	LW (j <= 9) {
+		printw(nums[j])
+		j := j + 1
+	}
 
-n := 5
+	; --- float array round trip ---
+	temps{3} := 98.6f
+	tval := temps{3}
+	printf(tval)
 
-IF (n = 5) {
-    printw(111)
-}
-E {
-    printw(222)
-}
+	; --- byte array: store and reload individual bytes ---
+	flags![0] := 1
+	flags![1] := 0
+	flags![2] := 1
+	b0 := flags![0]
+	b1 := flags![1]
+	b2 := flags![2]
+	printw(b0)
+	printw(b1)
+	printw(b2)
 
-n := 9
+	; --- 4-deep nesting: LF / LW / W / W ---
+	outer := 1
+	LF (outer := 1 until 4) {
+		inner := 0
+		LW (inner <= 2) {
+			W (outer = 2) {
+				W (inner = 1) {
+					printw(777)
+				}
+			}
+			printw(outer)
+			printw(inner)
+			inner := inner + 1
+		}
+	}
 
-IF (n = 5) {
-    printw(333)
-}
-E {
-    printw(444)
-}
+	; --- IF/E chain, both branches ---
+	n := 5
+	IF (n = 5) {
+		printw(111)
+	}
+	E {
+		printw(222)
+	}
 
-; --- LF auto-increment alone, no manual increment anywhere ---
-k := 1
-LF (k := 1 until 6) {
-    printw(k)
-}
+	n := 9
+	IF (n = 5) {
+		printw(333)
+	}
+	E {
+		printw(444)
+	}
 
-; --- function call inside a loop body ---
-total := 0
-LW (total <= 20) {
-    total := addw(total, 5)
-    printw(total)
-}
+	; --- function call inside a loop, self-modifying accumulator ---
+	total := 0
+	LW (total <= 20) {
+		total := addw(total, 5)
+		printw(total)
+	}
 
-; --- factorial: recursion-free but exercises nested LW inside a called function ---
-f5 := factorial(5)
-printw(f5)
+	; --- factorial: LW nested inside a called function's own frame ---
+	f5 := factorial(5)
+	printw(f5)
 
-; --- W with no match at all: should print nothing extra ---
-never := 0
-W (never = 999) {
-    printw(666666)
-}
+	; --- strings: literal, address fix, pointer deref, pointer arithmetic ---
+	msg := 'hello'
+	msglen := msg^
+	printw(msglen)
+	writeLn(msg)
 
-; --- syscall-backed procedure call: write "OK\n" to stdout directly ---
-r := 0
+	; --- W with no match: prints nothing ---
+	never := 0
+	W (never = 999) {
+		printw(666666)
+	}
+
+	r := 0
 }

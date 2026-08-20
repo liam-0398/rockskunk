@@ -127,6 +127,7 @@ var
 // Forward Declarations -----------------------------------------------------------
 
 function WhoGoesThere(intruder: String): String; forward;
+procedure arguementParser(functionIndex: Integer); forward;
 function evaluateExpression(isFloat: Boolean): TValue; forward;
 function currentLine(): String; forward;
 
@@ -317,11 +318,11 @@ var
     libBytes: CInt;
 begin
     libBytes := 0;
-    {WriteLn('LOADING STANDARD LIBRARY');
+    WriteLn('LOADING STANDARD LIBRARY');
     FillChar(buf, SizeOf(buf), 0);
     fd := fpOpen(stdlib_filename, O_RdOnly);
     libBytes := FpRead(fd, buf, SizeOf(buf));
-    fpClose(fd);}
+    fpClose(fd);
 
     WriteLn('LOADING SOURCEFILE LIBRARY');
     fd := fpOpen(filename, O_RdOnly);
@@ -471,14 +472,27 @@ function emitStringConstant(s: String): TValue;
 var
     v: TValue;
     lbl: String;
+    i: Integer;
+    dataLine: String;
 begin
     lbl := 'str_' + IntToStr(labelCounter);
     WriteData('   ' + lbl + ': dq ' + IntToStr(Length(s)) + #10);
-    WriteData('   db `' + s + '`, 0' + #10);   // NASM backtick-quoted string + explicit NUL byte
+
+    dataLine := '   db ';
+    for i := 1 to Length(s) do
+        begin
+            if (Ord(s[i]) < 32) or (Ord(s[i]) > 126) then
+                dataLine := dataLine + IntToStr(Ord(s[i])) + ', '
+            else
+                dataLine := dataLine + '`' + s[i] + '`, ';
+        end;
+    dataLine := dataLine + '0' + #10; // trailing NUL
+
+    WriteData(dataLine);
 
     v.vKind          := kData;
-    v.vType           := vtString;
-    v.vStringPayload  := lbl;
+    v.vType          := vtString;
+    v.vStringPayload := lbl;
 
     emitStringConstant := v;
     Inc(labelCounter);
@@ -495,6 +509,12 @@ begin
     v.vType := vtNumber;
     emitAddressOf := v;
 end;      
+
+procedure emitAssignString(variable, alabel: String);
+begin
+    WriteText('    lea rax, [' + alabel + ']' + #10);
+    WriteText('    mov ' + variable + ', rax' + #10);
+end;
 
 procedure emitMalloc(); begin end;            // cm(size)
 procedure emitFree(); begin end;              // fm(p)
@@ -793,21 +813,65 @@ begin
 end;
 
 procedure asmFunctionCalls(variable: String; argname: String);
+var
+    arrayIndex, functionIndex: Integer;
+    idxVal: TValue;
 begin
     if (variable = 'printw') or (variable = 'printf') then
         begin
             consume; // (
-            argname := consume(); // the value to print
-            if not isNumber(argname) then
+            argname := consume();
+
+            if (peek() = 'LBRAC') or (peek() = 'LBRACE') or (peek() = 'BANG') then
+                begin
+                    arrayIndex := findArrayIndex(argname);
+                    if arrayIndex = -1 then
+                        begin
+                            WriteLn(currentLine + '- UNK ARRAY >> ' + argname);
+                            Halt(1);
+                        end;
+
+                    if peek() = 'BANG' then
+                        begin
+                            consume; // !
+                            consume; // [
+                        end
+                    else
+                        consume; // [ or {
+
+                    idxVal := evaluateExpression(False);
+                    WriteText('    mov rbx, ' + makeParserSpeakASM(idxVal) + #10);
+                    consume; // ] or }
+
+                    argname := '[' + stateArray[arrayIndex].asmLabel + ' + rbx*' +
+                        IntToStr(arrayElemWidth(stateArray[arrayIndex].elementType)) + ']';
+                end
+            else if not isNumber(argname) then
                 argname := makeParserSpeakASM(varToMem(argname));
+
             consume; // )
-                if variable = 'printf' then
-                    functionPrintF(argname);
-                if variable = 'printw' then
-                    functionPrintW(argname);
+
+            if variable = 'printf' then
+                functionPrintF(argname);
+            if variable = 'printw' then
+                functionPrintW(argname);
         end
     else
-        WriteText('call ' + variable + #10);
+        begin
+            functionIndex := findFunctionIndex(variable);
+            if functionIndex = -1 then
+                begin
+                    WriteLn(currentLine + '- UNK FUNCTION >> ' + variable);
+                    Halt(1);
+                end;
+
+            consume; // (
+            if peek() <> 'RPAR' then
+                arguementParser(functionIndex);
+            consume; // )
+
+            WriteText('    call ' + variable + #10);
+        end;
 end;
 
 function foldCode(first: String; isFloat: boolean): String;
@@ -942,7 +1006,13 @@ begin
             if (peek() = 'BANG') and (stateArray[arrayIndex].elementType <> vtByte) then
                 begin WriteLn(currentLine + '- YOU HAVE FRUSTRATED THE COMPILER - CHECK ARRAY TYPE >> ' + token); Halt(1); end;
 
-            consume;                          // eat [ { or !
+            if peek() = 'BANG' then
+                begin
+                    consume; // !
+                    consume; // [
+                end
+            else
+                consume; // [ or {                          // eat [ { or !
             indexVal := evaluateExpression(False);
             WriteText('    mov rbx, ' + makeParserSpeakASM(indexVal) + #10);
             consume;                          // eat closing ] or }
@@ -955,7 +1025,7 @@ begin
 
             tokenAssignment := v;
             Exit;
-    end;
+end;
 
     if isFloatLiteral(token) then // If it is a float then strip it and fill out the record
         begin
@@ -1103,6 +1173,15 @@ begin
             // record and is auto type checked etc
             v := tokenAssignment;
 
+            if peek() = 'CARET' then
+                begin
+                    consume;
+                    WriteText('    mov rax, ' + makeParserSpeakASM(v) + #10);
+                    WriteText('    mov rax, [rax]' + #10);
+                    v.vKind := kReg;
+                    v.vType := vtNumber;
+                end;
+
             if (peek() = 'PLUS') or (peek() = 'MINUS') or (peek() = 'STAR') or (peek() = 'SLASH') then
                 begin
                     if v.vType = vtFloat then
@@ -1167,7 +1246,13 @@ begin
             if (peek() = 'BANG') and (stateArray[arrayIndex].elementType <> vtByte) then
                 begin WriteLn(currentLine + '- YOU HAVE FRUSTRATED THE COMPILER - CHECK ARRAY TYPE >> ' + variable); Halt(1); end;
 
-            consume;                          // eat [ { or !
+            if peek() = 'BANG' then
+                begin
+                    consume; // !
+                    consume; // [
+                end
+            else
+                consume; // [ or {                        // eat [ { or !
             indexVal := evaluateExpression(False);
             WriteText('    mov rbx, ' + makeParserSpeakASM(indexVal) + #10);
             consume;                          // eat closing ] or }
@@ -1204,7 +1289,9 @@ begin
                     consume(); // :=
                     rightside := evaluateExpression(isFloat);
                     isFloat := (stateLocal[symIndex].varType = 'FLOAT'); // wasnt verifiying
-                        if stateLocal[symIndex].varType = 'FLOAT' then
+                        if rightside.vType = vtString then
+                            emitAssignString(variable, rightside.vStringPayload)
+                        else if isFloat then
                             emitAssignFloat(variable, makeParserSpeakASM(rightside))
                         else
                             emitAssign(variable, makeParserSpeakASM(rightside));
@@ -1250,7 +1337,9 @@ begin
 
                     rightside := evaluateExpression(isFloat);
                                      
-                    if isFloat then // send to expression evaulator to find out what to do to right side
+                    if rightside.vType = vtString then
+                        emitAssignString(variable, rightside.vStringPayload)
+                    else if isFloat then
                         emitAssignFloat(variable, makeParserSpeakASM(rightside))
                     else
                         emitAssign(variable, makeParserSpeakASM(rightside));
@@ -1567,9 +1656,6 @@ begin
             'ASSIGN': begin 
                 consume;
             end;
-            'TERMINATOR': begin 
-                consume;
-            end;
             'V': begin consume; end;
             'S': begin consume; end;
             'W': begin condWhen(); end;
@@ -1731,13 +1817,12 @@ begin
                     '<': assignSingleChar('<', 'LESS');
                     '[': assignSingleChar('[', 'LBRAC');
                     ']': assignSingleChar(']', 'RBRAC');
-                    #39: assignSingleChar(#39, 'TERMINATOR');
-                    #96: assignSingleChar(#96, 'QUOTE');
                     ',': assignSingleChar(',', 'COMMA');
                     '|': assignSingleChar('|', 'PIPE');
                     ':': assignSingleChar(':', 'COLON');
                     '!': assignSingleChar('!', 'BANG');
                     '&': assignSingleChar('&', 'AMP');
+                    '^': assignSingleChar('^', 'CARET');
 
                     ';': begin   // comment — skip to end of line, emits no token
                         while (i < bytes) and (buf[i] <> #10) do
@@ -1789,18 +1874,30 @@ begin
               
                 end
 
-                else if buf[i] = #96 then // Handle double quote strings
+                else if buf[i] = #39 then
                 begin
                     word := '';
                     Inc(i); // skip opening quote
-                    while buf[i] <> #96 do
+                    while buf[i] <> #39 do
                     begin
-                        word := collect(word);
+                        if buf[i] = '\' then
+                            begin
+                                Inc(i); // move to the escape char
+                                case buf[i] of
+                                    'n': word := word + #10;
+                                    't': word := word + #9;
+                                    '\': word := word + '\';
+                                    #39: word := word + #39;
+                                else
+                                    word := word + buf[i]; // unknown escape, pass through literally
+                                end;
+                                Inc(i); // move past the escape char
+                            end
+                        else
+                            word := collect(word); // normal char, existing behavior
                     end;
-                    // buf[i] is now closing quote
                     assignSingleChar(word,'STRING');
-                    // no Dec(i) needed, already on closing quote, main Inc(i) moves past it
-                end; 
+                end;
                 
             end; 
         end; 

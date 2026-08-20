@@ -2,7 +2,11 @@
 |V a[10] |
 
 P main() {
-a[2] := 5
-x := a[2]
-printw(x)
+    str1 := 'hello'
+    a[2] := 5
+    x := a[2]
+    i := 0
+    LF (i := 1 until 10) {
+    writeLn(str1) }
+    printw(x)
 }

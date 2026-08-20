@@ -13,6 +13,18 @@ F mkdir(path, mode) { r := sys(83, path, mode, 0) }
 
 ; STRINGS ----------------------------------------------------------------
 
+P writeLn(s) {
+	len := s^
+	dataptr := s + 8
+	r1 := sys(1, 1, dataptr, len)
+
+	nl := '\n'
+	nllen := nl^
+	nldata := nl + 8
+	r2 := sys(1, 1, nldata, nllen)
+}
+
+
 ; MATH ----------------------------------------------------------------
 
 F intAbs(value) {

@@ -92,8 +92,7 @@ P functionName(a1, a2: f) { ; PROCEDURE, NO RETURN
 
 ; For Loop
 LF (i := 1 until 10) {
-    p("ANNOYING MESSAGE")
-    i := i + 1
+    writeLn("ANNOYING MESSAGE")
 }
 
 
@@ -191,10 +190,12 @@ fm(p) ; free
 
 ; Addressing / Pointers
 
-; treat normal ops as pointers as designated by compiler if posible with current memory
-; model to avoid complexity
-
 p := &a ; load specific address
+v := p^        ; v now holds whatever qword lives at that address
+
+; strings are length-prefixed pointers, so:
+len := s^         ; length of string s
+data := s + 8     ; address of s's character data
 
 
 ; Misc

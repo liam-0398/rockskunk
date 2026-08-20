@@ -44,7 +44,7 @@ ADD("dir/ofile.rsk")'
 
 
 ; global variables (before first function)
-|V'
+|V
     a := 500'
     b := 42342'
     string ::= "bigfootisreal"'

@@ -39,7 +39,15 @@ type
         loopvaro: String;
     end;
 
-    TKind = (kNone, kReg, kMem, kData, kLit);
+    type
+    TArray = record
+        name:      String;
+        elementCount: Integer;   // max size, from array[100] declaration
+        elementType:  TValType;  // vtNumber, vtFloat — reuse existing enum, byte is a separate access-width concern, not a separate elemType
+        asmLabel:  String;
+    end;
+
+    TKind = (kNone, kReg, kMem, kData, kLit, kArray);
     TValType = (vtNumber, vtFloat, vtString);
 
     // new to records and enums so this will probably be a shitshow
@@ -50,6 +58,8 @@ type
         vFltPayload:  Double; // the float
         vStringPayload:  String; // register names and data labels eg float_69
         vOffset:    Integer; // the actual offset
+        vIndexReg: String; // which reegister holds eeval array index
+        vAScale:   Integer; // array scale in bytes
     end;
 
 var
@@ -58,6 +68,8 @@ var
     stateLocal: array[0..255] of TLocal;
     stateGlobal: array[0..255] of TGlobal;
     stateFunction:   array[0..255] of TFunction;
+    stateArray: array[0..255] of TArray;
+    stateArrayCount: Integer;
 
     buf, databuf, textbuf: Array[0..65535] of Char;
 
@@ -331,6 +343,7 @@ begin
         kLit: begin makeParserSpeakASM := IntToStr(v.vWordPayload); end;
         kMem: begin makeParserSpeakASM := '[rbp-' + IntToStr(v.vOffset) + ']'; end;
         kData: begin makeParserSpeakASM := '[' + v.vStringPayload + ']'; end;
+        kArray: begin makeParserSpeakASM := '[' + v.vStringPayload + ' + ' + v.vIndexReg + '*' + IntToStr(v.vScale) + ']'; end;
     end;
 end;
 
@@ -1355,7 +1368,7 @@ begin
             end;
             'LPAR': begin consume; end;
             'RPAR': begin consume; end;
-           'LBRACE': begin 
+            'LBRACE': begin 
                 consume;
                 if bodyPending then
                     begin
@@ -1416,7 +1429,26 @@ begin
             'LF': begin loopFor(); end;
             'LW': begin loopWhile(); end;
             'VARBLOCK': begin 
-                consume; // placeholder
+                consume; // |V
+                while peek() <> 'PIPE' do
+                    begin
+                        if (peek() = 'IDENTIFIER') and (peek2() = 'LBRAC') then  // words
+                            begin
+
+                            end;
+                        if (peek() = 'IDENTIFIER') and (peek2() = 'BANG') then   // byte arrays
+                            begin
+                                consume; // [
+                            end;
+                        if (peek() = 'IDENTIFIER') and (peek2() = 'LBRACE') then   // float arrays
+                            begin
+                                consume; // [
+                            end;
+                        if (peek() = 'IDENTIFIER') and (peek2() = 'ASSIGN') then   // assignments
+                            begin
+                                consume; // [
+                            end;
+                    end;
             end;
             'STATICBLOCK': begin 
                 consume; // placeholder
@@ -1523,6 +1555,7 @@ begin
                     ',': assignSingleChar(',', 'COMMA');
                     '|': assignSingleChar('|', 'PIPE');
                     ':': assignSingleChar(':', 'COLON');
+                    '!': assignSingleChar('!', 'BANG');
                     '&': assignSingleChar('&', 'AMP');
 
                     ';': begin   // comment — skip to end of line, emits no token

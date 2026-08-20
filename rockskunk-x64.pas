@@ -467,6 +467,23 @@ begin
     Inc(labelCounter);
 end;
 
+function emitStringConstant(s: String): TValue;
+var
+    v: TValue;
+    lbl: String;
+begin
+    lbl := 'str_' + IntToStr(labelCounter);
+    WriteData('   ' + lbl + ': dq ' + IntToStr(Length(s)) + #10);
+    WriteData('   db `' + s + '`, 0' + #10);   // NASM backtick-quoted string + explicit NUL byte
+
+    v.vKind          := kData;
+    v.vType           := vtString;
+    v.vStringPayload  := lbl;
+
+    emitStringConstant := v;
+    Inc(labelCounter);
+end;
+
 // ARRAYS / MEMORY -----------------------------------------------------------
 
 function emitAddressOf(variable: String): TValue;
@@ -899,6 +916,14 @@ var
     i, arrayIndex: Integer;
     v, indexVal: TValue;
 begin
+    if peek() = 'STRING' then
+        begin
+            token := consume;
+            v := emitStringConstant(token);
+            tokenAssignment := v;
+            Exit;
+        end;
+
     token := consume;
 
     if (peek() = 'LBRAC') or (peek() = 'LBRACE') or (peek() = 'BANG') then

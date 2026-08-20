@@ -17,11 +17,11 @@ F mkdir(path, mode) { r := sys(83, path, mode, 0) }
 
 F intAbs(value) {
     r := value
-    W (value < 0) { r := 0 - value }
+   ; W (value < 0) { r := 0 - value }
 }
 
 F floatAbs(value: f) {
-   W (value < 0) { r := 0 - value}
+  ; W (value < 0) { r := 0 - value}
     r := value
 }
 

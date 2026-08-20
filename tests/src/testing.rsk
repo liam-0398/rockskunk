@@ -20,18 +20,7 @@ F main() {
     printf(fz)
 
     i := 0
-    ;LF (i := 0 until 5) {
-    ;    printw(i)
-    ;}
 
-    ;LW (i < 10) {
-    ;    i := i + 1
-    ;    printw(i)
-    ;}
-
-    ;W (x = 5) {
-    ;    printw(x)
-    ;}
 
     r := 0
 }

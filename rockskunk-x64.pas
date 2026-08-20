@@ -25,12 +25,12 @@ type
     TFunction = record
         name:        String;
         returnType:  String;
-        isProcedure: Booleasn;
+        isProcedure: Boolean;
         paramType:   array[0..7] of String;
         paramCount:  Integer;
     end;
 
-    TKind = (kNone, kReg, kMem, kData);
+    TKind = (kNone, kReg, kMem, kData, kLit);
     TValType = (vtNumber, vtFloat, vtString);
 
     TValue = record
@@ -322,6 +322,7 @@ begin
         end;
         kMem: begin recordToText := '[rbp-' + IntToStr(v.vOffset) + ']'; end;
         kData: begin recordToText := v.vStringPayload; end;
+    end;
 end;
 
 // HELPERS ----------------------------------------------------------
@@ -704,7 +705,7 @@ begin
             consume; // (
             argname := consume(); // the value to print
             if not isNumber(argname) then
-                argname := varToMem(argname);
+                argname := recordToText(varToMem(argname));
             consume; // )
                 if variable = 'printf' then
                     functionPrintF(argname);
@@ -769,15 +770,19 @@ begin
         end;
 end;
 
-function ifFloatIfVar(second: String): String;
+function ifFloatIfVar(second: String): TValue;
+var
+    v: TValue;
 begin
+
         if isFloatLiteral(second) then
             ifFloatIfVar := opResolver(second)
         else if not isNumber(second) then    
-                            ifFloatIfVar := varToMem(second)
+                            ifFloatIfVar := recordToText(varToMem(second))
         else
             ifFloatIfVar := second; // if its just a lowly number
 end;
+
 
 function WhoGoesThere(intruder: String): String;
 var
@@ -827,19 +832,13 @@ begin
             if isNumber(argument) then
                 resolveSyscall:= argument
             else
-                resolveSyscall:= varToMem(argument);
+                resolveSyscall:= recordToText(varToMem(argument));
         end;
 end;
 
-// MAIN PARSER MACHINERY ====================================================
+// EVALUATORS AND BRANCHING -------------------------------------------------------
 
-{function arrayToMem(varname: String; size: String): String;
-var
-    i: Integer;
-begin
-end;
-
-    TKind = (kNone, kReg, kMem, kData);
+   { TKind = (kNone, kReg, kMem, kData, kLit);
     TValType = (vtNumber, vtFloat, vtString);
 
     TValue = record
@@ -851,153 +850,42 @@ end;
         vOffset:    Integer; // the actual offset
     end;}
 
-function eeNotOperatorBranch(first: TValue; op: String; isFloat: Boolean): TValue;
+procedure evaluateExpression();
+begin
+
+
+end;
+
+procedure foldCode(); begin end;
+
+function tokenAssignment(): TValue;
 var
-    second, math_ret: String;
+    token: String;
     v: TValue;
 begin
-    WriteLn('EXPRESSION EVAL - OPERATOR BRANCH');
-
-    if isFloat then
-        loadXMM0(first) // floats need Xtra Math Man
-    else
-        loadRAX(first);
-
-    // BEHOLD THE CHAINER OR OPERATORS, SOLVER OF EXPRESSIONS
-    while ((peek() = 'PLUS') or (peek() = 'MINUS') or (peek() = 'STAR') or (peek() = 'SLASH')) do
+    token := consume;
+    
+    if isNumber(token) then 
         begin
-            op := peek();
-            consume;
-            second := consume();
-            second := ifFloatIfVar(second); // resolve assignment of var
-            math_ret := emitMath(op, second, isFloat);
+            v.vKind := kLit;
+            v.vWordPayload := StrToInt(token);
         end;
-    eeNotOperatorBranch := math_ret;    
-end;  
-
-// fucked, need to turn into evaluator and drop each arg result onto the stack
-procedure arguementParser(functionIndex: Integer);
-var
-    isFloatArg: Boolean;
-    argname: String;
-    seenFloats, seenInts, argcounter: Integer;
-begin
-    isFloatArg := False;
-    WriteLn('EXPRESSION EVAL - RPAR BRANCH (ARGUMENT PARSER)'); // DEBUG
-    seenFloats := 0;
-    seenInts := 0;
-    argcounter := 0;
-
-    repeat  // VERIFY LOOP
-        isFloatArg := False;
-        argname := consume(); // single arg
-
-        if stateFunction[functionIndex].paramType[argcounter] = 'FLOAT' then
-            isFloatArg := True;
-
-        if not isNumber(argname) then
-            argname := varToMem(argname);
-
-        if isFloatArg then
-            begin
-                WriteText('    movsd xmm' + IntToStr(seenFloats) + ', ' + argname + #10);
-                Inc(seenFloats);
-            end
-        else
-            begin
-                WriteText('    mov ' + intRegs[seenInts] + ', ' + argname + #10);
-                Inc(seenInts);
-            end;
-
-        if peek() = 'COMMA' then
-            consume;
-
-        Inc(argcounter);
-    until peek() = 'RPAR';
-end;
-
-function evaluateExpression(isFloat: Boolean): String;
-var
-    first, op, fname, return, math_ret, call_ret, ampaddr: String;
-    functionIndex: Integer;
-    returnsFloat: Boolean;
-    num, a, b, c: String;
-begin
-    returnsFloat := False;
-    first := '';
-
-    if peek() = 'AMP' then
-        begin
-            consume;
-            ampaddr := VarToMem(consume);
-            Exit(emitAddressOf(ampaddr));
-        end;
-
-    if (peekV() = 'sys') and (peek2() = 'LPAR') then
-        begin
-            consume; consume; 
-            num := resolveSyscall();
-            consume; // ,
-            a := resolveSyscall();
-            consume; 
-            b := resolveSyscall();
-            consume; 
-            c := resolveSyscall();
-            consume; 
-            Exit(emitSyscall(num, a, b, c));
-        end;
-
-    if (peek() = 'IDENTIFIER') and (peek2() = 'LPAR') then 
-    begin
-        fname := consume(); 
-
-        if WhoGoesThere(fname) = 'FLOAT' then
-            returnsFloat := True;
-
-        // Find start of params for a specific function
-        functionIndex := findFunctionIndex(fname);
-        if functionIndex = -1 then
-            begin
-                WriteLn(currentLine + '- I CANT BELIEVE YOUVE DONE THIS - EE - GARBAGE FUNCTION CALL >> ' + op);
-                Halt(1);
-            end;
-
-        consume(); // (
-        if peek() <> 'RPAR' then
-            arguementParser(functionIndex);
-
-        consume(); // )
-        call_ret := call(fname, first, returnsFloat);
-        Exit(call_ret);
-        end
     else
         begin
-            WriteLn('EXPRESSION EVAL - NOT OPERATOR BRANCH'); // DEBUG
-            first := consume; // first operand (the a in a + b)
-
-            if isFloatLiteral(first) then
-                first := opResolver(first)
-            else if not isNumber(first) then // look up addr if identifier
-                        first := varToMem(first);
-
-            if isNumber(first) and (peek2() = 'NUMBER') then // fold the code if 5 + 5, 5 * 5
-                begin
-                    return := foldCode(first, isFloat);
-                    Exit(return);
-                end;
-                
-            first := opResolver(first);
-
-            // if next token isnt operator return the first operand eg if var := 5 not var := 5 + b
-            if not ((peek() = 'PLUS') or (peek() = 'MINUS') or (peek() = 'STAR') or (peek() = 'SLASH')) then
-                evaluateExpression := first
-            else
-                begin
-                math_ret := eeNotOperatorBranch(first, op, isFloat);
-                Exit(math_ret);
-                end;
+            v.vKind := kMem;
+            // offset
         end;
-end;
+
+    if isFloatLiteral(token) then
+        begin
+            v.vType := vtData;
+            // label
+        end;
+end;    
+
+
+
+// PARSER ------------------------------------------------------------------------
 
 procedure discriminateIdentifier();
 var
@@ -1102,7 +990,7 @@ var
 begin
     consume; //consume LW 
     consume; // consume LPAR
-    loopvar := varToMem(consume);
+    loopvar := recordToText(varToMem(consume));
     loopcond := peek; // grab TYPE not the damn value
     consume; // now eat it
     looplimit := consume;
@@ -1141,7 +1029,7 @@ var
 begin
     consume; //consume LF
     consume; // consume LPAR
-    loopvar := varToMem(consume);
+    loopvar := recordToText(varToMem(consume));
     consume; // :=
     loopstart := consume; // 0
     consume; // until
@@ -1171,7 +1059,7 @@ var
 begin
     consume; //consume W
     consume; // consume LPAR
-    condvar := varToMem(consume);
+    condvar := recordToText(varToMem(consume));
     condition := peek; // grab TYPE not the damn value
     consume; // now eat it
     condlimit := consume; // 0
@@ -1206,7 +1094,7 @@ var
 begin
     consume; //consume W
     consume; // consume LPAR
-    condvar := varToMem(consume);
+    condvar := recordToText(varToMem(consume));
     condition := peek; // grab TYPE not the damn value
     consume; // now eat it
     condlimit := consume; // 0
@@ -1241,7 +1129,7 @@ var
 begin
     consume; //consume W
     consume; // consume LPAR
-    condvar := varToMem(consume);
+    condvar := recordToText(varToMem(consume));
     condition := peek; // grab TYPE not the damn value
     consume; // now eat it
     condlimit := consume; // 0

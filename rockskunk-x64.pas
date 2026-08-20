@@ -30,6 +30,15 @@ type
         paramCount:  Integer;
     end;
 
+    type
+    TFrameKind = (fkLoopF, fkLoopW, fkCond);
+    TFrame = record
+        kind: TFrameKind;
+        topLabel: String;   // only loops use this, cond leaves it blank
+        endLabel: String;
+        loopvaro: String;
+    end;
+
     TKind = (kNone, kReg, kMem, kData, kLit);
     TValType = (vtNumber, vtFloat, vtString);
 
@@ -54,6 +63,10 @@ var
 
     t_type, t_val: Array[0..4096] of String;
     t_line: Array[0..4096] of Integer;
+
+    frames: array[0..63] of TFrame;
+    frameDepth: Integer;
+    bodyPending: Boolean;
 
     loop_TLabel: array [0..64] of String;
     loop_ELabel: array [0..64] of String;
@@ -252,11 +265,11 @@ var
     libBytes: CInt;
 begin
     libBytes := 0;
-    WriteLn('LOADING STANDARD LIBRARY');
+    {WriteLn('LOADING STANDARD LIBRARY');
     FillChar(buf, SizeOf(buf), 0);
     fd := fpOpen(stdlib_filename, O_RdOnly);
     libBytes := FpRead(fd, buf, SizeOf(buf));
-    fpClose(fd);
+    fpClose(fd);}
 
     WriteLn('LOADING SOURCEFILE LIBRARY');
     fd := fpOpen(filename, O_RdOnly);
@@ -1121,16 +1134,16 @@ begin
         WriteText('    jge ' + endlabel + #10)      // jump if greater or equal
     else if loopcond = 'GREQUAL' then
         WriteText('    jl ' + endlabel + #10)       // jump if less
-    else if loopcond = 'GREATER' then
+    else if loopcond = 'MORE' then
         WriteText('    jle ' + endlabel + #10)      // jump if less or equal
     else if loopcond = 'EQUAL' then
         WriteText('    jne ' + endlabel + #10);     // jump if not equa  
 
-    //inc(loop_IndexW);
-    loop_TLabel[loopDepth] := toplabel;
-    loop_ELabel[loopDepth] := endlabel;
-    Inc(loopDepth);
-    loopBodyNext := True;
+    frames[frameDepth].kind := fkLoopW;
+    frames[frameDepth].topLabel := toplabel;
+    frames[frameDepth].endLabel := endlabel;
+    Inc(frameDepth);
+    bodyPending := True;
 end;
 
 // broken
@@ -1140,7 +1153,7 @@ var
 begin
     consume; //consume LF
     consume; // consume LPAR
-    loopvar := makeParserSpeakASM(varToMem(consume));
+    frames[frameDepth].loopvaro := makeParserSpeakASM(varToMem(consume));
     consume; // :=
     loopstart := consume; // 0
     consume; // until
@@ -1157,10 +1170,11 @@ begin
     WriteText('    cmp rax, ' + looplimit + #10);
     WriteText('    jge ' + endlabel + #10);
 
-    loop_TLabel[loopDepth] := toplabel;
-    loop_ELabel[loopDepth] := endlabel;
-    Inc(loopDepth);
-    loopBodyNext := True;
+    frames[frameDepth].kind := fkLoopF;
+    frames[frameDepth].topLabel := toplabel;
+    frames[frameDepth].endLabel := endlabel;
+    Inc(frameDepth);
+    bodyPending := True;
 end;
 
 // broke
@@ -1192,10 +1206,10 @@ begin
     else if condition = 'EQUAL' then
         WriteText('    jne ' + endlabel + #10);     // jump if not equal
 
-    conditional_ELabel[conditionalDepth] := endlabel;
-    Inc(conditionalDepth);
-    conditionalBodyNext := True;
-    condWhen := True;
+    frames[frameDepth].kind := fkCond;
+    frames[frameDepth].endLabel := endlabel;
+    Inc(frameDepth);
+    bodyPending := True;
 end;
 
 // broken
@@ -1227,10 +1241,10 @@ begin
     else if condition = 'EQUAL' then
         WriteText('    jne ' + endlabel + #10);     // jump if not equal
 
-    conditional_ELabel[conditionalDepth] := endlabel;
-    Inc(conditionalDepth);
-    conditionalBodyNext := True;
-    condIf := True;
+    frames[frameDepth].kind := fkCond;
+    frames[frameDepth].endLabel := endlabel;
+    Inc(frameDepth);
+    bodyPending := True;
 end;
 
 // broken
@@ -1262,10 +1276,10 @@ begin
     else if condition = 'EQUAL' then
         WriteText('    jne ' + endlabel + #10);     // jump if not equal
 
-    conditional_ELabel[conditionalDepth] := endlabel;
-    Inc(conditionalDepth);
-    conditionalBodyNext := True;
-    condElse := True;
+    frames[frameDepth].kind := fkCond;
+    frames[frameDepth].endLabel := endlabel;
+    Inc(frameDepth);
+    bodyPending := True;
 end;
 
 function constructFunction(): Boolean;
@@ -1343,10 +1357,9 @@ begin
             'RPAR': begin consume; end;
            'LBRACE': begin 
                 consume;
-                if loopBodyNext or conditionalBodyNext then
+                if bodyPending then
                     begin
-                        loopBodyNext := False;
-                        conditionalBodyNext := False;
+                        bodyPending := False;
                     end
                     else
                         begin
@@ -1374,19 +1387,17 @@ begin
                 end;
             'RBRACE': begin 
                 consume;
-                    if loopDepth > 0 then
-                        begin
-                            Dec(loopDepth);
-                            WriteText('    jmp ' + loop_TLabel[loopDepth] + #10);
-                            emitLabel(loop_ELabel[loopDepth]);
-                        end
-                    else if conditionalDepth > 0 then
-                        begin
-                            Dec(conditionalDepth);
-                            emitLabel(conditional_ELabel[conditionalDepth]);
-                        end
-                    else
-                        emitFunctionTeardown(returnAddr, isProcedure);
+                if frameDepth > 0 then
+                    begin
+                        Dec(frameDepth);
+                        if frames[frameDepth].kind = fkLoopF then
+                            WriteText('    inc qword ' + frames[frameDepth].loopvaro + #10);
+                        if (frames[frameDepth].kind = fkLoopW) or (frames[frameDepth].kind = fkLoopF) then
+                            WriteText('    jmp ' + frames[frameDepth].topLabel + #10);
+                        emitLabel(frames[frameDepth].endLabel);
+                    end
+                else
+                    emitFunctionTeardown(returnAddr, isProcedure);
             end;
             'IDENTIFIER': begin 
                 discriminateIdentifier();
@@ -1399,15 +1410,9 @@ begin
             end;
             'V': begin consume; end;
             'S': begin consume; end;
-            'W': begin 
-                condWhen();
-            end;
-            'IF': begin 
-                consume;
-            end;
-            'E': begin 
-                consume;
-            end;
+            'W': begin condWhen(); end;
+            'IF': begin condIF; end;
+            'E': begin condElse; end;
             'LF': begin loopFor(); end;
             'LW': begin loopWhile(); end;
             'VARBLOCK': begin 
@@ -1608,6 +1613,7 @@ begin
     FillChar(loop_TLabel, SizeOf(loop_TLabel), 0);
     FillChar(loop_ELabel, SizeOf(loop_ELabel), 0);
     FillChar(conditional_ELabel, SizeOf(conditional_ELabel), 0);
+    FillChar(frames, SizeOf(frames), 0);
     stateLocalCount := 0;
     stateGlobalCount := 0;
     stateFunctionCount := 0;
@@ -1618,6 +1624,8 @@ begin
     loopBodyNext := False;
     conditionalDepth := 0;
     loopDepth := 0;
+    frameDepth := 0;
+    bodyPending := False;
 end;
 
 procedure sendToNASM(outputName: String);

@@ -1822,8 +1822,9 @@ if ParamCount = 1 then
         parser;
         closeIntermediateFile;
         writeASM;
-        sendToNASM(output_filename);
-        deleteFile(output_filename + '.o');
+        Optimize;
+        //sendToNASM(output_filename);
+        //deleteFile(output_filename + '.o');
     end
 else
     begin

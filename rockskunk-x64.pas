@@ -14,7 +14,7 @@ var
     symName, symType: array[0..255] of String;
     symOffset: array[0..255] of Integer;
 
-    tokenIdentifier, tokenValue: Array[0..4096] of String;
+    tokenKind, tokenValue: Array[0..4096] of String;
     t_line: Array[0..4096] of Integer;
 
     loop_TLabel: array [0..64] of String;
@@ -35,15 +35,14 @@ var
     param_FName:  array[0..255] of String;   // which function this param belongs to
     param_FIndex: array[0..255] of Integer;  // which position (0, 1, 2...) within that function
     param_FType:  array[0..255] of String;   
-    param_FCount: Integer;
-
-    braceEmitted: Boolean;
-    bytes: CInt;
-    currentFN: String;
-    fd, fd2, fd3, fd4: CInt;
-    filename, output_filename, stdlib_filename, returnAddr: String;
-    paramPending: Boolean; 
     paramOffset: Array [0..128] of Integer;
+    param_FCount: Integer;
+    paramPending: Boolean; 
+
+    currentFN: String;
+    bytes, fd, fd2, fd3, fd4: CInt;
+    filename, output_filename, stdlib_filename, returnAddr: String;
+
     frameOffset, labelCounter, position, symCount, argCount, tokenCount: Integer;
 
 {
@@ -435,9 +434,9 @@ end;
 function peekV(): String; begin peekV := tokenValue[position]; end;
 function peekV2(): String; begin peekV2 := tokenValue[position+1]; end;
 function peekV3(): String; begin peekV3 := tokenValue[position+2]; end;
-function peek(): String; begin peek := tokenIdentifier[position]; end;
-function peek2(): String; begin peek2 := tokenIdentifier[position+1]; end;
-function peek3(): String; begin peek3 := tokenIdentifier[position+2]; end;
+function peek(): String; begin peek := tokenKind[position]; end;
+function peek2(): String; begin peek2 := tokenKind[position+1]; end;
+function peek3(): String; begin peek3 := tokenKind[position+2]; end;
 function currentLine(): String; begin currentLine := intToStr(t_line[position]); end;
 function computeOffset(offset: Integer): String; begin computeOffset := '[rbp-' + IntToStr(offset) + ']'; end;
 
@@ -448,8 +447,6 @@ begin
 end;
 
 function arrayToMem(varname: String; size: String; vartype: String): String;
-var
-    i: Integer;
 begin
 end;
 
@@ -548,14 +545,14 @@ begin
             op := peek(); // Operator
             consume;
             second := consume; // Operand
+            WriteLn('OPTIMIZATION');
 
             if isFloat then
                 begin
                 if op = 'PLUS' then result1 := StrToFloat(first) + StrToFloat(second)
                 else if op = 'MINUS' then result1 := StrToFloat(first) - StrToFloat(second)
                 else if op = 'STAR' then result1 := StrToFloat(first) * StrToFloat(second)
-                else if op = 'SLASH' then result1 := StrToFloat(first) / StrToFloat(second);
-                WriteLn('OPTIMIZATION - FLT');
+                else if op = 'SLASH' then result1 := StrToFloat(first) / StrToFloat(second);      
                 foldCode := (FloatToStr(result1));
                 end 
             else
@@ -564,7 +561,6 @@ begin
                 else if op = 'MINUS' then result2 := StrToInt(first) - StrToInt(second)
                 else if op = 'STAR' then result2 := StrToInt(first) * StrToInt(second)
                 else if op = 'SLASH' then result2 := StrToInt(first) div StrToInt(second);
-                WriteLn('OPTIMIZATION - FPT');
                 foldCode := (IntToStr(result2));
             end;
 end;
@@ -598,7 +594,7 @@ begin
         if isFloatLiteral(second) then
             ifFloatIfVar := opResolver(second)
         else if not isNumber(second) then    
-                            ifFloatIfVar := varToMem(second)
+            ifFloatIfVar := varToMem(second)
         else
             ifFloatIfVar := second; // if its just a lowly number
 end;
@@ -658,21 +654,56 @@ end;
 
 // MAIN PARSER MACHINERY ====================================================
 
+function argumentParser(argname, fname, first: String; returnsFloat: Boolean; argfindex: Integer): String;
+var
+    seenFloats, seenInts, argCounter: Integer;
+    isFloatArg: Boolean;
+begin
+        WriteLn('ARGUMENT PARSER'); // DEBUG
+        argcounter := 0;
+        seenFloats := 0;
+        seenInts := 0;
+        repeat  // VERIFY LOOP
+            isFloatArg := False;
+            argname := consume(); // single arg
+
+            if param_FType[argfindex + argcounter] = 'FLOAT' then
+                isFloatArg := True;
+
+            if not isNumber(argname) then
+                argname := varToMem(argname);
+
+            if isFloatArg then
+                begin
+                    WriteText('    movsd xmm' + IntToStr(seenFloats) + ', ' + argname + #10);
+                    Inc(seenFloats);
+                end
+            else
+                begin
+                    WriteText('    mov ' + intRegs[seenInts] + ', ' + argname + #10);
+                    Inc(seenInts);
+                end;
+
+            if peek() = 'COMMA' then
+                consume;
+
+            Inc(argcounter);
+        until peek() = 'RPAR';
+        consume(); // )
+        argumentParser := call(fname, first, returnsFloat);
+end;
+
 function evaluateExpression(isFloat: Boolean): String;
 var
     first, second, op, argname, fname, return, math_ret, call_ret, ampaddr: String;
-    whosargsaretheese: String;
     num, a, b, c: String;
-    returnsFloat, isFloatArg: Boolean;
-    result1: Double;
-    i, ii, result2, seenFloats, seenInts, argfindex, argcounter: Integer;
+    returnsFloat: Boolean;
+    i, argfindex: Integer;
 begin
     i := 0;
-    ii := 0;
-    seenFloats := 0;
-    seenInts := 0;
+    first := '';
+    argname := '';
     returnsFloat := False;
-    isFloatArg := False;
 
     if peek() = 'AMP' then
         begin
@@ -684,14 +715,10 @@ begin
     if (peekV() = 'sys') and (peek2() = 'LPAR') then
         begin
             consume; consume; 
-            num := resolveSyscall();
-            consume; // ,
-            a := resolveSyscall();
-            consume; 
-            b := resolveSyscall();
-            consume; 
-            c := resolveSyscall();
-            consume; 
+            num := resolveSyscall(); consume;
+            a := resolveSyscall(); consume;
+            b := resolveSyscall(); consume;
+            c := resolveSyscall(); consume;
             Exit(emitSyscall(num, a, b, c));
         end;
 
@@ -709,46 +736,12 @@ begin
                     break;
                 end;
 
-        argcounter := 0;
-
-        
         consume(); // (
-        // ARGUMENT PARSING
         if peek() <> 'RPAR' then
             begin
-                WriteLn('EXPRESSION EVAL - RPAR BRANCH'); // DEBUG
-                seenFloats := 0;
-                seenInts := 0;
-                repeat  // VERIFY LOOP
-                    isFloatArg := False;
-                    argname := consume(); // single arg
-
-                    if param_FType[argfindex + argcounter] = 'FLOAT' then
-                        isFloatArg := True;
-
-                    if not isNumber(argname) then
-                        argname := varToMem(argname);
-
-                    if isFloatArg then 
-                        begin
-                            WriteText('    movsd xmm' + IntToStr(seenFloats) + ', ' + argname + #10);
-                            Inc(seenFloats);
-                        end
-                    else
-                        begin
-                            WriteText('    mov ' + intRegs[seenInts] + ', ' + argname + #10);
-                            Inc(seenInts);
-                        end;
-
-                    if peek() = 'COMMA' then
-                        consume;
-
-                    Inc(argcounter);
-                until peek() = 'RPAR';
+                call_ret := argumentParser(argname, fname, first, returnsFloat, argfindex);
             end;
 
-        consume(); // )
-        call_ret := call(fname, first, returnsFloat);
         Exit(call_ret);
         end
     else
@@ -1076,8 +1069,7 @@ end;
 
 procedure parser();
 var
-    argtypeident: String;
-    isFloat, isProcedure: Boolean;
+    isProcedure: Boolean;
     i, seenFloats, seenInts: Integer;
 begin
     i := 0;
@@ -1202,9 +1194,10 @@ var
     isKeyword, isFloat: Boolean;
     isMultiple: Boolean;
 
+    // 
     procedure assignSingleChar(Tvalue: String; Ttype: String);
     begin
-        tokenIdentifier[tokenCount] := Ttype;
+        tokenKind[tokenCount] := Ttype;
         tokenValue[tokenCount] := Tvalue;
         t_line[tokenCount] := linecount;
         Inc(tokenCount);
@@ -1212,7 +1205,7 @@ var
 
     procedure assignDoubleChar(Tvalue: String; Ttype: String);
     begin
-        tokenIdentifier[tokenCount] := Ttype;
+        tokenKind[tokenCount] := Ttype;
         tokenValue[tokenCount] := Tvalue;
         t_line[tokenCount] := linecount;
         isMultiple := True;
@@ -1229,7 +1222,7 @@ begin
 
     for i := 0 to 1023 do
         begin
-            tokenIdentifier[i] := '';
+            tokenKind[i] := '';
             tokenValue[i] := '';
         end;
     
@@ -1294,12 +1287,12 @@ begin
                         isKeyword := keywordCheck(UpperCase(word)); 
                         if isKeyword then  
                             begin
-                                tokenIdentifier[tokenCount] := UpperCase(word);
+                                tokenKind[tokenCount] := UpperCase(word);
                                 WriteLn(UpperCase(word)); // DEBUG PRINT
                             end
                             else
                                 begin
-                                tokenIdentifier[tokenCount] := 'IDENTIFIER';
+                                tokenKind[tokenCount] := 'IDENTIFIER';
                                 end;
 
                         tokenValue[tokenCount] := word;
@@ -1350,7 +1343,7 @@ begin
 
     i := 0;
     for i := 0 to tokenCount - 1 do
-        WriteLn(IntToStr(i) + ': ' + tokenIdentifier[i] + '  ' + tokenValue[i]);
+        WriteLn(IntToStr(i) + ': ' + tokenKind[i] + '  ' + tokenValue[i]);
 end;
 
 // INIT ============================================

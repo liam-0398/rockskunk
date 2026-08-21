@@ -242,6 +242,18 @@ begin
         Inc(labelCounter);
 end;
 
+function emitStringConstant(content: String): String;
+var
+    slength: Integer;
+begin
+        slength := 0;
+        slength := length(content);
+        WriteData('   str_' + IntToStr(labelCounter) + '_len: dq ' + IntToStr(slength) + #10);
+        WriteData('   str_' + IntToStr(labelCounter) + ': db ' + #39 + content + #39 + ', 0' + #10);
+        emitStringConstant := 'str_' + IntToStr(labelCounter);
+        Inc(labelCounter);
+end;
+
 // ARRAYS / MEMORY -----------------------------------------------------------
 
 function emitAddressOf(variable: String): String; // &a
@@ -260,23 +272,7 @@ end;
 procedure emitMalloc(); begin end;            // cm(size)
 procedure emitFree(); begin end;              // fm(p)
 
-procedure  emitWordArray();
-begin
 
-
-end;
-
-procedure  emitFloatArray();
-begin
-
-
-end;
-
-procedure  emitByteArray();
-begin
-
-
-end;
 
 // MATH -----------------------------------------------------------
 procedure emitAdd(dst, src: String); begin WriteText('    add ' + dst + ', ' + src + #10); end;
@@ -770,7 +766,7 @@ end;
 function evaluateExpression(isFloat: Boolean): String;
 var
     first, second, op, argname, fname, return, math_ret, call_ret, ampaddr, ident: String;
-    arrayname, arrayIndex, arrayType: String;
+    arrayname, arrayIndex, arrayType, str: String;
     num, a, b, c: String;
     returnsFloat: Boolean;
     i, argfindex: Integer;
@@ -781,6 +777,7 @@ begin
     arrayType := '';
     arrayIndex := '';
     arrayname := '';
+    str := '';
     returnsFloat := False;
 
     if peek() = 'AMP' then
@@ -788,6 +785,12 @@ begin
             consume;
             ampaddr := VarToMem(consume);
             Exit(emitAddressOf(ampaddr));
+        end;
+
+    if peek() = 'STRING' then
+        begin
+            str := consume;
+            Exit(emitStringConstant(str));
         end;
 
     if (peek()='IDENTIFIER') and (peek2()='CARET') then
@@ -1371,9 +1374,6 @@ begin
             'ASSIGN': begin 
                 consume;
             end;
-            'TERMINATOR': begin 
-                consume;
-            end;
             {'AMP': begin 
                 consume;
             end;
@@ -1399,9 +1399,9 @@ begin
             'STATICBLOCK': begin 
                 consume; // consume '
             end;
-            'RECORDBLOCK': begin 
-                consume; // consume '
-            end
+            //'STRING': begin 
+            //    consume; // consume '
+            //end
             else
             begin
                 WriteLn('I CANT BELIEVE YOUVE DONE THIS - PARSER - YOU HAVE FED ME GARBAGE>> ' + peek() + ' ' + peekV());
@@ -1494,7 +1494,6 @@ begin
                     '<': assignSingleChar('<', 'LESS');
                     '[': assignSingleChar('[', 'LBRAC');
                     ']': assignSingleChar(']', 'RBRAC');
-                    #39: assignSingleChar(#39, 'TERMINATOR');
                     #96: assignSingleChar(#96, 'QUOTE');
                     ',': assignSingleChar(',', 'COMMA');
                     '|': assignSingleChar('|', 'PIPE');
@@ -1516,7 +1515,7 @@ begin
                             Inc(i); // Increment position in file, +1 charachter
                         end;
               
-                        isKeyword := keywordCheck(UpperCase(word)); 
+                        isKeyword := keywordCheck(word); 
                         if isKeyword then  
                             begin
                                 tokenKind[tokenCount] := UpperCase(word);
@@ -1554,11 +1553,11 @@ begin
               
                 end
 
-                else if buf[i] = #96 then // Handle double quote strings
+                else if buf[i] = #39 then // Handle single quote strings
                 begin
                     word := '';
                     Inc(i); // skip opening quote
-                    while buf[i] <> #96 do
+                    while buf[i] <> #39 do
                     begin
                         word := word + buf[i];
                         Inc(i);

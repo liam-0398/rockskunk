@@ -150,8 +150,8 @@ begin
     fd5 := fpOpen('bss.tmp', O_RdOnly, 438);
     WriteOut('section .bss' + #10);
     WriteOut('   digitbuf: resb 32' + #10);
-    bbytes := fpRead(fd4, bbuf, SizeOf(bbuf));
-    fpWrite(fd2, databuf, bbytes);
+    bbytes := fpRead(fd5, bbuf, SizeOf(bbuf));
+    fpWrite(fd2, bbuf, bbytes);
     fpClose(fd5);
 
     fd4 := fpOpen('data.tmp', O_RdOnly, 438);
@@ -524,13 +524,13 @@ begin
             for i := 0 to aCount - 1 do
                 begin
                     if aName[i] = arrayName then
-                            ArrayToMem := '[' + arrayname + ' + ' + IntToStr(intindex * elementSize) + ']';
+                            ArrayToMem := '   [' + arrayname + ' + ' + IntToStr(intindex * elementSize) + ']';
                 end;
         end
     else 
         begin
             WriteText('    mov r10, ' + varToMem(aindex) + #10);
-            ArrayToMem := '[' + arrayname + ' + r10*' + IntToStr(elementSize) + ']';
+            ArrayToMem := '   [' + arrayname + ' + r10*' + IntToStr(elementSize) + ']';
         end;
 
     if arrayToMem = '' then
@@ -588,6 +588,7 @@ end;
 
 procedure asmFunctionCalls(variable: String; argname: String);
 begin
+    WriteLn('CALLING: ' + variable);
     if (variable = 'printw') or (variable = 'printf') then
         begin
             consume; // (
@@ -797,17 +798,39 @@ begin
         end;
 
     // Word Arrays
-    if peek2() = 'LBRAC' then
+    if (peek()='IDENTIFIER') and (peek2()='LBRAC') then
         begin
             arrayname := consume;
             consume; // [
             arrayIndex := consume;
             consume; // ]
             arrayType := 'WORD';
-            arrayToMem(arrayname, arrayIndex);
+            Exit(arrayToMem(arrayname, arrayIndex));
+        end;
+
+    // Float Arrays
+    if (peek()='IDENTIFIER') and (peek2()='LBRACE') then
+        begin
+            arrayname := consume;
+            consume; // [
+            arrayIndex := consume;
+            consume; // ]
+            arrayType := 'FLOAT';
+            Exit(arrayToMem(arrayname, arrayIndex));
+        end;
+
+    // Byte Arrays
+    if (peek2() = 'BANG') and (peek()='LBRAC') then
+        begin
+            arrayname := consume;
+            consume;
+            consume; // [
+            arrayIndex := consume;
+            consume; // ]
+            arrayType := 'BYTE';
+            Exit(arrayToMem(arrayname, arrayIndex));
         end;
       
-
     if (peekV() = 'sys') and (peek2() = 'LPAR') then
         begin
             consume; consume; 
@@ -889,6 +912,7 @@ procedure discriminateIdentifier();
 var
     variable, rightside, twoname, argname: String;
     isDeclared, isReturn, isFloat: boolean;
+    arrayname, arrayIndex, arrayType: String;
     i, ii, symIndex: Integer;
 begin
     i := 0;
@@ -901,6 +925,52 @@ begin
     variable := consume(); // consume the a in a := 5
 
     if variable = 'r' then isReturn := True;
+
+    // Word Arrays
+    if peek() = 'LBRAC' then
+        begin
+            arrayname := variable;
+            consume; // [
+            arrayIndex := consume;
+            consume; // ]
+            arrayType := 'WORD';
+            consume;
+            variable := arrayToMem(arrayname, arrayIndex);
+            rightside := evaluateExpression(False); 
+            emitAssign(variable, rightside);
+            Exit;
+        end;
+
+      // Float Arrays
+    if peek() = 'LBRACE' then
+        begin
+            arrayname := variable;
+            consume; // [
+            arrayIndex := consume;
+            consume; // ]
+            arrayType := 'FLOAT';
+            consume;
+            variable := arrayToMem(arrayname, arrayIndex);
+            rightside := evaluateExpression(True); 
+            emitAssign(variable, rightside);
+            Exit;
+        end;
+
+      // Byte Arrays
+    if peek() = 'BANG' then
+        begin
+            arrayname := variable;
+            consume;
+            consume; // [
+            arrayIndex := consume;
+            consume; // ]
+            arrayType := 'BYTE';
+            consume;
+            variable := arrayToMem(arrayname, arrayIndex);
+            rightside := evaluateExpression(False); 
+            emitAssign(variable, rightside);
+            Exit;
+        end;
 
     //WriteLn('discrim start: variable=' + variable + ' position=' + IntToStr(position)); // DEBUG
 
@@ -922,6 +992,7 @@ begin
 
     if peek() = 'ASSIGN' then // if its a := x etc etc
         begin
+            
             if isDeclared = True then
                 begin // turn into something nasm understands instead of just "variable"
                     variable := computeOffset(symOffset[symIndex]);
@@ -940,6 +1011,7 @@ begin
                 end
             else
                 begin
+                    
                     frameOffset := frameOffset + 8; // vars need to occupy different memory, increment
 
                     if peek2() = 'FLOAT' then // determine what it is and make it so
@@ -998,7 +1070,8 @@ begin
                     end;
         end
         else
-            begin //REPLACE THEESE
+            begin 
+                
                asmFunctionCalls(variable, argname);
             end;
 end;
@@ -1213,7 +1286,7 @@ begin
                                 aName[aCount] := arrayName;
                                 aSize[aCount] := arraySize;
                                 aType[aCount] := 'WORD';
-                                WriteBSS(arrayName + ': resq ' + arraySize + #10);
+                                WriteBSS(arrayName + ': resb ' + arraySize + #10);
                                 Inc(aCount);
                             end 
                         else

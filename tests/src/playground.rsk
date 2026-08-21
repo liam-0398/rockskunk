@@ -2,9 +2,8 @@
 |V array[100] |
 
 P main() {
-    b := 5
-    a := &b
-    c := a^
+    array[1] := 5
+    c := array[1]
 
     printw(c)
 } 

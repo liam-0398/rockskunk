@@ -26,7 +26,9 @@ procedure closeFileO(); begin fpClose(fd); end;
 
 procedure optimizer();
 begin
-    filename := 'intermediate.asm'
+    filename := 'intermediate.asm';
+    openFileO;
+    closeFileO;
 
 
 

@@ -778,44 +778,11 @@ begin
         argumentParser := call(fname, first, returnsFloat);
 end;
 
-function evaluateExpression(isFloat: Boolean): String;
+function eeArrays(): String;
 var
-    first, second, op, argname, fname, return, math_ret, call_ret, ampaddr, ident: String;
     arrayname, arrayIndex, arrayType, str: String;
-    num, a, b, c: String;
-    returnsFloat: Boolean;
-    i, argfindex: Integer;
 begin
-    i := 0;
-    first := '';
-    argname := '';
-    arrayType := '';
-    arrayIndex := '';
-    arrayname := '';
-    str := '';
-    returnsFloat := False;
-
-    if peek() = 'AMP' then
-        begin
-            consume;
-            ampaddr := VarToMem(consume);
-            Exit(emitAddressOf(ampaddr));
-        end;
-
-    if peek() = 'STRING' then
-        begin
-            str := consume;
-            Exit(emitStringConstant(str));
-        end;
-
-    if (peek()='IDENTIFIER') and (peek2()='CARET') then
-        begin
-            ident := consume;
-            consume;
-            Exit(emitDereference(VarToMem(ident)))
-        end;
-
-    // Word Arrays
+        // Word Arrays
     if (peek()='IDENTIFIER') and (peek2()='LBRAC') then
         begin
             arrayname := consume;
@@ -848,7 +815,33 @@ begin
             arrayType := 'BYTE';
             Exit(arrayToMem(arrayname, arrayIndex));
         end;
-      
+end;
+
+function eeIncidentals(): String;
+var
+    arrayname, arrayIndex, arrayType, str, ampaddr, ident: String;
+    num, a, b, c: String;
+begin
+    if peek() = 'AMP' then
+        begin
+            consume;
+            ampaddr := VarToMem(consume);
+            Exit(emitAddressOf(ampaddr));
+        end;
+
+    if peek() = 'STRING' then
+        begin
+            str := consume;
+            Exit(emitStringConstant(str));
+        end;
+
+    if (peek()='IDENTIFIER') and (peek2()='CARET') then
+        begin
+            ident := consume;
+            consume;
+            Exit(emitDereference(VarToMem(ident)))
+        end;
+
     if (peekV() = 'sys') and (peek2() = 'LPAR') then
         begin
             consume; consume; 
@@ -859,12 +852,37 @@ begin
             Exit(emitSyscall(num, a, b, c));
         end;
 
-    if (peekV() = 'sys') and (peek2() = 'LPAR') then // PROBABLY SHIT THINK THIS THROUGH
+end;
+
+function evaluateExpression(isFloat: Boolean): String;
+var
+    first, second, op, argname, fname, return, math_ret, call_ret, ampaddr, r, ident: String;
+    arrayname, arrayIndex, arrayType, str: String;
+    num, a, b, c: String;
+    returnsFloat: Boolean;
+    i, argfindex: Integer;
+begin
+    i := 0;
+    first := '';
+    argname := '';
+    arrayType := '';
+    arrayIndex := '';
+    arrayname := '';
+    str := '';
+    returnsFloat := False;
+
+    if (peek() = 'AMP') or (peek() = 'STRING') or ((peek() = 'IDENTIFIER') and (peek2() = 'CARET')) or ((peekV() = 'sys') and (peek2() = 'LPAR')) then
         begin
-            Exit(resolveSyscall());
+            r := eeIncidentals();
+            Exit(r);
         end;
 
-
+    if ((peek() = 'IDENTIFIER') and (peek2() = 'LBRAC')) or ((peek() = 'IDENTIFIER') and (peek2() = 'LBRACE')) or ((peek() = 'LBRAC') and (peek2() = 'BANG')) then
+        begin
+            r := eeArrays();
+            Exit(r);
+        end;
+        
     if (peek() = 'IDENTIFIER') and (peek2() = 'LPAR') then 
     begin
         fname := consume(); 
@@ -931,26 +949,11 @@ begin
                 end;
         end;   
 end;
-
-procedure discriminateIdentifier();
+procedure discriminateArrays(variable: String);
 var
-    variable, rightside, twoname, argname: String;
-    isDeclared, isReturn, isFloat: boolean;
-    arrayname, arrayIndex, arrayType: String;
-    i, ii, symIndex: Integer;
+    rightside, arrayName, arrayIndex, arrayType: String;
 begin
-    i := 0;
-    ii := 0;
-    symIndex := 0;
-    isDeclared := False;
-    isReturn := False;
-    isFloat := False;
-
-    variable := consume(); // consume the a in a := 5
-
-    if variable = 'r' then isReturn := True;
-
-    // Word Arrays
+        // Word Arrays
     if peek() = 'LBRAC' then
         begin
             arrayname := variable;
@@ -995,6 +998,28 @@ begin
             emitAssign(variable, rightside);
             Exit;
         end;
+end;
+
+
+procedure discriminateIdentifier();
+var
+    variable, rightside, twoname, argname: String;
+    isDeclared, isReturn, isFloat: boolean;
+    arrayname, arrayIndex, arrayType: String;
+    i, ii, symIndex: Integer;
+begin
+    i := 0;
+    ii := 0;
+    symIndex := 0;
+    isDeclared := False;
+    isReturn := False;
+    isFloat := False;
+
+    variable := consume(); // consume the a in a := 5
+
+    if variable = 'r' then isReturn := True;
+
+    discriminateArrays(variable);
 
     //WriteLn('discrim start: variable=' + variable + ' position=' + IntToStr(position)); // DEBUG
 

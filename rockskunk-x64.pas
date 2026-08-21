@@ -9,12 +9,11 @@ const
      'F', 'LF', 'LW', 'W', 'IF', 'E', 'P',
      'OR', 'AND', 'NOR', 'XOR', 'CALL');
 var
-    buf, databuf, textbuf: Array[0..65535] of Char;
+    buf, databuf, textbuf, bbuf: Array[0..65535] of Char;
 
     symName, symType: array[0..255] of String;
     symOffset: array[0..255] of Integer;
-    aName, aType: array[0..255] of String;
-    aOffset: array[0..255] of Integer;
+    aName, aType, aSize: array[0..255] of String;
 
     tokenKind, tokenValue: Array[0..4096] of String;
     t_line: Array[0..4096] of Integer;
@@ -42,10 +41,10 @@ var
     paramPending: Boolean; 
 
     currentFN: String;
-    bytes, fd, fd2, fd3, fd4: CInt;
+    bytes, bbytes, fd, fd2, fd3, fd4, fd5: CInt;
     filename, output_filename, stdlib_filename, returnAddr: String;
 
-    frameOffset, labelCounter, position, symCount, argCount, tokenCount: Integer;
+    frameOffset, labelCounter, position, symCount, aCount, argCount, tokenCount: Integer;
 
 {
    DO NOT FORGET LIST ====
@@ -69,6 +68,7 @@ function evaluateExpression(isFloat: Boolean): String; forward;
 procedure writeOut(s: String); begin fpWrite(fd2, s[1], Length(s)); end;
 procedure writeText(s: String); begin fpWrite(fd3, s[1], Length(s)); end;
 procedure writeData(s: String); begin fpWrite(fd4, s[1], Length(s)); end;
+procedure writeBSS(s: String); begin fpWrite(fd5, s[1], Length(s)); end;
 
 function keywordCheck(word: String): Boolean; // Flag keywords
 var
@@ -136,6 +136,7 @@ procedure openIntermediateFile; // open temp sourcefile
 begin
     fd3 := fpOpen('text.tmp',O_WRONLY OR O_CREAT OR O_TRUNC, 438);
     fd4 := fpOpen('data.tmp',O_WRONLY OR O_CREAT OR O_TRUNC, 438);
+    fd5 := fpOpen('bss.tmp',O_WRONLY OR O_CREAT OR O_TRUNC, 438);
     FillChar(databuf, SizeOf(databuf), 0);
     FillChar(textbuf, SizeOf(textbuf), 0);
 end;
@@ -146,9 +147,14 @@ var
 begin
     fd2 := fpOpen('intermediate.asm',O_WRONLY OR O_CREAT OR O_TRUNC, 438);
 
-    fd4 := fpOpen('data.tmp', O_RdOnly, 438);
+    fd5 := fpOpen('bss.tmp', O_RdOnly, 438);
     WriteOut('section .bss' + #10);
     WriteOut('   digitbuf: resb 32' + #10);
+    bbytes := fpRead(fd4, bbuf, SizeOf(bbuf));
+    fpWrite(fd2, databuf, bbytes);
+    fpClose(fd5);
+
+    fd4 := fpOpen('data.tmp', O_RdOnly, 438);
     WriteOut(#10 + 'section .data' + #10);
     dbytes := fpRead(fd4, databuf, SizeOf(databuf));
     fpWrite(fd2, databuf, dbytes);
@@ -253,6 +259,24 @@ end;
 
 procedure emitMalloc(); begin end;            // cm(size)
 procedure emitFree(); begin end;              // fm(p)
+
+procedure  emitWordArray();
+begin
+
+
+end;
+
+procedure  emitFloatArray();
+begin
+
+
+end;
+
+procedure  emitByteArray();
+begin
+
+
+end;
 
 // MATH -----------------------------------------------------------
 procedure emitAdd(dst, src: String); begin WriteText('    add ' + dst + ', ' + src + #10); end;
@@ -460,11 +484,11 @@ begin
     Inc(position);  // Increment counter to drop the token
 end;
 
-function arrayToMem(variable: String; size: String; arraytype: String): String;
+function arrayToMem(variable, aindex, arraytype, size: String): String;
 var
     i: Integer;
 begin
-    arrayToMem := ''; 
+    arrayToMem := ''; // if size =0 its not a declaration its already declared
     for i := 0 to symCount - 1 do
         begin
             if symName[i] = variable then
@@ -758,7 +782,7 @@ begin
             arrayIndex := consume;
             consume; // ]
             arrayType := 'WORD';
-            arrayToMem(arrayname, arrayIndex, arrayType);
+            arrayToMem(arrayname, arrayIndex, arrayType,'0');
         end;
       
 
@@ -1120,6 +1144,65 @@ begin
          end;
 end;
 
+procedure varBlock();
+var
+    arrayName, arrayType, arraySize: String;
+begin
+    arrayName := '';
+    arrayType := '';
+    arraySize := '';
+    consume; // consume |V
+        while peek() <> 'PIPE' do 
+            begin
+                        if peek2() = 'ASSIGN' then // globals
+                            begin
+                            end 
+                        else if peek2() = 'LBRAC' then // word arrays
+                            begin
+                                arrayName := consume;
+                                consume;
+                                arraySize := consume;
+                                consume;
+                                aName[aCount] := arrayName;
+                                aSize[aCount] := arraySize;
+                                aType[aCount] := 'WORD';
+                                WriteBSS(arrayName + ': resq ' + arraySize + #10);
+                                Inc(aCount);
+                            end 
+                        else if peek2() = 'LBRACE' then // float arrays
+                            begin
+                                arrayName := consume;
+                                consume;
+                                arraySize := consume;
+                                consume;
+                                aName[aCount] := arrayName;
+                                aSize[aCount] := arraySize;
+                                aType[aCount] := 'FLOAT';
+                                WriteBSS(arrayName + ': resq ' + arraySize + #10);
+                                Inc(aCount);
+                            end 
+                        else if peek2() = 'BANG' then // byte arrays
+                            begin
+                                arrayName := consume;
+                                consume;
+                                consume;
+                                arraySize := consume;
+                                consume;
+                                aName[aCount] := arrayName;
+                                aSize[aCount] := arraySize;
+                                aType[aCount] := 'WORD';
+                                WriteBSS(arrayName + ': resq ' + arraySize + #10);
+                                Inc(aCount);
+                            end 
+                        else
+                            begin
+                                WriteLn('I CANT BELIEVE YOUVE DONE THIS - VARBLOCK - YOU HAVE FED ME GARBAGE>> ' + peek() + ' ' + peekV());
+                                Halt(1);
+                            end;
+            end;
+    consume;
+end;
+
 // PARSER -----------
 
 procedure parser();
@@ -1196,18 +1279,12 @@ begin
             'TERMINATOR': begin 
                 consume;
             end;
-            'V': begin 
-                consume;
-            end;
-            'S': begin 
-                consume;
-            end;
-            'AMP': begin 
+            {'AMP': begin 
                 consume;
             end;
             'CARET': begin 
                 consume;
-            end;
+            end;}
             'W': begin 
                 condWhen();
             end;
@@ -1223,29 +1300,7 @@ begin
             'LW': begin 
                 loopWhile();
             end;
-            'VARBLOCK': begin 
-                consume; // consume |V
-                while peek() <> 'PIPE' do 
-                    begin
-                        if peek2() = 'ASSIGN' then // globals
-                            begin
-                            end 
-                        else if peek2() = 'LBRAC' then // word arrays
-                            begin
-                            end 
-                        else if peek2() = 'LBRACE' then // float arrays
-                            begin
-                            end 
-                        else if peek2() = 'BANG' then // byte arrays
-                            begin
-                            end 
-                        else
-                            begin
-                                WriteLn('I CANT BELIEVE YOUVE DONE THIS - VARBLOCK - YOU HAVE FED ME GARBAGE>> ' + peek() + ' ' + peekV());
-                                Halt(1);
-                            end;
-                    end;
-            end;
+            'VARBLOCK': begin varBlock(); end;
             'STATICBLOCK': begin 
                 consume; // consume '
             end;
@@ -1445,7 +1500,6 @@ begin
         t_line[i] := 0;
         aName[i] := '';
         aType[i] := '';
-        aOffset[i] := 0;
         end;
 
     FillChar(loop_TLabel, SizeOf(loop_TLabel), 0);
@@ -1465,7 +1519,8 @@ begin
     loopDepth := 0;
     return_FCount := 0;
     symCount := 0;
-    
+    aCount := 0;
+
 end;
 
 procedure sendToNASM(outputName: String);

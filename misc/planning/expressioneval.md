@@ -1,5 +1,8 @@
 ## New Expression Evaluator 
 
+# Hindsight
+- HORRIBLE IDEA
+
 ype
     TLocal = record
         name:    String;

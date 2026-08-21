@@ -2,10 +2,14 @@
 ; 
 
 |V  buffer![4096]
+    tokenIdentifier[4096]
     tokenType[4096]
-    tokenValue[4086]
+    tokenValue[4096]
+    
+    lexerIndex := 0
     tokenCount := 0
     bytes := 0
+    position := 0
 |
 
 
@@ -20,8 +24,8 @@
 
 ; Input/Output ==========================================================
 
-P openFiles() {
-    path := '/NFS/Code/rockskunk/src/playground.rsk'
+F openFiles() {
+    path := '/NFS/Code/rockskunk/tests/src/playground.rsk'
     dataptr := path + 8
     fd := open(dataptr, 0, 0)
 
@@ -38,6 +42,14 @@ P closeFiles() {}
 
 ; Sub-Components ======================================================
 
+F peek() { r := tokenIdentifier[position] } ; look at what the next token is eg 'ASSIGN'
+F peekV() { r := tokenValue[position] } ; look at what the next tokens value is ':='
+
+F consume() { ; eat the token and steal the value
+r := tokenValue[position]
+position := position + 1
+}
+
 ; Optimization ---------------------------------------------------------
 
 F foldCode() {}
@@ -50,56 +62,122 @@ P discriminateIdentifier() {}
 
 ; Parser ==============================================================
 
-P parser() {}
+P parser() {
+    position := 0
+    ;IF (peek() = 'F') {} NEED FN SUPPPORT IN CONDITIONALS
+
+}
 
 ; Lexer ===============================================================
 
 P tokenize(char, ident) {
-    tokenType[tokenCount] := ident
-    tokenVal[tokenCount] := char
+    tokenIdentifier[tokenCount] := ident
+    tokenValue[tokenCount] := char
     tokenCount := tokenCount + 1
 }
 
+P doubleToken(check, check2, ident) {
+    W (buffer![lexerIndex] = check) { 
+    W (buffer![lexerIndex+1] = check2) {
+    tokenIdentifier[tokenCount] := ident
+    tokenValue[tokenCount] := check + check2
+    tokenCount := tokenCount + 1
+    lexerIndex := lexerIndex + 1 } }
+}
+
+F collectWord(word) {
+    r := word + buffer![lexerIndex]
+    lexerIndex := lexerIndex + 1
+}
+
+F isWordChar() {
+    r := 0
+    IF ((buffer![lexerIndex] >= 'a') and (buffer![lexerIndex] <= 'z')) { r := 1 }
+    IF ((buffer![lexerIndex] >= 'A') and (buffer![lexerIndex] <= 'Z')) { r := 1 }
+    IF ((buffer![lexerIndex] >= '0') and (buffer![lexerIndex] <= '9')) { r := 1 }
+    IF (buffer![lexerIndex] = '_') { r := 1 }
+}
+
+F isWordNum() {
+    r := 0
+    W ((buffer![lexerIndex] >= '1') and (buffer![lexerIndex] <= '9')) { r := 1 }
+}
+
+F lexChar () {
+    word := ''
+    isWord := isWordChar()
+    LW (isWord = 1) {
+    word := collectWord(word)
+    isWord := isWordChar()
+}
+    tokenValue[tokenCount] := word
+    tokenCount := tokenCount + 1
+    lexerIndex := lexerIndex - 1
+}
+
+;F lexChar () {
+;    word := ''
+;    LW ((buffer![lexerIndex] >= 'a') and (buffer![lexerIndex] <= 'z') or (buffer![lexerIndex] >= 'A') and (buffer![lexerIndex] <= 'Z') or (buffer![lexerIndex] = '_') or (buffer![lexerIndex] >= '0') and (buffer![lexerIndex] <= '9')) {
+;    word := collectWord(word) }
+;    ; Keyword check
+;    tokenValue[tokenCount] := word
+;    tokenCount := tokenCount + 1
+;    lexerIndex := lexerIndex - 1
+;}
+
 P lexer() {
+    lexerIndex := 0
+    LW (lexerIndex < bytes) {
+       doubleToken(':','=','ASSIGN')
+       doubleToken('I','F','IF')
+       doubleToken('|','V','VARBLOCK')
+
+        W (buffer![lexerIndex] = '{') { tmp := 'LBRACE' tokenize(buffer![lexerIndex], tmp) }
+        W (buffer![lexerIndex] = '}') { tmp := 'RBRACE' tokenize(buffer![lexerIndex], tmp) }
+        W (buffer![lexerIndex] = '=') { tmp := 'EQUAL' tokenize(buffer![lexerIndex], tmp) }
+        W (buffer![lexerIndex] = '<') { tmp := 'LESS' tokenize(buffer![lexerIndex], tmp) }
+        W (buffer![lexerIndex] = '>') { tmp := 'MORE' tokenize(buffer![lexerIndex], tmp) }
+        W (buffer![lexerIndex] = '+') { tmp := 'PLUS' tokenize(buffer![lexerIndex], tmp) }
+        W (buffer![lexerIndex] = '-') { tmp := 'MINUS' tokenize(buffer![lexerIndex], tmp) }
+        W (buffer![lexerIndex] = '*') { tmp := 'STAR' tokenize(buffer![lexerIndex], tmp) }
+        W (buffer![lexerIndex] = '/') { tmp := 'SLASH' tokenize(buffer![lexerIndex], tmp) }
+        W (buffer![lexerIndex] = '[') { tmp := 'LBRAC' tokenize(buffer![lexerIndex], tmp) }
+        W (buffer![lexerIndex] = ']') { tmp := 'RBRAC' tokenize(buffer![lexerIndex], tmp) }
+        W (buffer![lexerIndex] = '(') { tmp := 'LPAREN' tokenize(buffer![lexerIndex], tmp) }
+        W (buffer![lexerIndex] = ')') { tmp := 'RPAREN' tokenize(buffer![lexerIndex], tmp) }
+        W (buffer![lexerIndex] = 'W') { tmp := 'WHEN' tokenize(buffer![lexerIndex], tmp) }
+
+        lexChar();
+        ;IF ( (buffer![lexerIndex] >= 'a') and (buffer![lexerIndex] <= 'z') or (buffer![lexerIndex] >= 'A') and (buffer![lexerIndex] <= 'Z') or (buffer![lexerIndex] = '_') ) {
+        ;   lexChar()
+        ;}  IF ((buffer![lexerIndex] >= '0') and (buffer![lexerIndex] <= '9')) {
+        ;   ; lexNumbers()
+
+        ;}
+        
+        ;E {}
+
+
+        lexerIndex := lexerIndex + 1 }
+
+    printw(tokenCount)
 
     i := 0
-    LW (i < bytes) {
-        IF (buffer[i] = '=') {
-            tmp := 'EQUAL'  
-            tokenize(buffer[i], tmp)
-        }
-
-
-
-
-
-
-    }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    LW (i < tokenCount) {
+        writeLn(tokenIdentifier[i])
+        i := i + 1 }
 }
 
 ; INIT ================================================================
 
+P arrayInit() {
+
+}
+
 F main() {
-    msg_init := 'RSKC - INIT'
-    writeLn(msg_init)
+    |A mov rax, 5~ |
+    writeLn('RSCK - INIT')
+    arrayInit()
     openFiles()
     lexer()
     parser()

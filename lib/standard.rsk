@@ -1,6 +1,8 @@
 ; ROCKSKUNK
 ; STANDARD LIBRARY
 
+|V charbuf![1] |
+
 ; I/O ----------------------------------------------------------------
 
 F read(fd, buf, count) { r := sys(0,fd ,buf ,count) }
@@ -12,7 +14,7 @@ F fstat(fd, statbuf) { r := sys(5, fd, statbuf, 0) }
 F mkdir(path, mode) { r := sys(83, path, mode, 0) }
 F close(fd) { r := sys(3, fd, 0, 0) }
 
-; STRINGS ----------------------------------------------------------------
+; TEXT ----------------------------------------------------------------
 
 P writeLn(s) {
 	len := s^
@@ -29,6 +31,13 @@ F ccmp(p, q) {
     ; walk both byte-by-byte until mismatch or double null
     ; needs the byte-deref primitive either way
 }
+
+P printc(c) {
+    charbuf![0] := c
+    sys(1, 1, charbuf, 1)
+}
+
+
 
 
 ; MATH ----------------------------------------------------------------

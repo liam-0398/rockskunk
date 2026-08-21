@@ -31,6 +31,37 @@ Bootstrap compiler is kind of a mess. Using old C transpiler I had written for a
 
 The Gameplan is to get this pascal bootstrap compiler good enough to write my own compiler in rockskunk. Then is when im going to pay more attention to spilling registers into memory and inline optimization as I learn more and become more comfortable. 
 
+## What I have learned from bootstrap
+
+- Reverted change to record based system. Never again, practically starting over.
+
+# Never
+
+- Records/Structs
+- Formal IR
+- Using ASM snippets
+- Giant AST
+
+# Always
+
+- Arrays and strings
+- Handwritten assembly
+- Simplicity over abstraction
+- Error checking
+
+# Requirements
+
+- Vector support
+- Dead code elimination
+- Optimization via string/regex ops
+- Register allocation via fixed pool
+- Code folding in-compiler
+
+# Inspiration
+
+- Original FORTRAN Compiler
+- Old Pascal Compilers
+
 # Syntax
 
 ```
@@ -199,6 +230,7 @@ data := s + 8     ; address of s's character data
 ; Misc
 
 |D' align(32)| ; COMPILER DIRECTIVES, align 32. TOP OF FILE
+|A mov rax, 1~ mov xmm0, 3~ | ;inline asm
 
 array := v(array) ;vectorize (auto width based on cpuflags)
                   ; pad with zeros if trying to shove 4 wide into AVX-512 for example

@@ -3,7 +3,7 @@ uses
     BaseUnix, SysUtils, Unix;
 
 const
-    intRegs: array[0..5] of String = ('rdi', 'rsi', 'rdx', 'rcx', 'r8', 'r9');
+    intRegs: array[0..5] of String = ('rdi', 'rsi', 'rdx', 'rcx', 'r8', 'r9'); // SYSV ABI
     acceptedKeywords: array[0..12] of String = // MAKE SURE TO UPDATE KEYWORD CHECK WHEN ADDING
     ('ADD', 'F', 'LF', 'LW', 'W', 'IF', 'E', 'P', 'OR', 'AND', 'NOR', 'XOR', 'CALL');
 var
@@ -189,7 +189,7 @@ procedure emitFunctionSetup();
 begin 
     WriteText('    push rbp' + #10);
     WriteText('    mov rbp, rsp' + #10);
-    WriteText('    sub rsp, 128' + #10);
+    WriteText('    sub rsp, 128' + #10); // I KNOW I KNOW its temporary
 end;
 
 procedure emitFunctionTeardown(result: String; isProcedure: Boolean);

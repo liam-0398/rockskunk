@@ -14,7 +14,7 @@ var
     symName, symType: array[0..255] of String;
     symOffset: array[0..255] of Integer;
 
-    t_type, t_val: Array[0..4096] of String;
+    tokenIdentifier, tokenValue: Array[0..4096] of String;
     t_line: Array[0..4096] of Integer;
 
     loop_TLabel: array [0..64] of String;
@@ -37,9 +37,6 @@ var
     param_FType:  array[0..255] of String;   
     param_FCount: Integer;
 
-    stack: Array [0..255] of String;
-    sp: Integer;
-
     braceEmitted: Boolean;
     bytes: CInt;
     currentFN: String;
@@ -47,7 +44,7 @@ var
     filename, output_filename, stdlib_filename, returnAddr: String;
     paramPending: Boolean; 
     paramOffset: Array [0..128] of Integer;
-    frameOffset, labelCounter, position, symCount, argCount, t_count: Integer;
+    frameOffset, labelCounter, position, symCount, argCount, tokenCount: Integer;
 
 {
    DO NOT FORGET LIST ====
@@ -62,18 +59,6 @@ function evaluateExpression(isFloat: Boolean): String; forward;
 
 // HELPERS =================================================
 // ========================================================
-
-procedure push(value: String); 
-begin 
-    stack[sp] := value;
-    Inc(sp);
-end;
-
-function pop(): String;
-begin 
-    Dec(sp);
-    pop := stack[sp];
-end;
 
 procedure writeOut(s: String); begin fpWrite(fd2, s[1], Length(s)); end;
 procedure writeText(s: String); begin fpWrite(fd3, s[1], Length(s)); end;
@@ -127,11 +112,11 @@ procedure openFile;
 var
     libBytes: CInt;
 begin
-    WriteLn('LOADING STANDARD LIBRARY');
+    {WriteLn('LOADING STANDARD LIBRARY');
     FillChar(buf, SizeOf(buf), 0);
     fd := fpOpen(stdlib_filename, O_RdOnly);
     libBytes := FpRead(fd, buf, SizeOf(buf));
-    fpClose(fd);
+    fpClose(fd);}
 
     WriteLn('LOADING SOURCEFILE LIBRARY');
     fd := fpOpen(filename, O_RdOnly);
@@ -172,38 +157,16 @@ begin
     fpClose(fd2);
 end;
 
-procedure closeIntermediateFile;
-begin  
-    fpClose(fd3);
-    fpClose(fd4);
-end;
+procedure closeIntermediateFile; begin fpClose(fd3); fpClose(fd4); end;
 
 // CODE GENERATION ===========================================
 // ========================================================
 
 // HELPERS ----------------------------------------------------------
 
-procedure loadRAX(addr: String);
-begin
-    WriteText('    mov rax, ' + addr + #10);
-end;
-
-procedure loadRBX(addr: String);
-begin
-    WriteText('    mov rbx, ' + addr + #10);
-end;
-
-procedure loadXMM0(addr: String);
-begin
-    WriteText('    movsd xmm0, ' + addr + #10);
-end;
-
-// BLOCKS -----------------------------------------------------------
-procedure emitGlobalBlock(); begin end;   // {V ...}
-procedure emitStaticBlock(); begin end;   // {S ...}
-procedure emitRecordBlock(); begin end;   // {R name ...}
-procedure emitDirectiveBlock(); begin end; // {D ...}
-procedure emitFileInclude(); begin end;   // ADD("file.rsk")
+procedure loadRAX(addr: String); begin WriteText('    mov rax, ' + addr + #10); end;
+procedure loadRBX(addr: String); begin WriteText('    mov rbx, ' + addr + #10); end;
+procedure loadXMM0(addr: String); begin WriteText('    movsd xmm0, ' + addr + #10); end;
 
 // FUNCTIONS -----------------------------------------------------------
 procedure emitFN(fname : String);
@@ -241,14 +204,7 @@ begin
     WriteText('    ret' + #10 + #10);
 end;
 
-procedure emitReturn(); begin end;
-
 // CONTROL FLOW -----------------------------------------------------------
-procedure emitIF(); begin end;
-procedure emitELSE(); begin end;
-procedure emitWHEN(); begin end;
-procedure emitFORLoop(); begin end;   // LF
-procedure emitWHILELoop(); begin end; // LW
 
 procedure emitLabel(labelname: String); begin WriteText(labelname + ':' + #10) end;
 
@@ -267,9 +223,6 @@ begin
     WriteText('    movsd ' + variable + ', xmm0' + #10);
 end;
 
-procedure emitPairAssign(); begin end;
-procedure emitCompoundAssign(); begin end; // :+=
-
 function emitFloatConstant(float: String): String;
 begin
         WriteData('   float_' + IntToStr(labelCounter) + ': dq ' + float + #10);
@@ -278,13 +231,6 @@ begin
 end;
 
 // ARRAYS / MEMORY -----------------------------------------------------------
-procedure emitArrayAssignWord(); begin end;   // array[i]
-procedure emitArrayAssignFloat(); begin end;  // array{i}
-procedure emitArrayAssignString(); begin end; // array(i)
-procedure emitArrayReadWord(); begin end;
-procedure emitArrayReadFloat(); begin end;
-procedure emitArrayReadString(); begin end;
-procedure emitRecordFieldAccess(); begin end; // rec.field
 
 function emitAddressOf(variable: String): String; // &a
 begin 
@@ -323,40 +269,6 @@ begin
 end;
 
 procedure emitModFloat(); begin end;
-
-// VECTOR OPS -----------------------------------------------------------
-procedure emitVecAdd(); begin end;   // ++
-procedure emitVecMul(); begin end;   // **
-procedure emitVecDiv(); begin end;   // //
-procedure emitVecMod(); begin end;   // %%
-procedure emitVecFMA(); begin end;   // *+
-procedure emitVecCompoundAssign(); begin end; // :++=  :**=
-
-// VECTOR INTRINSICS -----------------------------------------------------------
-procedure emitVSin(); begin end;
-procedure emitVCos(); begin end;
-procedure emitVAbs(); begin end;
-procedure emitVSqrt(); begin end;
-procedure emitVMin(); begin end;
-procedure emitVMax(); begin end;
-procedure emitVFloor(); begin end;
-procedure emitVCeil(); begin end;
-
-// STREAMLINING FUNCTIONS -----------------------------------------------------------
-procedure emitLint(); begin end;  // linear interpolation
-procedure emitBrot(); begin end;  // bitwise rotate
-
-// CONDITIONALS -----------------------------------------------------------
-procedure emitCmpLess(); begin end;
-procedure emitCmpGreater(); begin end;
-procedure emitCmpLessEqual(); begin end;
-procedure emitCmpGreaterEqual(); begin end;
-procedure emitBitAnd(); begin end;
-procedure emitBitOr(); begin end;
-procedure emitBitNor(); begin end;
-procedure emitBitXor(); begin end;
-procedure emitLogicalAnd(); begin end;
-procedure emitLogicalOr(); begin end;
 
 // SYSTEM ----------------------------------
 
@@ -520,18 +432,18 @@ end;
 // Helpers ------------------------------------
 
 // Used to check type (identifier) and value of words for decision making
-function peekV(): String; begin peekV := t_val[position]; end;
-function peekV2(): String; begin peekV2 := t_val[position+1]; end;
-function peekV3(): String; begin peekV3 := t_val[position+2]; end;
-function peek(): String; begin peek := t_type[position]; end;
-function peek2(): String; begin peek2 := t_type[position+1]; end;
-function peek3(): String; begin peek3 := t_type[position+2]; end;
+function peekV(): String; begin peekV := tokenValue[position]; end;
+function peekV2(): String; begin peekV2 := tokenValue[position+1]; end;
+function peekV3(): String; begin peekV3 := tokenValue[position+2]; end;
+function peek(): String; begin peek := tokenIdentifier[position]; end;
+function peek2(): String; begin peek2 := tokenIdentifier[position+1]; end;
+function peek3(): String; begin peek3 := tokenIdentifier[position+2]; end;
 function currentLine(): String; begin currentLine := intToStr(t_line[position]); end;
 function computeOffset(offset: Integer): String; begin computeOffset := '[rbp-' + IntToStr(offset) + ']'; end;
 
 function consume(): String; // Eat the next token and then remove it
 begin
-    consume := t_val[position]; // pull value (actual content of token)
+    consume := tokenValue[position]; // pull value (actual content of token)
     Inc(position);  // Increment counter to drop the token
 end;
 
@@ -616,7 +528,12 @@ begin
                 if variable = 'printf' then
                     functionPrintF(argname);
                 if variable = 'printw' then
-                    functionPrintW(argname);
+                    functionPrintW(argname)
+                else
+                    begin
+                        WriteLn('I CANT BELIEVE YOUVE DONE THIS - ASMFUNC- INVALID CALL >> ' + variable);
+                        Halt(1);
+                    end;
         end
     else
         WriteText('call ' + variable + #10);
@@ -634,27 +551,19 @@ begin
 
             if isFloat then
                 begin
-                if op = 'PLUS' then
-                    result1 := StrToFloat(first) + StrToFloat(second)
-                else if op = 'MINUS' then
-                    result1 := StrToFloat(first) - StrToFloat(second)
-                else if op = 'STAR' then
-                    result1 := StrToFloat(first) * StrToFloat(second)
-                else if op = 'SLASH' then
-                    result1 := StrToFloat(first) / StrToFloat(second);
+                if op = 'PLUS' then result1 := StrToFloat(first) + StrToFloat(second)
+                else if op = 'MINUS' then result1 := StrToFloat(first) - StrToFloat(second)
+                else if op = 'STAR' then result1 := StrToFloat(first) * StrToFloat(second)
+                else if op = 'SLASH' then result1 := StrToFloat(first) / StrToFloat(second);
                 WriteLn('OPTIMIZATION - FLT');
                 foldCode := (FloatToStr(result1));
                 end 
             else
                 begin
-                if op = 'PLUS' then
-                    result2 := StrToInt(first) + StrToInt(second)
-                else if op = 'MINUS' then
-                    result2 := StrToInt(first) - StrToInt(second)
-                else if op = 'STAR' then
-                    result2 := StrToInt(first) * StrToInt(second)
-                else if op = 'SLASH' then
-                    result2 := StrToInt(first) div StrToInt(second);
+                if op = 'PLUS' then result2 := StrToInt(first) + StrToInt(second)
+                else if op = 'MINUS' then result2 := StrToInt(first) - StrToInt(second)
+                else if op = 'STAR' then result2 := StrToInt(first) * StrToInt(second)
+                else if op = 'SLASH' then result2 := StrToInt(first) div StrToInt(second);
                 WriteLn('OPTIMIZATION - FPT');
                 foldCode := (IntToStr(result2));
             end;
@@ -724,10 +633,7 @@ begin
                     isFloat := True;
         end;
 
-    if isFloat then
-        WhoGoesTHere := 'FLOAT'
-    else
-        WhoGoesTHere := 'QWORD';
+    if isFloat then WhoGoesTHere := 'FLOAT' else WhoGoesTHere := 'QWORD';
 
 end;
 
@@ -895,7 +801,6 @@ var
     variable, rightside, twoname, argname: String;
     isDeclared, isReturn, isFloat: boolean;
     i, ii, symIndex: Integer;
-
 begin
     i := 0;
     ii := 0;
@@ -1005,6 +910,8 @@ begin
 end;
 
 // ONE-OFFS ------------
+// all of these are completely broken
+procedure conditionalIntrinsic(); begin end;
 
 function loopWhile(): Boolean;
 var
@@ -1161,8 +1068,7 @@ begin
                                         consume;
                             until peek() = 'RPAR';
                     end;
-                        consume; // )
-                    
+                        consume; // )     
          end;
 end;
 
@@ -1280,7 +1186,7 @@ begin
             end;
         
         end;
-    until position >= t_count;
+    until position >= tokenCount;
 
     asmFoundations();
 
@@ -1298,19 +1204,19 @@ var
 
     procedure assignSingleChar(Tvalue: String; Ttype: String);
     begin
-        t_type[t_count] := Ttype;
-        t_val[t_count] := Tvalue;
-        t_line[t_count] := linecount;
-        Inc(t_count);
+        tokenIdentifier[tokenCount] := Ttype;
+        tokenValue[tokenCount] := Tvalue;
+        t_line[tokenCount] := linecount;
+        Inc(tokenCount);
     end;
 
     procedure assignDoubleChar(Tvalue: String; Ttype: String);
     begin
-        t_type[t_count] := Ttype;
-        t_val[t_count] := Tvalue;
-        t_line[t_count] := linecount;
+        tokenIdentifier[tokenCount] := Ttype;
+        tokenValue[tokenCount] := Tvalue;
+        t_line[tokenCount] := linecount;
         isMultiple := True;
-        Inc(t_count);
+        Inc(tokenCount);
         Inc(i);
     end;
 
@@ -1319,12 +1225,12 @@ begin
     isKeyword := False;
     isFloat :=  False;
     word := '';
-    t_count := 0;
+    tokenCount := 0;
 
     for i := 0 to 1023 do
         begin
-            t_type[i] := '';
-            t_val[i] := '';
+            tokenIdentifier[i] := '';
+            tokenValue[i] := '';
         end;
     
     i := 0; // POSITION TRACKER  
@@ -1388,16 +1294,16 @@ begin
                         isKeyword := keywordCheck(UpperCase(word)); 
                         if isKeyword then  
                             begin
-                                t_type[t_count] := UpperCase(word);
+                                tokenIdentifier[tokenCount] := UpperCase(word);
                                 WriteLn(UpperCase(word)); // DEBUG PRINT
                             end
                             else
                                 begin
-                                t_type[t_count] := 'IDENTIFIER';
+                                tokenIdentifier[tokenCount] := 'IDENTIFIER';
                                 end;
 
-                        t_val[t_count] := word;
-                        Inc(t_count);
+                        tokenValue[tokenCount] := word;
+                        Inc(tokenCount);
                         Dec(i);  
                     end
 
@@ -1443,8 +1349,8 @@ begin
     until i >= bytes; // Runs until EOF
 
     i := 0;
-    for i := 0 to t_count - 1 do
-        WriteLn(IntToStr(i) + ': ' + t_type[i] + '  ' + t_val[i]);
+    for i := 0 to tokenCount - 1 do
+        WriteLn(IntToStr(i) + ': ' + tokenIdentifier[i] + '  ' + tokenValue[i]);
 end;
 
 // INIT ============================================
@@ -1464,7 +1370,6 @@ begin
         t_line[i] := 0;
         end;
 
-    FillChar(stack, SizeOf(stack), 0);
     FillChar(loop_TLabel, SizeOf(loop_TLabel), 0);
     FillChar(loop_ELabel, SizeOf(loop_ELabel), 0);
     FillChar(conditional_ELabel, SizeOf(conditional_ELabel), 0);
@@ -1482,7 +1387,6 @@ begin
     loopDepth := 0;
     return_FCount := 0;
     symCount := 0;
-    sp := 0;
 end;
 
 procedure sendToNASM(outputName: String);

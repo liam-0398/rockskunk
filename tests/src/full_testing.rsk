@@ -1,0 +1,122 @@
+; COMPILER MIGRATION VALIDATION — FULL ONSLAUGHT
+
+|V
+	nums[10]
+	temps{10}
+	flags![20]
+|
+
+F addw(a, b) {
+	r := a + b
+}
+
+F addf(a: f, b: f) {
+	r := a + b
+}
+
+F factorial(n) {
+	r := 1
+	i := 1
+	LW (i <= n) {
+		r := r * i
+		i := i + 1
+	}
+}
+
+P main() {
+	; --- scalar math + calls ---
+	x := 5
+	y := 10
+	z := addw(x, y)
+	printw(z)
+
+	fx := 2.5f
+	fy := 1.5f
+	fz := addf(fx, fy)
+	printf(fz)
+
+	; --- qword array: fill via LF, read back via LW ---
+	i := 0
+	LF (i := 0 until 10) {
+		nums[i] := i * i
+	}
+	j := 0
+	LW (j <= 9) {
+		printw(nums[j])
+		j := j + 1
+	}
+
+	; --- float array round trip ---
+	temps{3} := 98.6f
+	tval := temps{3}
+	printf(tval)
+
+	; --- byte array: store and reload individual bytes ---
+	flags![0] := 1
+	flags![1] := 0
+	flags![2] := 1
+	b0 := flags![0]
+	b1 := flags![1]
+	b2 := flags![2]
+	printw(b0)
+	printw(b1)
+	printw(b2)
+
+	; --- 4-deep nesting: LF / LW / W / W ---
+	outer := 1
+	LF (outer := 1 until 4) {
+		inner := 0
+		LW (inner <= 2) {
+			W (outer = 2) {
+				W (inner = 1) {
+					printw(777)
+				}
+			}
+			printw(outer)
+			printw(inner)
+			inner := inner + 1
+		}
+	}
+
+	; --- IF/E chain, both branches ---
+	n := 5
+	IF (n = 5) {
+		printw(111)
+	}
+	E {
+		printw(222)
+	}
+
+	n := 9
+	IF (n = 5) {
+		printw(333)
+	}
+	E {
+		printw(444)
+	}
+
+	; --- function call inside a loop, self-modifying accumulator ---
+	total := 0
+	LW (total <= 20) {
+		total := addw(total, 5)
+		printw(total)
+	}
+
+	; --- factorial: LW nested inside a called function's own frame ---
+	f5 := factorial(5)
+	printw(f5)
+
+	; --- strings: literal, address fix, pointer deref, pointer arithmetic ---
+	msg := 'hello'
+	msglen := msg^
+	printw(msglen)
+	writeLn(msg)
+
+	; --- W with no match: prints nothing ---
+	never := 0
+	W (never = 999) {
+		printw(666666)
+	}
+
+	r := 0
+}

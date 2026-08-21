@@ -246,8 +246,7 @@ function emitDereference(variable: String): String; // ^
 begin
         WriteText('    mov rax, ' + variable + #10); // load pointers value (addr)
         WriteText('    mov rax, [rax]' + #10); // use that register as memory and read through it
-        emitAddressOf := 'rax';
-
+        emitDereference := 'rax';
 end;
 
 procedure emitMalloc(); begin end;            // cm(size)

@@ -2,7 +2,9 @@
 
 
 P main() {
-    a := 5
-    b := a + 7
-    printw(b)
+    b := 5
+    a := &b
+    c := a^
+
+    printw(c)
 } 

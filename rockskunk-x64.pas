@@ -242,6 +242,14 @@ begin
         emitAddressOf := 'rax';
 end;         
 
+function emitDereference(variable: String): String; // ^
+begin
+        WriteText('    mov rax, ' + variable + #10); // load pointers value (addr)
+        WriteText('    mov rax, [rax]' + #10); // use that register as memory and read through it
+        emitAddressOf := 'rax';
+
+end;
+
 procedure emitMalloc(); begin end;            // cm(size)
 procedure emitFree(); begin end;              // fm(p)
 
@@ -700,7 +708,7 @@ end;
 
 function evaluateExpression(isFloat: Boolean): String;
 var
-    first, second, op, argname, fname, return, math_ret, call_ret, ampaddr: String;
+    first, second, op, argname, fname, return, math_ret, call_ret, ampaddr, ident: String;
     num, a, b, c: String;
     returnsFloat: Boolean;
     i, argfindex: Integer;
@@ -715,6 +723,13 @@ begin
             consume;
             ampaddr := VarToMem(consume);
             Exit(emitAddressOf(ampaddr));
+        end;
+
+    if (peek()='IDENTIFIER') and (peek2()='CARET') then
+        begin
+            ident := consume;
+            consume;
+            Exit(emitDereference(VarToMem(ident)))
         end;
 
     if (peekV() = 'sys') and (peek2() = 'LPAR') then
@@ -822,6 +837,11 @@ begin
                     if symType[i] = 'FLOAT' then // if its a float take the float path
                         isFloat := True;
                 end;
+        end;
+
+    if peek() = 'CARET' then
+        begin
+
         end;
 
     if peek() = 'ASSIGN' then // if its a := x etc etc
@@ -1152,6 +1172,12 @@ begin
             'S': begin 
                 consume;
             end;
+            'AMP': begin 
+                consume;
+            end;
+            'CARET': begin 
+                consume;
+            end;
             'W': begin 
                 condWhen();
             end;
@@ -1274,6 +1300,7 @@ begin
                     '|': assignSingleChar('|', 'PIPE');
                     ':': assignSingleChar(':', 'COLON');
                     '&': assignSingleChar('&', 'AMP');
+                    '^': assignSingleChar('^', 'CARET');
 
                     ';': begin   // comment — skip to end of line, emits no token
                         while (i < bytes) and (buf[i] <> #10) do

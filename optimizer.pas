@@ -70,12 +70,6 @@ begin
 
 end;
 
-procedure registerAllocation();
-begin
-
-
-end;
-
 procedure optimize();
 begin
     WriteLn('OPTIMIZER');
@@ -85,5 +79,6 @@ begin
     RE.ModifierM := True;
     deadCodePass;
     writeFileO;
+    RE.Free;
 end;
 end.

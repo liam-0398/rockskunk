@@ -4,10 +4,8 @@ uses
 
 const
     intRegs: array[0..5] of String = ('rdi', 'rsi', 'rdx', 'rcx', 'r8', 'r9');
-    acceptedKeywords: array[0..14] of String = // MAKE SURE TO UPDATE KEYWORD CHECK WHEN ADDING
-    ('ADD', 'V', 'S',
-     'F', 'LF', 'LW', 'W', 'IF', 'E', 'P',
-     'OR', 'AND', 'NOR', 'XOR', 'CALL');
+    acceptedKeywords: array[0..12] of String = // MAKE SURE TO UPDATE KEYWORD CHECK WHEN ADDING
+    ('ADD', 'F', 'LF', 'LW', 'W', 'IF', 'E', 'P', 'OR', 'AND', 'NOR', 'XOR', 'CALL');
 var
     buf, databuf, textbuf, bbuf: Array[0..65535] of Char;
 
@@ -50,11 +48,9 @@ var
    DO NOT FORGET LIST ====
    REMEMBER REDO ASM OUTPUT PRIMITIVES AND LOOPS
    REMEMBER IMPLMENT CALL WITHOUT TYPES
-   ADDR OF AND DEREFERENCE
    LEGNTH PREFIXED QWORD STRINGS WITH NULL TERMINATOR
    W/IF/ELSE
    LOOPS
-   ARRAYS
 }
 
 // Forward Declarations
@@ -75,7 +71,7 @@ var
     i: Integer;
 begin
     keywordCheck := False;
-    for i := 0 to 14 do
+    for i := 0 to 12 do
         begin
             if word = acceptedKeywords[i] then 
                 begin
@@ -124,7 +120,7 @@ begin
     libBytes := FpRead(fd, buf, SizeOf(buf));
     fpClose(fd);
 
-    WriteLn('LOADING SOURCEFILE LIBRARY');
+    WriteLn(IntToStr(t_line[tokenCount]) + ' - ' + 'LOADING SOURCEFILE LIBRARY');
     fd := fpOpen(filename, O_RdOnly);
     bytes := FpRead(fd, buf[libBytes], SizeOf(buf) - libBytes);
     fpClose(fd);
@@ -484,6 +480,10 @@ function varToMem(variable: String): String;
 var
     i: Integer;
 begin
+    for i := 0 to aCount - 1 do       
+        if aName[i] = variable then
+            Exit(variable);
+
     varToMem := ''; 
     for i := 0 to symCount - 1 do
         begin
@@ -492,7 +492,7 @@ begin
         end;
     if varToMem = '' then
         begin    
-            WriteLn('I CANT BELIEVE YOUVE DONE THIS - VAR_TO_MEM - UNK SYMBOL>> ' + variable);
+            WriteLn(IntToStr(t_line[tokenCount]) + ' - ' + 'I CANT BELIEVE YOUVE DONE THIS - VAR_TO_MEM - UNK SYMBOL>> ' + variable);
             Halt(1); // Loop for multiple opererators was getting pissed becuase '+' was making its way into here
         end;
 end;
@@ -531,7 +531,7 @@ begin
 
     if arrayToMem = '' then
         begin    
-            WriteLn('I CANT BELIEVE YOUVE DONE THIS - ARRAY_TO_MEM - UNK SYMBOL>> ' + arrayName);
+            WriteLn(IntToStr(t_line[tokenCount]) + ' - ' + 'I CANT BELIEVE YOUVE DONE THIS - ARRAY_TO_MEM - UNK SYMBOL>> ' + arrayName);
             Halt(1); // Loop for multiple opererators was getting pissed becuase '+' was making its way into here
         end;
 end;
@@ -583,7 +583,7 @@ begin
             else if op = 'SLASH' then emitDivFloat('xmm0', second)
             else
                 begin
-                    WriteLn('I CANT BELIEVE YOUVE DONE THIS - EMIT_MATH - UNK OP >> ' + op);
+                    WriteLn(IntToStr(t_line[tokenCount]) + ' - ' + 'I CANT BELIEVE YOUVE DONE THIS - EMIT_MATH - UNK OP >> ' + op);
                     Halt(1);
                 end;
         end
@@ -595,7 +595,7 @@ begin
             else if op = 'SLASH' then emitDiv('rax', second)
             else
                 begin
-                    WriteLn('I CANT BELIEVE YOUVE DONE THIS - EMIT_MATH - UNK OP >> ' + op);
+                    WriteLn(IntToStr(t_line[tokenCount]) + ' - ' + 'I CANT BELIEVE YOUVE DONE THIS - EMIT_MATH - UNK OP >> ' + op);
                     Halt(1);
                 end;
         end;
@@ -605,36 +605,30 @@ procedure asmFunctionCalls(variable: String; argname: String);
 var
     a, b, c, num: String;
 begin
-    WriteLn('CALLING: ' + variable);
-    if (variable = 'printw') or (variable = 'printf') then
+    if variable = 'printf' then
         begin
             consume; // (
-            argname := consume(); // the value to print
-            if not isNumber(argname) then
-                argname := varToMem(argname);
+            argname := consume();
+            if not isNumber(argname) then argname := varToMem(argname);
             consume; // )
-                if variable = 'printf' then
-                    functionPrintF(argname)
-                else if variable = 'printw' then
-                    functionPrintW(argname)
-                else if variable = 'sys' then
-                    begin
-                        consume; 
-                        num := resolveSyscall();
-                        consume;
-                        a := resolveSyscall();
-                        consume; 
-                        b := resolveSyscall();
-                        consume; 
-                        c := resolveSyscall();
-                        consume;
-                        emitSyscall(num, a, b, c)
-                    end
-                else
-                    begin
-                        WriteLn('I CANT BELIEVE YOUVE DONE THIS - ASMFUNC- INVALID CALL >> ' + variable);
-                        Halt(1);
-                    end;
+            functionPrintF(argname);
+        end
+    else if variable = 'printw' then
+        begin
+            consume; // (
+            argname := consume();
+            if not isNumber(argname) then argname := varToMem(argname);
+            consume; // )
+            functionPrintW(argname);
+        end
+    else if variable = 'sys' then
+        begin
+            consume;// sys, (
+            num := resolveSyscall(); consume;
+            a := resolveSyscall(); consume;
+            b := resolveSyscall(); consume;
+            c := resolveSyscall(); consume; // )
+            emitSyscall(num, a, b, c);
         end
     else
         WriteText('call ' + variable + #10);
@@ -907,7 +901,7 @@ begin
         end
     else
         begin
-            WriteLn('EXPRESSION EVAL - NOT OPERATOR BRANCH'); // DEBUG
+            WriteLn(IntToStr(t_line[tokenCount]) + ' - ' + 'EXPRESSION EVAL - NOT OPERATOR BRANCH'); // DEBUG
             first := consume; // first operand (the a in a + b)
 
             if isFloatLiteral(first) then
@@ -928,7 +922,7 @@ begin
                 evaluateExpression := first
             else
                 begin
-                    WriteLn('EXPRESSION EVAL - OPERATOR BRANCH');
+                    WriteLn(IntToStr(t_line[tokenCount]) + ' - ' + 'EXPRESSION EVAL - OPERATOR BRANCH');
 
                     if isFloat then
                         loadXMM0(first) // floats need Xtra Math Man
@@ -949,10 +943,12 @@ begin
                 end;
         end;   
 end;
-procedure discriminateArrays(variable: String);
+function discriminateArrays(variable: String): Boolean;
 var
     rightside, arrayName, arrayIndex, arrayType: String;
 begin
+
+    discriminateArrays := False;
         // Word Arrays
     if peek() = 'LBRAC' then
         begin
@@ -965,6 +961,7 @@ begin
             variable := arrayToMem(arrayname, arrayIndex);
             rightside := evaluateExpression(False); 
             emitAssign(variable, rightside);
+            discriminateArrays := True;
             Exit;
         end;
 
@@ -980,6 +977,7 @@ begin
             variable := arrayToMem(arrayname, arrayIndex);
             rightside := evaluateExpression(True); 
             emitAssign(variable, rightside);
+            discriminateArrays := True;
             Exit;
         end;
 
@@ -996,6 +994,7 @@ begin
             variable := arrayToMem(arrayname, arrayIndex);
             rightside := evaluateExpression(False); 
             emitAssign(variable, rightside);
+            discriminateArrays := True;
             Exit;
         end;
 end;
@@ -1004,7 +1003,7 @@ end;
 procedure discriminateIdentifier();
 var
     variable, rightside, twoname, argname: String;
-    isDeclared, isReturn, isFloat: boolean;
+    isDeclared, isReturn, isFloat, didArrays: boolean;
     arrayname, arrayIndex, arrayType: String;
     i, ii, symIndex: Integer;
 begin
@@ -1019,7 +1018,8 @@ begin
 
     if variable = 'r' then isReturn := True;
 
-    discriminateArrays(variable);
+    didArrays := discriminateArrays(variable);
+    if didArrays then Exit;
 
     //WriteLn('discrim start: variable=' + variable + ' position=' + IntToStr(position)); // DEBUG
 
@@ -1034,7 +1034,7 @@ begin
                 end;
         end;
 
-    if peek() = 'CARET' then
+    if peek() = 'CARET' then // dereference on left side of assign
         begin
 
         end;
@@ -1056,7 +1056,7 @@ begin
                                 rightside := evaluateExpression(isFloat);
                                 emitAssign(variable, rightside);
                                 end;
-                        WriteLn('ASSIGN BRANCH - DECLARED'); // DEBUG
+                        WriteLn(IntToStr(t_line[tokenCount]) + ' - ' + 'ASSIGN BRANCH - DECLARED'); // DEBUG
                 end
             else
                 begin
@@ -1115,7 +1115,7 @@ begin
                             rightside := evaluateExpression(isFloat);
                             emitAssign(variable,rightside);
                          end;
-                        WriteLn('ASSIGN BRANCH - UNDECLARED'); // DEBUG
+                        WriteLn(IntToStr(t_line[tokenCount]) + ' - ' + 'ASSIGN BRANCH - UNDECLARED'); // DEBUG
                     end;
         end
         else
@@ -1340,7 +1340,7 @@ begin
                             end 
                         else
                             begin
-                                WriteLn('I CANT BELIEVE YOUVE DONE THIS - VARBLOCK - YOU HAVE FED ME GARBAGE>> ' + peek() + ' ' + peekV());
+                                WriteLn(IntToStr(t_line[tokenCount]) + ' - ' + 'I CANT BELIEVE YOUVE DONE THIS - VARBLOCK - YOU HAVE FED ME GARBAGE>> ' + peek() + ' ' + peekV());
                                 Halt(1);
                             end;
             end;
@@ -1453,7 +1453,7 @@ begin
             //end
             else
             begin
-                WriteLn('I CANT BELIEVE YOUVE DONE THIS - PARSER - YOU HAVE FED ME GARBAGE>> ' + peek() + ' ' + peekV());
+                WriteLn(IntToStr(t_line[tokenCount]) + ' - ' + 'I CANT BELIEVE YOUVE DONE THIS - PARSER - YOU HAVE FED ME GARBAGE>> ' + peek() + ' ' + peekV());
                 Halt(1);
             end;
         
@@ -1576,6 +1576,7 @@ begin
                                 end;
 
                         tokenValue[tokenCount] := word;
+                        t_line[tokenCount] := linecount;
                         Inc(tokenCount);
                         Dec(i);  
                     end
@@ -1675,7 +1676,7 @@ begin
     result := fpSystem(cmd);
     if result <> 0 then
         begin
-            WriteLn('I CANT BELIEVE YOUVE DONE THIS - NASM FAILED');
+            WriteLn(IntToStr(t_line[tokenCount]) + ' - ' + 'I CANT BELIEVE YOUVE DONE THIS - NASM FAILED');
             Halt(1);
         end;
 
@@ -1683,7 +1684,7 @@ begin
     result := fpSystem(cmd);
     if result <> 0 then
         begin
-            WriteLn('I CANT BELIEVE YOUVE DONE THIS - LINK FAILED');
+            WriteLn(IntToStr(t_line[tokenCount]) + ' - ' + 'I CANT BELIEVE YOUVE DONE THIS - LINK FAILED');
             Halt(1);
         end;
 end;

@@ -1,6 +1,6 @@
 program rockskunk_x64;
 uses
-    BaseUnix, SysUtils, Unix;
+    BaseUnix, SysUtils, Unix, Optimizer;
 
 const
     intRegs: array[0..5] of String = ('rdi', 'rsi', 'rdx', 'rcx', 'r8', 'r9'); // SYSV ABI
@@ -120,7 +120,7 @@ begin
     libBytes := FpRead(fd, buf, SizeOf(buf));
     fpClose(fd);
 
-    WriteLn(IntToStr(t_line[tokenCount]) + ' - ' + 'LOADING SOURCEFILE LIBRARY');
+    WriteLn(IntToStr(t_line[position]) + ' - ' + 'LOADING SOURCEFILE LIBRARY');
     fd := fpOpen(filename, O_RdOnly);
     bytes := FpRead(fd, buf[libBytes], SizeOf(buf) - libBytes);
     fpClose(fd);
@@ -141,7 +141,7 @@ procedure writeASM; // Write to real intermediate.asm that is compiled by NASM
 var
     dbytes, tbytes: cint;
 begin
-    //WriteLn(IntToStr(t_line[tokenCount]) + ' - ' + 'WRITEASM - START'); // DEBUG
+    //WriteLn(IntToStr(t_line[position]) + ' - ' + 'WRITEASM - START'); // DEBUG
     fd2 := fpOpen('intermediate.asm',O_WRONLY OR O_CREAT OR O_TRUNC, 438);
 
     fd5 := fpOpen('bss.tmp', O_RdOnly, 438);
@@ -164,7 +164,7 @@ begin
     fpClose(fd3);
 
     fpClose(fd2);
-    //WriteLn(IntToStr(t_line[tokenCount]) + ' - ' + 'WRITEASM - END'); // DEBUG
+    //WriteLn(IntToStr(t_line[position]) + ' - ' + 'WRITEASM - END'); // DEBUG
 end;
 
 procedure closeIntermediateFile; begin fpClose(fd3); fpClose(fd4); end;
@@ -197,7 +197,7 @@ var
     rcheck: String;
     isFloat: Boolean;
 begin
-    WriteLn(IntToStr(t_line[tokenCount]) + ' - ' + 'TEARDOWN - START'); // DEBUG
+    WriteLn(IntToStr(t_line[position]) + ' - ' + 'TEARDOWN - START'); // DEBUG
     if not isProcedure then // just ignore all this and do not return anything if its a procedure
         begin
             isFloat := False;
@@ -214,7 +214,7 @@ begin
     WriteText('    add rsp, 128' + #10);
     WriteText('    pop rbp' + #10);
     WriteText('    ret' + #10 + #10);
-    WriteLn(IntToStr(t_line[tokenCount]) + ' - ' + 'TEARDOWN - END'); // DEBUG
+    WriteLn(IntToStr(t_line[position]) + ' - ' + 'TEARDOWN - END'); // DEBUG
 end;
 
 // CONTROL FLOW -----------------------------------------------------------
@@ -548,7 +548,7 @@ begin
         end;
     if varToMem = '' then
         begin    
-            WriteLn(IntToStr(t_line[tokenCount]) + ' - ' + 'I CANT BELIEVE YOUVE DONE THIS - VAR_TO_MEM - UNK SYMBOL>> ' + variable);
+            WriteLn(IntToStr(t_line[position]) + ' - ' + 'I CANT BELIEVE YOUVE DONE THIS - VAR_TO_MEM - UNK SYMBOL>> ' + variable);
             Halt(1); // Loop for multiple opererators was getting pissed becuase '+' was making its way into here
         end;
 end;
@@ -577,7 +577,7 @@ begin
                     if aName[i] = arrayName then
                         begin
                             if aIndex > aSize[i] then
-                                WriteLn(IntToStr(t_line[tokenCount]) + ' - ' + 'YOU HAVE FRUSTRATED THE COMPILER - ARRAY_TO_MEM - OOB>> ' + arrayName)
+                                WriteLn(IntToStr(t_line[position]) + ' - ' + 'YOU HAVE FRUSTRATED THE COMPILER - ARRAY_TO_MEM - OOB>> ' + arrayName)
                             else
                                 ArrayToMem := '   [' + arrayname + ' + ' + IntToStr(intindex * elementSize) + ']';
                         end;
@@ -591,7 +591,7 @@ begin
 
     if arrayToMem = '' then
         begin    
-            WriteLn(IntToStr(t_line[tokenCount]) + ' - ' + 'I CANT BELIEVE YOUVE DONE THIS - ARRAY_TO_MEM - UNK SYMBOL>> ' + arrayName);
+            WriteLn(IntToStr(t_line[position]) + ' - ' + 'I CANT BELIEVE YOUVE DONE THIS - ARRAY_TO_MEM - UNK SYMBOL>> ' + arrayName);
             Halt(1); // Loop for multiple opererators was getting pissed becuase '+' was making its way into here
         end;
 end;
@@ -643,7 +643,7 @@ begin
             else if op = 'SLASH' then emitDivFloat('xmm0', second)
             else
                 begin
-                    WriteLn(IntToStr(t_line[tokenCount]) + ' - ' + 'I CANT BELIEVE YOUVE DONE THIS - EMIT_MATH - UNK OP >> ' + op);
+                    WriteLn(IntToStr(t_line[position]) + ' - ' + 'I CANT BELIEVE YOUVE DONE THIS - EMIT_MATH - UNK OP >> ' + op);
                     Halt(1);
                 end;
         end
@@ -655,7 +655,7 @@ begin
             else if op = 'SLASH' then emitDiv('rax', second)
             else
                 begin
-                    WriteLn(IntToStr(t_line[tokenCount]) + ' - ' + 'I CANT BELIEVE YOUVE DONE THIS - EMIT_MATH - UNK OP >> ' + op);
+                    WriteLn(IntToStr(t_line[position]) + ' - ' + 'I CANT BELIEVE YOUVE DONE THIS - EMIT_MATH - UNK OP >> ' + op);
                     Halt(1);
                 end;
         end;
@@ -728,7 +728,7 @@ var
     isFloat: Boolean;
 begin
     isFloat := False;  // THROW IN ISFLOTLIT CHECK LATER
-     WriteLn(IntToStr(t_line[tokenCount]) + ' - ' + 'OPRESOLVER'); // DEBUG
+     WriteLn(IntToStr(t_line[position]) + ' - ' + 'OPRESOLVER'); // DEBUG
 
     if (Length(misformattedBastard) > 0) and (misformattedBastard[1] = '[') then
         begin
@@ -837,7 +837,7 @@ function eeArrays(): String;
 var
     arrayname, arrayIndex, arrayType, str: String;
 begin
-     WriteLn(IntToStr(t_line[tokenCount]) + ' - ' + 'EXPRESSION EVAL - ARRAYS'); // DEBUG
+     WriteLn(IntToStr(t_line[position]) + ' - ' + 'EXPRESSION EVAL - ARRAYS'); // DEBUG
         // Word Arrays
     if (peek()='IDENTIFIER') and (peek2()='LBRAC') then
         begin
@@ -963,7 +963,7 @@ begin
         end
     else
         begin
-            WriteLn(IntToStr(t_line[tokenCount]) + ' - ' + 'EXPRESSION EVAL - NOT OPERATOR BRANCH'); // DEBUG
+            WriteLn(IntToStr(t_line[position]) + ' - ' + 'EXPRESSION EVAL - NOT OPERATOR BRANCH'); // DEBUG
             first := consume; // first operand (the a in a + b)
 
             if isFloatLiteral(first) then
@@ -984,7 +984,7 @@ begin
                 evaluateExpression := first
             else
                 begin
-                    WriteLn(IntToStr(t_line[tokenCount]) + ' - ' + 'EXPRESSION EVAL - OPERATOR BRANCH');
+                    WriteLn(IntToStr(t_line[position]) + ' - ' + 'EXPRESSION EVAL - OPERATOR BRANCH');
 
                     if isFloat then
                         loadXMM0(first) // floats need Xtra Math Man
@@ -1120,7 +1120,7 @@ begin
                                 rightside := evaluateExpression(isFloat);
                                 emitAssign(variable, rightside);
                                 end;
-                        WriteLn(IntToStr(t_line[tokenCount]) + ' - ' + 'ASSIGN BRANCH - DECLARED'); // DEBUG
+                        WriteLn(IntToStr(t_line[position]) + ' - ' + 'ASSIGN BRANCH - DECLARED'); // DEBUG
                 end
             else
                 begin
@@ -1179,7 +1179,7 @@ begin
                             rightside := evaluateExpression(isFloat);
                             emitAssign(variable,rightside);
                          end;
-                        WriteLn(IntToStr(t_line[tokenCount]) + ' - ' + 'ASSIGN BRANCH - UNDECLARED'); // DEBUG
+                        WriteLn(IntToStr(t_line[position]) + ' - ' + 'ASSIGN BRANCH - UNDECLARED'); // DEBUG
                     end;
         end
         else
@@ -1189,12 +1189,12 @@ begin
                         
                         if ((variable = 'printw') or (variable = 'printf') or (variable = 'sys')) then
                             begin
-                                WriteLn(IntToStr(t_line[tokenCount]) + ' - ' + 'DI BRANCH - ASM'); // DEBUG
+                                WriteLn(IntToStr(t_line[position]) + ' - ' + 'DI BRANCH - ASM'); // DEBUG
                                 asmFunctionCalls(variable, argname);
                             end
                         else
                             begin
-                                WriteLn(IntToStr(t_line[tokenCount]) + ' - ' + 'DI BRANCH - F CALL'); // DEBUG
+                                WriteLn(IntToStr(t_line[position]) + ' - ' + 'DI BRANCH - F CALL'); // DEBUG
                                 consume(); // (
                                 if peek() <> 'RPAR' then
                                     begin
@@ -1221,7 +1221,7 @@ begin
                 end
                     else
                         begin
-                            WriteLn(IntToStr(t_line[tokenCount]) + ' - ' + 'I CANT BELIEVE YOUVE DONE THIS - DI CALLBRANCH - YOU HAVE FED ME GARBAGE>> ' + peek() + ' ' + peekV());
+                            WriteLn(IntToStr(t_line[position]) + ' - ' + 'I CANT BELIEVE YOUVE DONE THIS - DI CALLBRANCH - YOU HAVE FED ME GARBAGE>> ' + peek() + ' ' + peekV());
                             Halt(1);
                         end;
          end;
@@ -1443,7 +1443,7 @@ begin
                             end 
                         else
                             begin
-                                WriteLn(IntToStr(t_line[tokenCount]) + ' - ' + 'I CANT BELIEVE YOUVE DONE THIS - VARBLOCK - YOU HAVE FED ME GARBAGE>> ' + peek() + ' ' + peekV());
+                                WriteLn(IntToStr(t_line[position]) + ' - ' + 'I CANT BELIEVE YOUVE DONE THIS - VARBLOCK - YOU HAVE FED ME GARBAGE>> ' + peek() + ' ' + peekV());
                                 Halt(1);
                             end;
             end;
@@ -1556,7 +1556,7 @@ begin
             //end
             else
             begin
-                WriteLn(IntToStr(t_line[tokenCount]) + ' - ' + 'I CANT BELIEVE YOUVE DONE THIS - PARSER - YOU HAVE FED ME GARBAGE>> ' + peek() + ' ' + peekV());
+                WriteLn(IntToStr(t_line[position]) + ' - ' + 'I CANT BELIEVE YOUVE DONE THIS - PARSER - YOU HAVE FED ME GARBAGE>> ' + peek() + ' ' + peekV());
                 Halt(1);
             end;
         
@@ -1790,12 +1790,12 @@ var
     cmd: String;
     result: Integer;
 begin
-    //WriteLn(IntToStr(t_line[tokenCount]) + ' - ' + 'NASM - START'); // DEBUG
+    //WriteLn(IntToStr(t_line[position]) + ' - ' + 'NASM - START'); // DEBUG
     cmd := 'nasm -f elf64 intermediate.asm -o ' + outputName + '.o';
     result := fpSystem(cmd);
     if result <> 0 then
         begin
-            WriteLn(IntToStr(t_line[tokenCount]) + ' - ' + 'I CANT BELIEVE YOUVE DONE THIS - NASM FAILED');
+            WriteLn(IntToStr(t_line[position]) + ' - ' + 'I CANT BELIEVE YOUVE DONE THIS - NASM FAILED');
             Halt(1);
         end;
 
@@ -1803,10 +1803,10 @@ begin
     result := fpSystem(cmd);
     if result <> 0 then
         begin
-            WriteLn(IntToStr(t_line[tokenCount]) + ' - ' + 'I CANT BELIEVE YOUVE DONE THIS - LINK FAILED');
+            WriteLn(IntToStr(t_line[position]) + ' - ' + 'I CANT BELIEVE YOUVE DONE THIS - LINK FAILED');
             Halt(1);
         end;
-    //WriteLn(IntToStr(t_line[tokenCount]) + ' - ' + 'NASM - END'); // DEBUG
+    //WriteLn(IntToStr(t_line[position]) + ' - ' + 'NASM - END'); // DEBUG
 end;
 
 begin

@@ -11,3 +11,5 @@ testing
 playground
 bss.tmp
 rskc
+optimizer.ppu
+optimizer.o

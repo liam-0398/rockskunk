@@ -229,6 +229,22 @@ begin
     WriteText('    mov ' + variable + ', rax' + #10);
 end;
 
+procedure emitAssignArray(variable : String; value : String; atype: String);
+begin
+    if aType = 'BYTE' then 
+        begin
+            if value <> 'rax' then
+                    WriteText('    mov rax, ' + value + #10); // if i didnt do this i get mov rax, rax
+                    WriteText('    mov byte ' + variable + ', al' + #10);
+        end
+    else
+        begin
+    if value <> 'rax' then
+            WriteText('    mov rax, ' + value + #10); // if i didnt do this i get mov rax, rax
+            WriteText('    mov ' + variable + ', rax' + #10);
+        end;
+end;
+
 procedure emitAssignFloat(variable : String; value : String);
 begin
     if value <> 'xmm0' then
@@ -1006,7 +1022,7 @@ begin
             consume;
             variable := arrayToMem(arrayname, arrayIndex);
             rightside := evaluateExpression(False); 
-            emitAssign(variable, rightside);
+            emitAssignArray(variable, rightside, arrayType);
             discriminateArrays := True;
             Exit;
         end;
@@ -1022,7 +1038,7 @@ begin
             consume;
             variable := arrayToMem(arrayname, arrayIndex);
             rightside := evaluateExpression(True); 
-            emitAssign(variable, rightside);
+            emitAssignArray(variable, rightside, arrayType);
             discriminateArrays := True;
             Exit;
         end;
@@ -1039,7 +1055,7 @@ begin
             consume;
             variable := arrayToMem(arrayname, arrayIndex);
             rightside := evaluateExpression(False); 
-            emitAssign(variable, rightside);
+            emitAssignArray(variable, rightside, arrayType);
             discriminateArrays := True;
             Exit;
         end;

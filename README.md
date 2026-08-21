@@ -1,7 +1,7 @@
 ## rockskunk
 # A terse, typeless (ish), no-bullshit language
 
-Bootstrap compiler is kind of a mess. Using old C transpiler I had written for another language attempt and reworking it to output NASM x86_64 assembly, so far I am successful. WAY down the line I want to do a ppc32 version as well.
+Very WIP. Using old C transpiler I had written for another language attempt and reworking it to output NASM x86_64 assembly, so far I am successful. WAY down the line I want to do a ppc32 version as well.
 
 # Core tenants 
 
@@ -27,19 +27,15 @@ Bootstrap compiler is kind of a mess. Using old C transpiler I had written for a
 - never mix floats and ints. use intfloat() or floatint()
 - Functions are always declared before they are called
 
-# Status
 
-The Gameplan is to get this pascal bootstrap compiler good enough to write my own compiler in rockskunk. Then is when im going to pay more attention to spilling registers into memory and inline optimization as I learn more and become more comfortable. 
-
-## What I have learned from bootstrap
+## What I have learned from bootstrap mistakes
 
 - Reverted change to record based system. Never again, practically starting over.
 
 # Never
 
-- Records/Structs
+- Records/Structs tracking state
 - Formal IR
-- Using ASM snippets
 - Giant AST
 
 # Always
@@ -53,7 +49,7 @@ The Gameplan is to get this pascal bootstrap compiler good enough to write my ow
 
 - Vector support
 - Dead code elimination
-- Optimization via string/regex ops
+- Optimization via string/regex op pass over intermediate.asm
 - Register allocation via fixed pool
 - Code folding in-compiler
 

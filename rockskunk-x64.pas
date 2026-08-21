@@ -13,6 +13,8 @@ var
 
     symName, symType: array[0..255] of String;
     symOffset: array[0..255] of Integer;
+    aName, aType: array[0..255] of String;
+    aOffset: array[0..255] of Integer;
 
     tokenKind, tokenValue: Array[0..4096] of String;
     t_line: Array[0..4096] of Integer;
@@ -458,8 +460,21 @@ begin
     Inc(position);  // Increment counter to drop the token
 end;
 
-function arrayToMem(varname: String; size: String; vartype: String): String;
+function arrayToMem(variable: String; size: String; arraytype: String): String;
+var
+    i: Integer;
 begin
+    arrayToMem := ''; 
+    for i := 0 to symCount - 1 do
+        begin
+            if symName[i] = variable then
+                ArrayToMem := '[rbp-' + IntToStr(symOffset[i]) + ']';
+        end;
+    if arrayToMem = '' then
+        begin    
+            WriteLn('I CANT BELIEVE YOUVE DONE THIS - ARRAY_TO_MEM - UNK SYMBOL>> ' + variable);
+            Halt(1); // Loop for multiple opererators was getting pissed becuase '+' was making its way into here
+        end;
 end;
 
 function varToMem(variable: String): String;
@@ -708,6 +723,7 @@ end;
 function evaluateExpression(isFloat: Boolean): String;
 var
     first, second, op, argname, fname, return, math_ret, call_ret, ampaddr, ident: String;
+    arrayname, arrayIndex, arrayType: String;
     num, a, b, c: String;
     returnsFloat: Boolean;
     i, argfindex: Integer;
@@ -715,6 +731,9 @@ begin
     i := 0;
     first := '';
     argname := '';
+    arrayType := '';
+    arrayIndex := '';
+    arrayname := '';
     returnsFloat := False;
 
     if peek() = 'AMP' then
@@ -730,6 +749,18 @@ begin
             consume;
             Exit(emitDereference(VarToMem(ident)))
         end;
+
+    // Word Arrays
+    if peek2() = 'LBRAC' then
+        begin
+            arrayname := consume;
+            consume; // [
+            arrayIndex := consume;
+            consume; // ]
+            arrayType := 'WORD';
+            arrayToMem(arrayname, arrayIndex, arrayType);
+        end;
+      
 
     if (peekV() = 'sys') and (peek2() = 'LPAR') then
         begin
@@ -1193,7 +1224,27 @@ begin
                 loopWhile();
             end;
             'VARBLOCK': begin 
-                consume; // consume '
+                consume; // consume |V
+                while peek() <> 'PIPE' do 
+                    begin
+                        if peek2() = 'ASSIGN' then // globals
+                            begin
+                            end 
+                        else if peek2() = 'LBRAC' then // word arrays
+                            begin
+                            end 
+                        else if peek2() = 'LBRACE' then // float arrays
+                            begin
+                            end 
+                        else if peek2() = 'BANG' then // byte arrays
+                            begin
+                            end 
+                        else
+                            begin
+                                WriteLn('I CANT BELIEVE YOUVE DONE THIS - VARBLOCK - YOU HAVE FED ME GARBAGE>> ' + peek() + ' ' + peekV());
+                                Halt(1);
+                            end;
+                    end;
             end;
             'STATICBLOCK': begin 
                 consume; // consume '
@@ -1392,6 +1443,9 @@ begin
         param_FIndex[i] := 0;
         symName[i] := '';
         t_line[i] := 0;
+        aName[i] := '';
+        aType[i] := '';
+        aOffset[i] := 0;
         end;
 
     FillChar(loop_TLabel, SizeOf(loop_TLabel), 0);
@@ -1411,6 +1465,7 @@ begin
     loopDepth := 0;
     return_FCount := 0;
     symCount := 0;
+    
 end;
 
 procedure sendToNASM(outputName: String);

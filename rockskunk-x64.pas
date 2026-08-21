@@ -4,8 +4,8 @@ uses
 
 const
     intRegs: array[0..5] of String = ('rdi', 'rsi', 'rdx', 'rcx', 'r8', 'r9'); // SYSV ABI
-    acceptedKeywords: array[0..12] of String = // MAKE SURE TO UPDATE KEYWORD CHECK WHEN ADDING
-    ('ADD', 'F', 'LF', 'LW', 'W', 'IF', 'E', 'P', 'OR', 'AND', 'NOR', 'XOR', 'CALL');
+    acceptedKeywords: array[0..13] of String = // MAKE SURE TO UPDATE KEYWORD CHECK WHEN ADDING
+    ('ADD', 'F', 'LF', 'LW', 'W', 'IF', 'E', 'P', 'OR', 'AND', 'NOR', 'XOR', 'CALL', 'DO');
 var
     buf, databuf, textbuf, bbuf: Array[0..65535] of Char;
 
@@ -71,7 +71,7 @@ var
     i: Integer;
 begin
     keywordCheck := False;
-    for i := 0 to 12 do
+    for i := 0 to 13 do
         begin
             if word = acceptedKeywords[i] then 
                 begin
@@ -1298,6 +1298,35 @@ begin
     loopBodyNext := True;
 end;
 
+function loopDo(): Boolean;
+var
+    loopvar, loopstart, looplimit, toplabel, endlabel: String;
+begin
+    consume; //consume LF
+    consume; // consume LPAR
+    loopvar := varToMem(consume);
+    consume; // :=
+    loopstart := consume; // 0
+    consume; // until
+    looplimit := consume; 
+    consume; // RPAR
+    WriteText('    mov rax, ' + loopstart + #10);
+    WriteText('    mov ' + loopvar + ', rax' + #10);
+
+    toplabel := labelMaker('LF');
+    endlabel := labelMaker('LF');
+    emitLabel(toplabel);
+
+    WriteText('    mov rax, ' + loopvar + #10);
+    WriteText('    cmp rax, ' + looplimit + #10);
+    WriteText('    jge ' + endlabel + #10);
+
+    loop_TLabel[loopDepth] := toplabel;
+    loop_ELabel[loopDepth] := endlabel;
+    Inc(loopDepth);
+    loopBodyNext := True;
+end;
+
 function condWhen(): Boolean;
 var
     condvar, condition, condlimit, endlabel: String;
@@ -1331,6 +1360,9 @@ begin
     conditionalBodyNext := True;
     condWhen := True;
 end;
+
+procedure condIf(); begin consume; end;
+procedure condElse(); begin consume; end;
 
 function constructFunction(): Boolean;
 var
@@ -1532,16 +1564,19 @@ begin
                 condWhen();
             end;
             'IF': begin 
-                consume;
+                condIf();
             end;
             'E': begin 
-                consume;
+                condElse();
             end;
             'LF': begin 
                 loopFor();
             end;
             'LW': begin 
                 loopWhile();
+            end;
+            'DO': begin 
+                loopDo();
             end;
             'VARBLOCK': begin varBlock(); end;
             'STATICBLOCK': begin 

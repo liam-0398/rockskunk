@@ -120,6 +120,12 @@ LF (i := 1 until 10) {
     writeLn("ANNOYING MESSAGE")
 }
 
+; Do Loop
+; Use with only lits or static definitions, speed and efficieny increase over LF
+DO (i := 1 until 10) {
+    writeLn("ANNOYING MESSAGE")
+}
+
 
 ; While loop
 LW (i <= 500) {

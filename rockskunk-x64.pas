@@ -370,7 +370,6 @@ procedure functionPrintW(source: String);
 begin
     WriteText('    mov rax, ' + source + #10);
     WriteText('    call print_qword' + #10);
-
 end;
 
 procedure functionPrintF(source: String);

@@ -49,7 +49,24 @@ begin
 
     // move rax into var and immediately move var back into rax
     RE.Expression := '^[ \t]*mov[ \t]*\[rbp-(\d+)\][ \t]*,[ \t]*rax[ \t]*\r?\n([ \t]*mov[ \t]*rax[ \t]*,[ \t]*\[rbp-\1\][ \t]*\r?\n)';
-    contents := RE.Replace(contents, '$2', True);
+    contents := RE.Replace(contents, '', True);
+
+    // move rdi into var and immediately move var back into rdi
+    RE.Expression := '^[ \t]*mov[ \t]*\[rbp-(\d+)\][ \t]*,[ \t]*rdi[ \t]*\r?\n([ \t]*mov[ \t]*rdi[ \t]*,[ \t]*\[rbp-\1\][ \t]*\r?\n)';
+    contents := RE.Replace(contents, '', True);
+
+    // rsi 
+    RE.Expression := '^[ \t]*mov[ \t]*\[rbp-(\d+)\][ \t]*,[ \t]*rsi[ \t]*\r?\n([ \t]*mov[ \t]*rsi[ \t]*,[ \t]*\[rbp-\1\][ \t]*\r?\n)';
+    contents := RE.Replace(contents, '', True);
+
+    // rdx
+    RE.Expression := '^[ \t]*mov[ \t]*\[rbp-(\d+)\][ \t]*,[ \t]*rdx[ \t]*\r?\n([ \t]*mov[ \t]*rdx[ \t]*,[ \t]*\[rbp-\1\][ \t]*\r?\n)';
+    contents := RE.Replace(contents, '', True);
+
+    // syscall
+    RE.Expression := '^[ \t]*mov[ \t]+(rsi|rdx)[ \t]*,[ \t]*0[ \t]*\r?\n[ \t]*mov[ \t]+(rsi|rdx)[ \t]*,[ \t]*0[ \t]*\r?\n([ \t]*syscall)';
+    contents := RE.Replace(contents, '$3', True);
+
 
 end;
 

@@ -484,23 +484,6 @@ begin
     Inc(position);  // Increment counter to drop the token
 end;
 
-function arrayToMem(variable, aindex, arraytype, size: String): String;
-var
-    i: Integer;
-begin
-    arrayToMem := ''; // if size =0 its not a declaration its already declared
-    for i := 0 to symCount - 1 do
-        begin
-            if symName[i] = variable then
-                ArrayToMem := '[rbp-' + IntToStr(symOffset[i]) + ']';
-        end;
-    if arrayToMem = '' then
-        begin    
-            WriteLn('I CANT BELIEVE YOUVE DONE THIS - ARRAY_TO_MEM - UNK SYMBOL>> ' + variable);
-            Halt(1); // Loop for multiple opererators was getting pissed becuase '+' was making its way into here
-        end;
-end;
-
 function varToMem(variable: String): String;
 var
     i: Integer;
@@ -514,6 +497,45 @@ begin
     if varToMem = '' then
         begin    
             WriteLn('I CANT BELIEVE YOUVE DONE THIS - VAR_TO_MEM - UNK SYMBOL>> ' + variable);
+            Halt(1); // Loop for multiple opererators was getting pissed becuase '+' was making its way into here
+        end;
+end;
+
+function arrayToMem(arrayName, aindex: String): String;
+var
+    i, intindex ,elementSize: Integer;
+    arType: String;
+begin
+    arrayToMem := ''; 
+    i := 0;
+
+    for i := 0 to aCount - 1 do
+            if aName[i] = arrayName then
+                    arType := aType[i];
+
+    
+    if arType = 'WORD' then elementSize := 8
+    else if arType = 'FLOAT' then elementSize := 8
+    else if arType = 'BYTE' then elementSize := 1;
+
+    if isNumber(aindex) then // if the index is a number then NASM will do the index math automatically
+        begin
+            intindex := StrToInt(aindex);
+            for i := 0 to aCount - 1 do
+                begin
+                    if aName[i] = arrayName then
+                            ArrayToMem := '[' + arrayname + ' + ' + IntToStr(intindex * elementSize) + ']';
+                end;
+        end
+    else 
+        begin
+            WriteText('    mov r10, ' + varToMem(aindex) + #10);
+            ArrayToMem := '[' + arrayname + ' + r10*' + IntToStr(elementSize) + ']';
+        end;
+
+    if arrayToMem = '' then
+        begin    
+            WriteLn('I CANT BELIEVE YOUVE DONE THIS - ARRAY_TO_MEM - UNK SYMBOL>> ' + arrayName);
             Halt(1); // Loop for multiple opererators was getting pissed becuase '+' was making its way into here
         end;
 end;
@@ -782,7 +804,7 @@ begin
             arrayIndex := consume;
             consume; // ]
             arrayType := 'WORD';
-            arrayToMem(arrayname, arrayIndex, arrayType,'0');
+            arrayToMem(arrayname, arrayIndex);
         end;
       
 

@@ -17,13 +17,14 @@ F close(fd) { r := sys(3, fd, 0, 0) }
 ; TEXT ----------------------------------------------------------------
 
 P writeLn(s) {
-	len := s^
-	r1 := sys(1, 1, s, len)
+    len := s^
+    bufaddr := s + 8
+    r1 := sys(1, 1, bufaddr, len)
 
-	nl := '\n'
-	nllen := nl^
-	nldata := nl 
-	r2 := sys(1, 1, nldata, nllen)
+    nl := '\n'
+    nllen := nl^
+    nldata := nl + 8
+    r2 := sys(1, 1, nldata, nllen)
 }
 
 F ccmp(p, q) {

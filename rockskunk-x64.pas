@@ -141,6 +141,7 @@ procedure writeASM; // Write to real intermediate.asm that is compiled by NASM
 var
     dbytes, tbytes: cint;
 begin
+    //WriteLn(IntToStr(t_line[tokenCount]) + ' - ' + 'WRITEASM - START'); // DEBUG
     fd2 := fpOpen('intermediate.asm',O_WRONLY OR O_CREAT OR O_TRUNC, 438);
 
     fd5 := fpOpen('bss.tmp', O_RdOnly, 438);
@@ -163,9 +164,11 @@ begin
     fpClose(fd3);
 
     fpClose(fd2);
+    //WriteLn(IntToStr(t_line[tokenCount]) + ' - ' + 'WRITEASM - END'); // DEBUG
 end;
 
 procedure closeIntermediateFile; begin fpClose(fd3); fpClose(fd4); end;
+
 
 // CODE GENERATION ===========================================
 // ========================================================
@@ -194,6 +197,7 @@ var
     rcheck: String;
     isFloat: Boolean;
 begin
+    WriteLn(IntToStr(t_line[tokenCount]) + ' - ' + 'TEARDOWN - START'); // DEBUG
     if not isProcedure then // just ignore all this and do not return anything if its a procedure
         begin
             isFloat := False;
@@ -210,6 +214,7 @@ begin
     WriteText('    add rsp, 128' + #10);
     WriteText('    pop rbp' + #10);
     WriteText('    ret' + #10 + #10);
+    WriteLn(IntToStr(t_line[tokenCount]) + ' - ' + 'TEARDOWN - END'); // DEBUG
 end;
 
 // CONTROL FLOW -----------------------------------------------------------
@@ -240,13 +245,47 @@ end;
 
 function emitStringConstant(content: String): String;
 var
-    slength: Integer;
+    slength, i: Integer;
+    dbLine: String;
+    inQuote: Boolean;
 begin
-        slength := 0;
         slength := length(content);
         WriteData('   str_' + IntToStr(labelCounter) + '_len: dq ' + IntToStr(slength) + #10);
-        WriteData('   str_' + IntToStr(labelCounter) + ': db ' + #39 + content + #39 + ', 0' + #10);
-        emitStringConstant := 'str_' + IntToStr(labelCounter);
+
+        dbLine := '';
+        inQuote := False;
+        for i := 1 to length(content) do
+            begin
+                if (content[i] >= #32) and (content[i] <> #39) then // printable, not a quote char
+                    begin
+                        if not inQuote then
+                            begin
+                                if dbLine <> '' then dbLine := dbLine + ', ';
+                                dbLine := dbLine + #39;
+                                inQuote := True;
+                            end;
+                        dbLine := dbLine + content[i];
+                    end
+                else // control byte - break out of the quoted run, emit as a number
+                    begin
+                        if inQuote then
+                            begin
+                                dbLine := dbLine + #39;
+                                inQuote := False;
+                            end;
+                        if dbLine <> '' then dbLine := dbLine + ', ';
+                        dbLine := dbLine + IntToStr(Ord(content[i]));
+                    end;
+            end;
+        if inQuote then
+            dbLine := dbLine + #39;
+
+        if dbLine <> '' then dbLine := dbLine + ', ';
+        dbLine := dbLine + '0';
+
+        WriteData('   str_' + IntToStr(labelCounter) + ': db ' + dbLine + #10);
+
+        emitStringConstant := 'str_' + IntToStr(labelCounter) + '_len';
         Inc(labelCounter);
 end;
 
@@ -473,6 +512,7 @@ function computeOffset(offset: Integer): String; begin computeOffset := '[rbp-' 
 function consume(): String; // Eat the next token and then remove it
 begin
     consume := tokenValue[position]; // pull value (actual content of token)
+    WriteLn( 'CNSM - K ' + tokenKind[position] + ' V ' + tokenValue[position]);
     Inc(position);  // Increment counter to drop the token
 end;
 
@@ -668,6 +708,7 @@ var
     isFloat: Boolean;
 begin
     isFloat := False;  // THROW IN ISFLOTLIT CHECK LATER
+     WriteLn(IntToStr(t_line[tokenCount]) + ' - ' + 'OPRESOLVER'); // DEBUG
 
     if (Length(misformattedBastard) > 0) and (misformattedBastard[1] = '[') then
         begin
@@ -738,7 +779,7 @@ var
     seenFloats, seenInts, argCounter: Integer;
     isFloatArg: Boolean;
 begin
-        WriteLn('ARGUMENT PARSER'); // DEBUG
+        WriteLn('ARGUMENT PARSER - I' + IntToStr(argfindex) + '- N' + argname); // DEBUG
         argcounter := 0;
         seenFloats := 0;
         seenInts := 0;
@@ -776,6 +817,7 @@ function eeArrays(): String;
 var
     arrayname, arrayIndex, arrayType, str: String;
 begin
+     WriteLn(IntToStr(t_line[tokenCount]) + ' - ' + 'EXPRESSION EVAL - ARRAYS'); // DEBUG
         // Word Arrays
     if (peek()='IDENTIFIER') and (peek2()='LBRAC') then
         begin
@@ -1005,11 +1047,13 @@ var
     variable, rightside, twoname, argname: String;
     isDeclared, isReturn, isFloat, didArrays: boolean;
     arrayname, arrayIndex, arrayType: String;
-    i, ii, symIndex: Integer;
+    i, ii, symIndex, argfindex: Integer;
+    returnsFloat: Boolean;
 begin
     i := 0;
     ii := 0;
     symIndex := 0;
+    argName := '';
     isDeclared := False;
     isReturn := False;
     isFloat := False;
@@ -1120,10 +1164,49 @@ begin
         end
         else
             begin 
+                if peek() = 'LPAR' then 
+                    begin
+                        
+                        if ((variable = 'printw') or (variable = 'printf') or (variable = 'sys')) then
+                            begin
+                                WriteLn(IntToStr(t_line[tokenCount]) + ' - ' + 'DI BRANCH - ASM'); // DEBUG
+                                asmFunctionCalls(variable, argname);
+                            end
+                        else
+                            begin
+                                WriteLn(IntToStr(t_line[tokenCount]) + ' - ' + 'DI BRANCH - F CALL'); // DEBUG
+                                consume(); // (
+                                if peek() <> 'RPAR' then
+                                    begin
+
+                                        if WhoGoesThere(variable) = 'FLOAT' then
+                                            returnsFloat := True;
+
+                                        for i := 0 to param_FCount - 1 do
+                                            if variable = param_FName[i] then
+                                                begin
+                                                    argfindex := param_FIndex[i];
+                                                    break;
+                                                end;
+
+                                        argumentParser(argname, variable, '', returnsFloat, argfindex);
+                                    end
+                                else
+                                    begin
+                                        consume; //)
+                                        call(variable, argname, returnsFloat);
+                                    end;  
+                            end; 
                 
-               asmFunctionCalls(variable, argname);
-            end;
+                end
+                    else
+                        begin
+                            WriteLn(IntToStr(t_line[tokenCount]) + ' - ' + 'I CANT BELIEVE YOUVE DONE THIS - DI CALLBRANCH - YOU HAVE FED ME GARBAGE>> ' + peek() + ' ' + peekV());
+                            Halt(1);
+                        end;
+         end;
 end;
+
 
 // ONE-OFFS ------------
 // all of these are completely broken
@@ -1604,18 +1687,33 @@ begin
                 end
 
                 else if buf[i] = #39 then // Handle single quote strings
-                begin
-                    word := '';
-                    Inc(i); // skip opening quote
-                    while buf[i] <> #39 do
                     begin
-                        word := word + buf[i];
-                        Inc(i);
+                        word := '';
+                        Inc(i); // skip opening quote
+                        while buf[i] <> #39 do
+                        begin
+                            if buf[i] = '\' then
+                            begin
+                                Inc(i); // move onto the escape character itself
+                                case buf[i] of
+                                    'n': word := word + #10;
+                                    't': word := word + #9;
+                                    'r': word := word + #13;
+                                    '0': word := word + #0;
+                                    '\': word := word + '\';
+                                    #39: word := word + #39;
+                                    else
+                                        word := word + buf[i]; // unrecognized escape, take it literally
+                                end;
+                            end
+                            else
+                                word := word + buf[i];
+                            Inc(i);
+                        end;
+                        // buf[i] is now closing quote
+                        assignSingleChar(word,'STRING');
+                        // no Dec(i) needed, already on closing quote, main Inc(i) moves past it
                     end;
-                    // buf[i] is now closing quote
-                    assignSingleChar(word,'STRING');
-                    // no Dec(i) needed, already on closing quote, main Inc(i) moves past it
-                end; 
                 
             end; 
         end; 
@@ -1672,6 +1770,7 @@ var
     cmd: String;
     result: Integer;
 begin
+    //WriteLn(IntToStr(t_line[tokenCount]) + ' - ' + 'NASM - START'); // DEBUG
     cmd := 'nasm -f elf64 intermediate.asm -o ' + outputName + '.o';
     result := fpSystem(cmd);
     if result <> 0 then
@@ -1687,6 +1786,7 @@ begin
             WriteLn(IntToStr(t_line[tokenCount]) + ' - ' + 'I CANT BELIEVE YOUVE DONE THIS - LINK FAILED');
             Halt(1);
         end;
+    //WriteLn(IntToStr(t_line[tokenCount]) + ' - ' + 'NASM - END'); // DEBUG
 end;
 
 begin

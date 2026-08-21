@@ -2,9 +2,10 @@
 |V array[100] |
 
 P main() {
+    k := 'abc'
     str := 'string'
     array[1] := 5
     c := array[1]
-    printc(str)
-    printw(c)
+    ;printc(k)
+    writeLn(str)
 } 

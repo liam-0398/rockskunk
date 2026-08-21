@@ -47,8 +47,8 @@ var
 {
    DO NOT FORGET LIST ====
    REMEMBER REDO ASM OUTPUT PRIMITIVES AND LOOPS
-   REMEMBER IMPLMENT CALL WITHOUT TYPES
-   LEGNTH PREFIXED QWORD STRINGS WITH NULL TERMINATOR
+   PASCAL FFI
+   VECTORS
    W/IF/ELSE
    LOOPS
 }
@@ -512,7 +512,7 @@ function computeOffset(offset: Integer): String; begin computeOffset := '[rbp-' 
 function consume(): String; // Eat the next token and then remove it
 begin
     consume := tokenValue[position]; // pull value (actual content of token)
-    WriteLn( 'CNSM - K ' + tokenKind[position] + ' V ' + tokenValue[position]);
+    //WriteLn( 'CNSM - K ' + tokenKind[position] + ' V ' + tokenValue[position]);
     Inc(position);  // Increment counter to drop the token
 end;
 
@@ -549,7 +549,6 @@ begin
             if aName[i] = arrayName then
                     arType := aType[i];
 
-    
     if arType = 'WORD' then elementSize := 8
     else if arType = 'FLOAT' then elementSize := 8
     else if arType = 'BYTE' then elementSize := 1;
@@ -560,7 +559,12 @@ begin
             for i := 0 to aCount - 1 do
                 begin
                     if aName[i] = arrayName then
-                            ArrayToMem := '   [' + arrayname + ' + ' + IntToStr(intindex * elementSize) + ']';
+                        begin
+                            if aIndex > aSize[i] then
+                                WriteLn(IntToStr(t_line[tokenCount]) + ' - ' + 'YOU HAVE FRUSTRATED THE COMPILER - ARRAY_TO_MEM - OOB>> ' + arrayName)
+                            else
+                                ArrayToMem := '   [' + arrayname + ' + ' + IntToStr(intindex * elementSize) + ']';
+                        end;
                 end;
         end
     else 

@@ -118,11 +118,11 @@ procedure openFile;
 var
     libBytes: CInt;
 begin
-    {WriteLn('LOADING STANDARD LIBRARY');
+    WriteLn('LOADING STANDARD LIBRARY');
     FillChar(buf, SizeOf(buf), 0);
     fd := fpOpen(stdlib_filename, O_RdOnly);
     libBytes := FpRead(fd, buf, SizeOf(buf));
-    fpClose(fd);}
+    fpClose(fd);
 
     WriteLn('LOADING SOURCEFILE LIBRARY');
     fd := fpOpen(filename, O_RdOnly);
@@ -536,6 +536,25 @@ begin
         end;
 end;
 
+function resolveSyscall(): String;
+var
+    argument: String;
+begin
+    if peek() = 'AMP' then
+        begin
+            consume;
+            resolveSyscall:= emitAddressOf(varToMem(consume));
+        end
+    else
+        begin
+            argument := consume;
+            if isNumber(argument) then
+                resolveSyscall:= argument
+            else
+                resolveSyscall:= varToMem(argument);
+        end;
+end;
+
 function call(fname: String; first: String; returnsFloat: Boolean): String;
 begin
           if returnsFloat then
@@ -583,6 +602,8 @@ begin
 end;
 
 procedure asmFunctionCalls(variable: String; argname: String);
+var
+    a, b, c, num: String;
 begin
     WriteLn('CALLING: ' + variable);
     if (variable = 'printw') or (variable = 'printf') then
@@ -593,9 +614,22 @@ begin
                 argname := varToMem(argname);
             consume; // )
                 if variable = 'printf' then
-                    functionPrintF(argname);
-                if variable = 'printw' then
+                    functionPrintF(argname)
+                else if variable = 'printw' then
                     functionPrintW(argname)
+                else if variable = 'sys' then
+                    begin
+                        consume; 
+                        num := resolveSyscall();
+                        consume;
+                        a := resolveSyscall();
+                        consume; 
+                        b := resolveSyscall();
+                        consume; 
+                        c := resolveSyscall();
+                        consume;
+                        emitSyscall(num, a, b, c)
+                    end
                 else
                     begin
                         WriteLn('I CANT BELIEVE YOUVE DONE THIS - ASMFUNC- INVALID CALL >> ' + variable);
@@ -701,25 +735,6 @@ begin
 
     if isFloat then WhoGoesTHere := 'FLOAT' else WhoGoesTHere := 'QWORD';
 
-end;
-
-function resolveSyscall(): String;
-var
-    argument: String;
-begin
-    if peek() = 'AMP' then
-        begin
-            consume;
-            resolveSyscall:= emitAddressOf(varToMem(consume));
-        end
-    else
-        begin
-            argument := consume;
-            if isNumber(argument) then
-                resolveSyscall:= argument
-            else
-                resolveSyscall:= varToMem(argument);
-        end;
 end;
 
 // MAIN PARSER MACHINERY ====================================================
@@ -843,6 +858,12 @@ begin
             c := resolveSyscall(); consume;
             Exit(emitSyscall(num, a, b, c));
         end;
+
+    if (peekV() = 'sys') and (peek2() = 'LPAR') then // PROBABLY SHIT THINK THIS THROUGH
+        begin
+            Exit(resolveSyscall());
+        end;
+
 
     if (peek() = 'IDENTIFIER') and (peek2() = 'LPAR') then 
     begin
@@ -1399,6 +1420,9 @@ begin
             'STATICBLOCK': begin 
                 consume; // consume '
             end;
+            'ASMBLOCK': begin 
+                consume; // consume '
+            end;
             //'STRING': begin 
             //    consume; // consume '
             //end
@@ -1470,7 +1494,7 @@ begin
             '|V': assignDoubleChar('|V', 'VARBLOCK');
             '|S': assignDoubleChar('|S', 'STATICBLOCK');
             '|D': assignDoubleChar('|D', 'DIRECTIVE');
-            '|R': assignDoubleChar('|R', 'RECORDBLOCK');
+            '|A': assignDoubleChar('|A', 'ASMBLOCK');
             '>=': assignDoubleChar('>=', 'GREQUAL');
             '<=': assignDoubleChar('<=', 'LESSEQUAL');
             '++': assignDoubleChar('++', 'VADD');

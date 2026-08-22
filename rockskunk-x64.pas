@@ -703,7 +703,7 @@ begin
                 begin
                     if aName[i] = arrayName then
                         begin
-                            if aIndex > aSize[i] then
+                            if StrToInt(aIndex) > StrToInt(aSize[i]) then
                                 WriteLn(IntToStr(t_line[position]) + ' - ' + 'YOU HAVE FRUSTRATED THE COMPILER - ARRAY_TO_MEM - OOB>> ' + arrayName)
                             else
                                 ArrayToMem := '   [' + arrayname + ' + ' + IntToStr(intindex * elementSize) + ']';

@@ -61,6 +61,9 @@ begin
     RE.Expression := 'mov ([a-z0-9]+), \1\r?\n';
     contents := RE.Replace(contents, '', True);
 
+    // xmm store reload
+    RE.Expression := '^[ \t]*movsd[ \t]*\[rbp-(\d+)\][ \t]*,[ \t]*(xmm\d+)[ \t]*\r?\n[ \t]*movsd[ \t]*\2[ \t]*,[ \t]*\[rbp-\1\][ \t]*\r?\n';
+    contents := RE.Replace(contents, '', True);  
 end;
 
 procedure optimize();

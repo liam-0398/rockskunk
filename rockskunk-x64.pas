@@ -452,7 +452,6 @@ begin
 end;
 
 // NEED VAR DETECTION
-procedure emitNor(dst, src: String); begin WriteText('    nor ' + dst + ', ' + src + #10); end;
 
 procedure emitShl(dst, src: String); 
 begin 

@@ -22,9 +22,11 @@ procedure openFileO();
 begin
     WriteLn('OPTIMIZER - OPENING FILE');
     fd := fpOpen(filename, O_RDWR);
-    bytes := FpRead(fd, buf[bytes], SizeOf(buf) - bytes);
+    bytes := FpRead(fd, buf[bytes], SizeOf(buf));
         if bytes = 0 then
             WriteLn('OPTIMIZER - I CANT BELIEVE YOUVE DONE THIS - EMPTY FILE');
+    
+    SetString(contents, PAnsiChar(@buf[0]), bytes);
    
 end;
 
@@ -41,32 +43,23 @@ end;
 procedure deadCodePass();
 begin
     WriteLn('OPTIMIZER - DEAD CODE');
-    SetString(contents, PAnsiChar(@buf[0]), bytes);
 
-    // mov rax, rax
-    RE.Expression := '^[ \t]*mov[ \t]+rax[ \t]*,[ \t]*rax[ \t]*\r?\n';
-    contents := RE.Replace(contents, '', True);
+    // store reload fix across all registers (label-safe)
+    // store reload fix across all registers
+    RE.Expression := '^[ \t]*(mov[ \t]*\[rbp-(\d+)\][ \t]*,[ \t]*(rax|rbx|rcx|rdx|rsi|rdi|r8|r9|r10|r11|r12|r13|r14|r15)[ \t]*\r?\n)[ \t]*mov[ \t]*\3[ \t]*,[ \t]*\[rbp-\2\][ \t]*\r?\n';
+    contents := RE.Replace(contents, '$1', True);
 
-    // move rax into var and immediately move var back into rax
-    RE.Expression := '^[ \t]*mov[ \t]*\[rbp-(\d+)\][ \t]*,[ \t]*rax[ \t]*\r?\n([ \t]*mov[ \t]*rax[ \t]*,[ \t]*\[rbp-\1\][ \t]*\r?\n)';
-    contents := RE.Replace(contents, '', True);
-
-    // move rdi into var and immediately move var back into rdi
-    RE.Expression := '^[ \t]*mov[ \t]*\[rbp-(\d+)\][ \t]*,[ \t]*rdi[ \t]*\r?\n([ \t]*mov[ \t]*rdi[ \t]*,[ \t]*\[rbp-\1\][ \t]*\r?\n)';
-    contents := RE.Replace(contents, '', True);
-
-    // rsi 
-    RE.Expression := '^[ \t]*mov[ \t]*\[rbp-(\d+)\][ \t]*,[ \t]*rsi[ \t]*\r?\n([ \t]*mov[ \t]*rsi[ \t]*,[ \t]*\[rbp-\1\][ \t]*\r?\n)';
-    contents := RE.Replace(contents, '', True);
-
-    // rdx
-    RE.Expression := '^[ \t]*mov[ \t]*\[rbp-(\d+)\][ \t]*,[ \t]*rdx[ \t]*\r?\n([ \t]*mov[ \t]*rdx[ \t]*,[ \t]*\[rbp-\1\][ \t]*\r?\n)';
-    contents := RE.Replace(contents, '', True);
+    // chained store reload
+    RE.Expression := '(mov (\w+), (.+)\r?\nmov (\[.+\]), \2\r?\n)mov \2, \4\r?\n';
+    contents := RE.Replace(contents, '$1', True);
 
     // syscall
     RE.Expression := '^[ \t]*mov[ \t]+(rsi|rdx)[ \t]*,[ \t]*0[ \t]*\r?\n[ \t]*mov[ \t]+(rsi|rdx)[ \t]*,[ \t]*0[ \t]*\r?\n([ \t]*syscall)';
     contents := RE.Replace(contents, '$3', True);
 
+    // no-ops
+    RE.Expression := 'mov ([a-z0-9]+), \1\r?\n';
+    contents := RE.Replace(contents, '', True);
 
 end;
 
@@ -77,6 +70,8 @@ begin
     openFileO;
     RE := TRegExpr.Create();
     RE.ModifierM := True;
+    deadCodePass;
+    deadCodePass;
     deadCodePass;
     writeFileO;
     RE.Free;

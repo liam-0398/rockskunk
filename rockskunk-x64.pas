@@ -6,16 +6,25 @@ const
     intRegs: array[0..5] of String = ('rdi', 'rsi', 'rdx', 'rcx', 'r8', 'r9'); // SYSV ABI
     acceptedKeywords: array[0..13] of String = // MAKE SURE TO UPDATE KEYWORD CHECK WHEN ADDING
     ('ADD', 'F', 'LF', 'LW', 'W', 'IF', 'E', 'P', 'OR', 'AND', 'NOR', 'XOR', 'CALL', 'DO');
+    regName: array[0..31] of String = (
+        'rax', 'rcx', 'rdx', 'rbx', 'rsp', 'rbp', 'rsi', 'rdi',
+        'r8',  'r9',  'r10', 'r11', 'r12', 'r13', 'r14', 'r15',
+        'xmm0',  'xmm1',  'xmm2',  'xmm3',  'xmm4',  'xmm5',  'xmm6',  'xmm7',
+        'xmm8',  'xmm9',  'xmm10', 'xmm11', 'xmm12', 'xmm13', 'xmm14', 'xmm15'
+    );
+    // WAHT REGISTERS ALLOC CAN TOUCH
+    regAlloc: array[0..31] of Boolean = (
+        False, False, False, True,  False, False, True,  True,
+        True,  True,  False, False, True,  True,  True,  True,
+        True,  True,  True,  True,  True,  True,  True,  True,
+        True,  True,  True,  True,  True,  True,  True,  True
+    );
 var
-    buf, databuf, textbuf, bbuf: Array[0..1048575] of Char;
-
-    symName, symType: array[0..1023] of String;
-    symOffset: array[0..1023] of Integer;
-    aName, aType, aSize: array[0..1023] of String;
-
+    // Tokens
     tokenKind, tokenValue: Array[0..65535] of String;
     t_line: Array[0..65535] of Integer;
 
+    // Control Flow
     cfKind, cfTLabel, cfELabel, cfLVar: Array[0..64] of String;
     cfDepth: Integer;
 
@@ -31,6 +40,19 @@ var
     paramOffset: Array [0..128] of Integer;
     param_FCount: Integer;
     paramPending, awaitingFunctionOpen: Boolean; 
+
+    // Alloc
+    regOwner, regStamp: Array[0..31] of Integer;
+    regDirty, regLocked: Array[0..31] of Boolean;
+
+    // Symbol Table
+    symName, symType: array[0..1023] of String;
+    symEscaped, symisTemp: array[0..1023] of Boolean;
+    symOffset, symReg, symNextUse: array[0..1023] of Integer;
+    aName, aType, aSize: array[0..1023] of String;
+
+    // I/O
+    buf, databuf, textbuf, bbuf: Array[0..1048575] of Char;
 
     currentFN: String;
     bytes, bbytes, fd, fd2, fd3, fd4, fd5: CInt;
@@ -166,6 +188,44 @@ end;
 
 procedure closeIntermediateFile; begin fpClose(fd3); fpClose(fd4); end;
 
+// REG ALLOC ===========================================
+// ========================================================
+
+procedure lock();
+begin
+end;
+
+procedure unlock();
+begin
+end;
+
+procedure release();
+begin
+end;
+
+procedure flushAll();
+begin
+end;
+
+procedure flushCallerSaved();
+begin
+end;
+
+procedure invalidateAll();
+begin
+end;
+
+procedure intoRegister();
+begin
+end;
+
+procedure destRegister();
+begin
+end;
+
+procedure readLocation();
+begin
+end;
 
 // CODE GENERATION ===========================================
 // ========================================================

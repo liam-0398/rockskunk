@@ -142,6 +142,8 @@ begin
     fd5 := fpOpen('bss.tmp', O_RdOnly, 438);
     WriteOut('section .bss' + #10);
     WriteOut('   digitbuf: resb 32' + #10);
+    WriteOut('g_argc: resq 1' + #10);
+    WriteOut('g_argv: resq 1' + #10);
     bbytes := fpRead(fd5, bbuf, SizeOf(bbuf));
     fpWrite(fd2, bbuf, bbytes);
     fpClose(fd5);
@@ -413,8 +415,6 @@ begin
     end;
 end;
 
-
-
 // SYSTEM ----------------------------------
 
 function emitSyscall(num: String; a: String; b: String; c: String): String;
@@ -442,8 +442,12 @@ end;
 procedure asmFoundations();
 begin
     // placed at bottom for file
-    WriteText(#10 + 'global _start' + #10);  // entry point so linker can do linker things
+    WriteText(#10 + 'global _start' + #10);
     WriteText('_start:'+ #10);
+    WriteText('  mov rax, [rsp]'+ #10);        
+    WriteText('  mov [g_argc], rax'+ #10);
+    WriteText('  lea rax, [rsp + 8]'+ #10);     
+    WriteText('  mov [g_argv], rax'+ #10);
     WriteText('  call main'+ #10);
     WriteText('  mov rdi, rax'+ #10);
     WriteText('  mov rax, 60'+ #10);
@@ -1057,29 +1061,41 @@ begin
 
         consume(); // (
         if peek() <> 'RPAR' then
-            begin
-                call_ret := argumentParser(argname, fname, first, returnsFloat, argfindex);
-            end;
+        begin
+            call_ret := argumentParser(argname, fname, first, returnsFloat, argfindex);
+        end
+        else
+        begin
+            consume(); // )
+            call_ret := call(fname, argname, returnsFloat);
+        end;
 
         Exit(call_ret);
         end
     else
         begin
             WriteLn(IntToStr(t_line[position]) + ' - ' + 'EXPRESSION EVAL - NOT OPERATOR BRANCH'); // DEBUG
-            first := consume; // first operand (the a in a + b)
-
-            if isFloatLiteral(first) then
-                first := opResolver(first)
-            else if not isNumber(first) then // look up addr if identifier
-                        first := varToMem(first);
-
-            if isNumber(first) and (peek2() = 'NUMBER') then // fold the code if 5 + 5, 5 * 5
+           if peek() = 'VESCAPE' then
                 begin
-                    return := foldCode(first, isFloat);
-                    Exit(return);
+                    consume;                          // [[
+                    first := '[' + consume() + ']';   // label, wrapped
+                    consume;                          // ]
+                    consume;                          // ]
+                end
+                else
+                begin
+                    first := consume; // first operand (the a in a + b)
+                    if isFloatLiteral(first) then
+                        first := opResolver(first)
+                    else if not isNumber(first) then
+                        first := varToMem(first);
+                    if isNumber(first) and (peek2() = 'NUMBER') then
+                    begin
+                        return := foldCode(first, isFloat);
+                        Exit(return);
+                    end;
+                    first := opResolver(first);
                 end;
-                
-            first := opResolver(first);
 
 
             if ((peek() = 'DOLLAR') or (peek() = 'PIPE') or (peek() = 'NOR') or (peek() = 'NOY') or (peek() = 'SHL') or (peek() = 'SHR')) then
@@ -1273,8 +1289,7 @@ begin
                         end;
 
                         inc(symCount);
-                        consume(); // :=
-                        
+                        consume(); // :=  
 
                     if isFloat then // send to expression evaulator to find out what to do to right side
                         begin
@@ -1827,6 +1842,7 @@ begin
             '**': assignDoubleChar('**', 'VMUL');
             '>>': assignDoubleChar('>>', 'SHR');
             '<<': assignDoubleChar('<<', 'SHL');
+            '[[': assignDoubleChar('[[', 'VESCAPE');
         end;
 
         // SINGLE CHARACHTER TOKENS 

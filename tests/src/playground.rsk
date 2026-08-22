@@ -1,6 +1,11 @@
 
 P main() {
-    v := 170
-    printB(v)
-
-} 
+    j := argC()
+    h := argV(1)
+    h := h + 8
+    W (j > 1) {
+        a := 223
+        printw(a)
+        printC(h)
+    }
+}

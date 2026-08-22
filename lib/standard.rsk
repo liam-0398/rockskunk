@@ -2,8 +2,7 @@
 ; STANDARD LIBRARY
 
 |V  binbuf![65]
-    charbuf![1] 
-   
+    charbuf![8] 
 
 |
 
@@ -31,7 +30,7 @@ P writeLn(s) {
     r2 := sys(1, 1, nldata, nllen)
 }
 
-P writeT(s) { 
+P writeT(s) { ; no newline
     len := s^
     bufaddr := s + 8
     r1 := sys(1, 1, bufaddr, len)
@@ -71,18 +70,14 @@ F getpid() { r := sys(39, 0, 0, 0) }
 F brk(addr) { r := sys(12, addr, 0, 0) }
 F exit(code) { r := sys(60, code, 0, 0) }
 
-;F argCount() {
-;    r := argc
-;}
+F argC() {
+    r := [[g_argc]]          
+}
 
-;F argPtr(n) {
-;    off := n * 8
-;    r := argv + off
-;}
-
-;F argRaw(n) {
-;    p := argPtr(n)
-;    r := p^                 ; the actual char* — a C string, null-terminated
-;}
+F argV(i) {
+    byteOffset := i * 8
+    a := [[g_argv]] + byteOffset
+    r := a^ 
+}
 
 ; END

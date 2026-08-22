@@ -1,3 +1,4 @@
+{$H+}{$C+}{$S+}{$Q+}{$R+}
 program rockskunk_x64;
 uses
     BaseUnix, SysUtils, Unix, Optimizer;
@@ -44,6 +45,7 @@ var
     // Alloc
     regOwner, regStamp: Array[0..31] of Integer;
     regDirty, regLocked: Array[0..31] of Boolean;
+    regClock, tempCount: Integer;
 
     // Symbol Table
     symName, symType: array[0..1023] of String;
@@ -57,6 +59,7 @@ var
     currentFN: String;
     bytes, bbytes, fd, fd2, fd3, fd4, fd5: CInt;
     filename, output_filename, stdlib_filename, returnAddr: String;
+    isProcedure: Boolean;
 
     frameOffset, labelCounter, position, symCount, aCount, argCount, tokenCount, fstackPosition: Integer;
 
@@ -1589,12 +1592,24 @@ begin
                 argCount := 0;
                 symCount := 0;
                 awaitingFunctionOpen := True;
-                    for i := 0 to 255 do
-                        begin
-                            symName[i] := '';
-                            symOffset[i] := 0;
-                            symType[i] := '';
-                        end;
+                        for i := 0 to 1023 do
+                            begin
+                                symName[i] := '';
+                                symType[i] := '';
+                                symOffset[i] := 0;
+                                symReg[i] := -1;        
+                                symNextUse[i] := -1;
+                                symEscaped[i] := False;
+                                symIsTemp[i] := False;
+                            end;
+
+                        for i := 0 to 31 do             
+                            begin
+                                regOwner[i] := -1;
+                                regDirty[i] := False;
+                                regLocked[i] := False;
+                            end;
+
                 paramPending := False;
                 if peek() = 'LPAR' then // arg detection
                     begin
@@ -1698,7 +1713,7 @@ end;
 // PARSER -----------
 procedure dispatch();
 var
-    isProcedure: Boolean;
+    isProcedure: Boolean; // NEED TO GLOBALIZE, FUCKED
     i, seenFloats, seenInts: Integer;
 begin
      case peek() of
@@ -2029,36 +2044,79 @@ procedure arrayInit();
 var
     i: Integer;
 begin
-    i := 0;
     frameOffset := 0;
+
+    for i := 0 to 1023 do
+        begin
+            symName[i] := '';
+            symType[i] := '';
+            symOffset[i] := 0;
+            aName[i] := '';
+            aType[i] := '';
+            aSize[i] := '';
+            t_line[i] := 0;
+        end;
 
     for i := 0 to 255 do
         begin
-        symOffset[i] := 0;
-        param_FIndex[i] := 0;
-        symName[i] := '';
-        t_line[i] := 0;
-        aName[i] := '';
-        aType[i] := '';
+            param_FIndex[i] := 0;
+            param_FName[i] := '';
+            param_FType[i] := '';
+            return_FName[i] := '';
+            return_FType[i] := '';
         end;
 
-    FillChar(cfKind, SizeOf(cfKind), 0);
-    FillChar(cfELabel, SizeOf(cfELabel), 0);
-    FillChar(cfTLabel, SizeOf(cfTLabel), 0);
-    FillChar(cfLVar, SizeOf(cfLVar), 0);
-    FillChar(return_FType, SizeOf(return_FType), 0);
-    FillChar(param_FName, SizeOf(param_FName), 0);
-    FillChar(param_FType, SizeOf(param_FType), 0);
+    for i := 0 to 128 do
+        paramOffset[i] := 0;
+
+    for i := 0 to 64 do
+        begin
+            cfKind[i] := '';
+            cfTLabel[i] := '';
+            cfELabel[i] := '';
+            cfLVar[i] := '';
+        end;
+
+    // register file state
+    for i := 0 to 31 do
+        begin
+            regOwner[i] := -1;      // -1 means nobody lives here
+            regStamp[i] := 0;
+            regDirty[i] := False;
+            regLocked[i] := False;
+        end;
+
+    // per symbol state
+    for i := 0 to 1023 do
+        begin
+            symReg[i] := -1;        // -1 means not in a register
+            symNextUse[i] := -1;    // -1 means not yet scanned
+            symEscaped[i] := False;
+            symIsTemp[i] := False;
+        end;
+
     deleteFile('intermediate.asm');
     deleteFile('text.tmp');
-    deleteFile('data.tmp'); 
+    deleteFile('data.tmp');
+    deleteFile('bss.tmp');
+
     param_FCount := 0;
-    awaitingFunctionOpen := False;
     return_FCount := 0;
+    awaitingFunctionOpen := False;
+    paramPending := False;
     symCount := 0;
     cfDepth := 0;
     aCount := 0;
+    argCount := 0;
+    labelCounter := 0;
+    position := 0;
+    tokenCount := 0;
+    currentFN := '';
+    returnAddr := '';
+    isProcedure := False;
 
+    regClock := 0;                  // LRU counter, bumped on every touch
+    tempCount := 0;                 // synthetic temp namer
 end;
 
 procedure sendToNASM(outputName: String);

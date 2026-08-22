@@ -207,6 +207,8 @@ procedure allocUnlockAll();
 begin
 end;
 
+// mark a temp dead and free register no store
+// U: after temp is consumed
 procedure allocRelease();
 begin
 end;
@@ -233,14 +235,17 @@ procedure allocInvalidateArrays();
 begin
 end;
 
+// foce into register
 procedure allocIntoRegister();
 begin
 end;
 
+// given symindex returns a register to write into, if already in reuse
 procedure allocDestRegister();
 begin
 end;
 
+// return register name if cached, memory if not
 procedure allocReadLocation();
 begin
 end;

@@ -360,6 +360,61 @@ end;
 
 procedure emitModFloat(); begin end;
 
+// BITWISE --------------------------------------------------
+
+procedure emitAnd(dst, src: String); 
+begin 
+    WriteText('    mov rax, ' + dst + #10);
+    WriteText('    and rax, ' + src + #10);
+end;
+
+procedure emitOr(dst, src: String); 
+begin 
+    WriteText('    mov rax, ' + dst + #10);
+    WriteText('    or rax, ' + src + #10);
+end;
+
+procedure emitXor(dst, src: String); 
+begin 
+    WriteText('    mov rax, ' + dst + #10);
+    WriteText('    xor rax, ' + src + #10);
+end;
+
+procedure emitNot(dst: String);         //no src 
+begin 
+    WriteText('    mov rax, ' + dst + #10);
+    WriteText('    not rax' + #10);
+end;
+
+// NEED VAR DETECTION
+procedure emitNor(dst, src: String); begin WriteText('    nor ' + dst + ', ' + src + #10); end;
+
+procedure emitShl(dst, src: String); 
+begin 
+    WriteText('    mov rax, ' + dst + #10);
+    if isNumber(src) then
+        WriteText('    shl rax, ' + src + #10)
+    else
+    begin
+        WriteText('    mov rcx, ' + src + #10);
+        WriteText('    shl rax, cl' + #10);
+    end;
+end;
+
+procedure emitShr(dst, src: String); 
+begin 
+    WriteText('    mov rax, ' + dst + #10);
+    if isNumber(src) then
+        WriteText('    shr rax, ' + src + #10)
+    else
+    begin
+        WriteText('    mov rcx, ' + src + #10);
+        WriteText('    shr rax, cl' + #10);
+    end;
+end;
+
+
+
 // SYSTEM ----------------------------------
 
 function emitSyscall(num: String; a: String; b: String; c: String): String;
@@ -927,6 +982,36 @@ begin
 
 end;
 
+function bitwiseEvaluator(first: String; isFloat: Boolean): String;
+var
+    second, op: String;
+begin
+    WriteLn(IntToStr(t_line[position]) + ' - ' + 'EXPRESSION EVAL - BITWISE BRANCH');
+    loadRAX(first); 
+
+    while ((peek() = 'DOLLAR') or (peek() = 'PIPE') or (peek() = 'NOR') or (peek() = 'NOY') or (peek() = 'SHL') or (peek() = 'SHR')) do
+    begin
+        op := peek(); 
+        consume;
+        second := consume(); 
+        second := ifFloatIfVar(second);
+
+        if      op = 'DOLLAR' then emitAnd('rax', second)
+        else if op = 'PIPE'   then emitOr('rax', second)
+        else if op = 'XOR'    then emitXor('rax', second)
+        else if op = 'NOT'    then emitNot('rax')
+        else if op = 'SHL'    then emitShl('rax', second)
+        else if op = 'SHR'    then emitShr('rax', second)
+        else
+        begin
+            WriteLn(IntToStr(t_line[position]) + ' - ' + 'I CANT BELIEVE YOUVE DONE THIS - EMIT_BITWISE - UNK OP >> ' + op);
+            Halt(1);
+        end;
+    end;
+
+    bitwiseEvaluator := 'rax';
+end;
+
 function evaluateExpression(isFloat: Boolean): String;
 var
     first, second, op, argname, fname, return, math_ret, call_ret, ampaddr, r, ident: String;
@@ -996,6 +1081,10 @@ begin
                 
             first := opResolver(first);
 
+
+            if ((peek() = 'DOLLAR') or (peek() = 'PIPE') or (peek() = 'NOR') or (peek() = 'NOY') or (peek() = 'SHL') or (peek() = 'SHR')) then
+                Exit(bitwiseEvaluator(first, isFloat));
+
             // if next token isnt operator return the first operand eg if var := 5 not var := 5 + b
             if not ((peek() = 'PLUS') or (peek() = 'MINUS') or (peek() = 'STAR') or (peek() = 'SLASH')) then
                 evaluateExpression := first
@@ -1022,6 +1111,7 @@ begin
                 end;
         end;   
 end;
+
 function discriminateArrays(variable: String): Boolean;
 var
     rightside, arrayName, arrayIndex, arrayType: String;
@@ -1484,6 +1574,19 @@ begin
                         if peek2() = 'ASSIGN' then // globals
                             begin
                             end 
+                        else if peek2() = 'BANG' then // byte arrays
+                            begin
+                                arrayName := consume;
+                                consume;
+                                consume;
+                                arraySize := consume;
+                                consume;
+                                aName[aCount] := arrayName;
+                                aSize[aCount] := arraySize;
+                                aType[aCount] := 'BYTE';
+                                WriteBSS(arrayName + ': resb ' + arraySize + #10);
+                                Inc(aCount);
+                            end 
                         else if peek2() = 'LBRAC' then // word arrays
                             begin
                                 arrayName := consume;
@@ -1506,19 +1609,6 @@ begin
                                 aSize[aCount] := arraySize;
                                 aType[aCount] := 'FLOAT';
                                 WriteBSS(arrayName + ': resq ' + arraySize + #10);
-                                Inc(aCount);
-                            end 
-                        else if peek2() = 'BANG' then // byte arrays
-                            begin
-                                arrayName := consume;
-                                consume;
-                                consume;
-                                arraySize := consume;
-                                consume;
-                                aName[aCount] := arrayName;
-                                aSize[aCount] := arraySize;
-                                aType[aCount] := 'WORD';
-                                WriteBSS(arrayName + ': resb ' + arraySize + #10);
                                 Inc(aCount);
                             end 
                         else
@@ -1687,6 +1777,17 @@ var
         Inc(i);
     end;
 
+    procedure assignTripleChar(Tvalue: String; Ttype: String);
+    begin
+        tokenKind[tokenCount] := Ttype;
+        tokenValue[tokenCount] := Tvalue;
+        t_line[tokenCount] := linecount;
+        isMultiple := True;
+        Inc(tokenCount);
+        Inc(i);
+        Inc(i);
+    end;
+
 begin
     linecount := 1;
     isKeyword := False;
@@ -1707,7 +1808,13 @@ begin
         if buf[i] = #10 then // NEWLINE
             Inc(linecount);
 
-        // MULTI CHARACHTER TOKENS
+        // TRIPLE CHARACHTER TOKENS
+        case buf[i] + buf[i+1] + buf[i+2] of
+            'nor': assignDoubleChar('nor', 'NOR');
+            'xor': assignDoubleChar('xor', 'XOR');
+            'not': assignDoubleChar('not', 'NOT');
+        end;
+        // DOUBLE CHARACHTER TOKENS
         case buf[i] + buf[i+1] of
             ':=': assignDoubleChar(':=', 'ASSIGN');
             '|V': assignDoubleChar('|V', 'VARBLOCK');
@@ -1718,6 +1825,8 @@ begin
             '<=': assignDoubleChar('<=', 'LESSEQUAL');
             '++': assignDoubleChar('++', 'VADD');
             '**': assignDoubleChar('**', 'VMUL');
+            '>>': assignDoubleChar('>>', 'SHR');
+            '<<': assignDoubleChar('<<', 'SHL');
         end;
 
         // SINGLE CHARACHTER TOKENS 
@@ -1743,6 +1852,8 @@ begin
                     ':': assignSingleChar(':', 'COLON');
                     '&': assignSingleChar('&', 'AMP');
                     '^': assignSingleChar('^', 'CARET');
+                    '$': assignSingleChar('^', 'DOLLAR');
+                    '!': assignSingleChar('!', 'BANG');
 
                     ';': begin   // comment — skip to end of line, emits no token
                         while (i < bytes) and (buf[i] <> #10) do

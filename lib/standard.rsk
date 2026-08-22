@@ -1,7 +1,11 @@
 ; ROCKSKUNK
 ; STANDARD LIBRARY
 
-|V charbuf![1] |
+|V  binbuf![65]
+    charbuf![1] 
+   
+
+|
 
 ; I/O ----------------------------------------------------------------
 
@@ -14,9 +18,9 @@ F fstat(fd, statbuf) { r := sys(5, fd, statbuf, 0) }
 F mkdir(path, mode) { r := sys(83, path, mode, 0) }
 F close(fd) { r := sys(3, fd, 0, 0) }
 
-; TEXT ----------------------------------------------------------------
+; OUTPUT ----------------------------------------------------------------
 
-P writeLn(s) {
+P writeLn(s) { 
     len := s^
     bufaddr := s + 8
     r1 := sys(1, 1, bufaddr, len)
@@ -27,14 +31,35 @@ P writeLn(s) {
     r2 := sys(1, 1, nldata, nllen)
 }
 
+P writeT(s) { 
+    len := s^
+    bufaddr := s + 8
+    r1 := sys(1, 1, bufaddr, len)
+}
+
 F ccmp(p, q) {
     ; walk both byte-by-byte until mismatch or double null
     ; needs the byte-deref primitive either way
 }
 
-P printc(c) {
+P printC(c) { ; CHAR
     charbuf![0] := c
     sys(1, 1, charbuf, 1)
+}
+
+P printB(v) { ; BITWISE
+    samt := 0
+    bit := 0
+    i := 0
+    LF (i := 0 until 64) {
+        samt := 63 - i
+        bit := v >> samt
+        bit := bit $ 1
+        bit := bit + 48
+        binbuf![i] := bit
+    }
+    binbuf![64] := 32
+    sys(1, 1, binbuf, 65)
 }
 
 ; MATH ----------------------------------------------------------------

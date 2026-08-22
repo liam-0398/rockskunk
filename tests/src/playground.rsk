@@ -1,16 +1,6 @@
 
-|V array[100] |
-
 P main() {
-    a := 'str'
-    z := 10
-    j := 10
-    i := 0
+    v := 170
+    printB(v)
 
-    writeLn('TESTTESTTEST')
-    DO (i := 0 until 10) {
-        W (z > 5) {
-        writeLn(a)
-        printw(j)
-        i := i + 1 } }
 } 

@@ -16,15 +16,6 @@ var
     tokenKind, tokenValue: Array[0..65535] of String;
     t_line: Array[0..65535] of Integer;
 
-    loop_TLabel: array [0..64] of String;
-    loop_ELabel: array [0..64] of String;
-    loopDepth: Integer;
-    loopBodyNext: Boolean;
-
-    conditional_ELabel: array [0..64] of String;
-    conditionalDepth: Integer;
-    conditionalBodyNext: Boolean;
-
     cfKind, cfTLabel, cfELabel, cfLVar: Array[0..64] of String;
     cfDepth: Integer;
 
@@ -39,7 +30,7 @@ var
     param_FType:  array[0..255] of String;   
     paramOffset: Array [0..128] of Integer;
     param_FCount: Integer;
-    paramPending: Boolean; 
+    paramPending, awaitingFunctionOpen: Boolean; 
 
     currentFN: String;
     bytes, bbytes, fd, fd2, fd3, fd4, fd5: CInt;
@@ -52,8 +43,8 @@ var
    REMEMBER REDO ASM OUTPUT PRIMITIVES AND LOOPS
    PASCAL FFI
    VECTORS
-   W/IF/ELSE
-   LOOPS
+   IF/ELSE
+   REGISTER ALLOC
 }
 
 // Forward Declarations
@@ -810,22 +801,34 @@ end;
 
 function argumentParser(argname, fname, first: String; returnsFloat: Boolean; argfindex: Integer): String;
 var
+    strlabel: String;
     seenFloats, seenInts, argCounter: Integer;
     isFloatArg: Boolean;
 begin
-        WriteLn('ARGUMENT PARSER - I' + IntToStr(argfindex) + '- N' + argname); // DEBUG
-        argcounter := 0;
-        seenFloats := 0;
-        seenInts := 0;
+            WriteLn('ARGUMENT PARSER - I' + IntToStr(argfindex) + '- N' + argname); // DEBUG
+            argcounter := 0;
+            seenFloats := 0;
+            seenInts := 0;
+
         repeat  // VERIFY LOOP
             isFloatArg := False;
-            argname := consume(); // single arg
 
-            if param_FType[argfindex + argcounter] = 'FLOAT' then
-                isFloatArg := True;
+            if peek() = 'STRING' then
+                begin
+                    argname := consume();
+                    strlabel := emitStringConstant(argname);
+                    argname := strlabel;
+                end
+            else
+                begin
+                    argname := consume();
 
-            if not isNumber(argname) then
-                argname := varToMem(argname);
+                    if param_FType[argfindex + argcounter] = 'FLOAT' then
+                                    isFloatArg := True;
+
+                    if not isNumber(argname) then
+                                    argname := varToMem(argname);
+            end;
 
             if isFloatArg then
                 begin
@@ -839,12 +842,12 @@ begin
                 end;
 
             if peek() = 'COMMA' then
-                consume;
+                            consume;
 
-            Inc(argcounter);
+                        Inc(argcounter);
         until peek() = 'RPAR';
-        consume(); // )
-        argumentParser := call(fname, first, returnsFloat);
+            consume(); // )
+            argumentParser := call(fname, first, returnsFloat);
 end;
 
 function eeArrays(): String;
@@ -1285,7 +1288,6 @@ begin
     cfTLabel[cfDepth] := toplabel;
     cfELabel[cfDepth] := endlabel;
     Inc(cfDepth);
-    loopBodyNext := True;
 end;
 
 function loopFor(): Boolean;
@@ -1316,7 +1318,6 @@ begin
     cfELabel[cfDepth] := endlabel;
     cfLVar[cfDepth] := loopvar;
     Inc(cfDepth);
-    loopBodyNext := True;
 end;
 
 function loopDo(): Boolean;
@@ -1372,7 +1373,6 @@ begin
         end;
 
     position := bodyEnd + 1;
-    loopBodyNext := True;
 end;
 
 function condWhen(): Boolean;
@@ -1406,7 +1406,6 @@ begin
     cfKind[cfDepth] := 'WHEN';
     cfELabel[cfDepth] := endlabel;
     Inc(cfDepth);
-    conditionalBodyNext := True;
     condWhen := True;
 end;
 
@@ -1424,6 +1423,7 @@ begin
                 frameOffset := 0;
                 argCount := 0;
                 symCount := 0;
+                awaitingFunctionOpen := True;
                     for i := 0 to 255 do
                         begin
                             symName[i] := '';
@@ -1459,7 +1459,7 @@ begin
                                                     // STRING EVENTUALLY
                                                 end;
                                         end;
-                                paramPending := True;
+                                paramPending := True;                
                                 paramOffset[argCount] := frameOffset;
                                 inc(argCount);
                                 inc(param_FCount);
@@ -1548,14 +1548,10 @@ begin
             end;
            'LBRACE': begin 
                 consume;
-                if loopBodyNext or conditionalBodyNext then
+                if awaitingFunctionOpen then
                     begin
-                        loopBodyNext := False;
-                        conditionalBodyNext := False;
-                    end
-                    else
-                        begin
-                            emitFunctionSetup();
+                        awaitingFunctionOpen := False;
+                        emitFunctionSetup();
                             if paramPending then
                                 begin
                                     seenFloats := 0;
@@ -1575,7 +1571,7 @@ begin
                                         end;
                                     paramPending := False;
                                 end;
-                        end;
+                    end;  
                 end;
             'RBRACE': begin 
                 consume;
@@ -1869,11 +1865,8 @@ begin
     deleteFile('intermediate.asm');
     deleteFile('text.tmp');
     deleteFile('data.tmp'); 
-    conditionalBodyNext := False;
-    loopBodyNext := False;
-    conditionalDepth := 0;
     param_FCount := 0;
-    loopDepth := 0;
+    awaitingFunctionOpen := False;
     return_FCount := 0;
     symCount := 0;
     cfDepth := 0;

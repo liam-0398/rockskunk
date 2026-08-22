@@ -58,7 +58,20 @@ Very WIP. Using old C transpiler I had written for another language attempt and 
 - Original FORTRAN Compiler
 - Old Pascal Compilers
 
-# Syntax
+## Not Implemented Yet
+
+- If/Else
+- Inline ASM
+- Vectors
+- Pascal FFI
+- Records
+- Static declarations
+- Global variables (arrays are fine)
+- Register Allocation
+- Malloc/Free
+- Directives
+
+## Syntax
 
 ```
 ;  comment

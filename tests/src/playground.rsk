@@ -7,5 +7,8 @@ P main() {
     array[1] := 5
     c := array[1]
     ;printc(k)
-    writeLn(str)
+    i := 0;
+    LF (i := 0 until 10) {
+    writeLn(str) 
+    }
 } 

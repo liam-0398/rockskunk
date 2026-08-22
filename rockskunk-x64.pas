@@ -25,6 +25,9 @@ var
     conditionalDepth: Integer;
     conditionalBodyNext: Boolean;
 
+    cfKind, cfTLabel, cfELabel, cfLVar: Array[0..64] of String;
+    cfDepth: Integer;
+
     // for capturing return types so assingment to function return knows whats up
     return_FName: array[0..255] of String; 
     return_FType: array[0..255] of String;
@@ -1231,6 +1234,9 @@ end;
 // all of these are completely broken
 procedure conditionalIntrinsic(); begin end;
 
+   {cfKind, cfTLabel, cfELabel, cfLVar: Array[0..64] of String;
+    cfDepth: Integer;}
+
 function loopWhile(): Boolean;
 var
     loopvar, loopcond, looplimit, toplabel, endlabel: String;
@@ -1262,10 +1268,11 @@ begin
     else if loopcond = 'EQUAL' then
         WriteText('    jne ' + endlabel + #10);     // jump if not equa  
 
-    //inc(loop_IndexW);
-    loop_TLabel[loopDepth] := toplabel;
-    loop_ELabel[loopDepth] := endlabel;
-    Inc(loopDepth);
+   
+    cfKind[cfDepth] := 'WHILE';
+    cfTLabel[cfDepth] := toplabel;
+    cfELabel[cfDepth] := endlabel;
+    Inc(cfDepth);
     loopBodyNext := True;
 end;
 
@@ -1292,9 +1299,11 @@ begin
     WriteText('    cmp rax, ' + looplimit + #10);
     WriteText('    jge ' + endlabel + #10);
 
-    loop_TLabel[loopDepth] := toplabel;
-    loop_ELabel[loopDepth] := endlabel;
-    Inc(loopDepth);
+    cfKind[cfDepth] := 'FOR';
+    cfTLabel[cfDepth] := toplabel;
+    cfELabel[cfDepth] := endlabel;
+    cfLVar[cfDepth] := loopvar;
+    Inc(cfDepth);
     loopBodyNext := True;
 end;
 
@@ -1304,26 +1313,26 @@ var
 begin
     consume; //consume LF
     consume; // consume LPAR
-    loopvar := varToMem(consume);
+    loopvar := consume;
     consume; // :=
     loopstart := consume; // 0
     consume; // until
     looplimit := consume; 
     consume; // RPAR
-    WriteText('    mov rax, ' + loopstart + #10);
-    WriteText('    mov ' + loopvar + ', rax' + #10);
+    WriteText('    xor rbx, rbx' + #10);
+    WriteText('    cmp rbx, ' + looplimit + #10);
 
     toplabel := labelMaker('LF');
     endlabel := labelMaker('LF');
     emitLabel(toplabel);
 
-    WriteText('    mov rax, ' + loopvar + #10);
-    WriteText('    cmp rax, ' + looplimit + #10);
     WriteText('    jge ' + endlabel + #10);
 
-    loop_TLabel[loopDepth] := toplabel;
-    loop_ELabel[loopDepth] := endlabel;
-    Inc(loopDepth);
+    cfKind[cfDepth] := 'DO';
+    cfTLabel[cfDepth] := toplabel;
+    cfELabel[cfDepth] := endlabel;
+    cfLVar[cfDepth] := loopvar;
+    Inc(cfDepth);
     loopBodyNext := True;
 end;
 
@@ -1355,8 +1364,9 @@ begin
     else if condition = 'EQUAL' then
         WriteText('    jne ' + endlabel + #10);     // jump if not equal
 
-    conditional_ELabel[conditionalDepth] := endlabel;
-    Inc(conditionalDepth);
+    cfKind[cfDepth] := 'WHEN';
+    cfELabel[cfDepth] := endlabel;
+    Inc(cfDepth);
     conditionalBodyNext := True;
     condWhen := True;
 end;
@@ -1798,10 +1808,10 @@ begin
         aType[i] := '';
         end;
 
-    FillChar(loop_TLabel, SizeOf(loop_TLabel), 0);
-    FillChar(loop_ELabel, SizeOf(loop_ELabel), 0);
-    FillChar(conditional_ELabel, SizeOf(conditional_ELabel), 0);
-    FillChar(return_FName, SizeOf(return_FName), 0);
+    FillChar(cfKind, SizeOf(cfKind), 0);
+    FillChar(cfELabel, SizeOf(cfELabel), 0);
+    FillChar(cfTLabel, SizeOf(cfTLabel), 0);
+    FillChar(cfLVar, SizeOf(cfLVar), 0);
     FillChar(return_FType, SizeOf(return_FType), 0);
     FillChar(param_FName, SizeOf(param_FName), 0);
     FillChar(param_FType, SizeOf(param_FType), 0);
@@ -1815,6 +1825,7 @@ begin
     loopDepth := 0;
     return_FCount := 0;
     symCount := 0;
+    cfDepth := 0;
     aCount := 0;
 
 end;

@@ -1337,6 +1337,7 @@ begin
                     value := varToMem(value);
                     emitWritePointer(variable, value);
                 end;
+            Exit;
         end;
 
     if peek() = 'ASSIGN' then // if its a := x etc etc

@@ -417,6 +417,13 @@ begin
         emitDereference := 'rax';
 end;
 
+function emitWritePointer(variable, value: String): String; // ^
+begin
+        WriteText('    mov rax, ' + variable + #10); // load pointers value (addr)
+        WriteText('    mov [rax], ' + value + #10); // write value into it
+        emitWritePointer := 'rax';
+end;
+
 procedure emitMalloc(); begin end;            // cm(size)
 procedure emitFree(); begin end;              // fm(p)
 
@@ -1283,7 +1290,7 @@ end;
 
 procedure discriminateIdentifier();
 var
-    variable, rightside, twoname, argname: String;
+    variable, rightside, twoname, argname, value: String;
     isDeclared, isReturn, isFloat, didArrays: boolean;
     arrayname, arrayIndex, arrayType: String;
     i, ii, symIndex, argfindex: Integer;
@@ -1293,6 +1300,7 @@ begin
     ii := 0;
     symIndex := 0;
     argName := '';
+    value := '';
     isDeclared := False;
     isReturn := False;
     isFloat := False;
@@ -1320,7 +1328,15 @@ begin
     if peek() = 'CARET' then // dereference on left side of assign
         begin
             allocInvalidateAll; // shit gets weird so clear it, memory has changed
-
+            consume; // :=
+            value := consume;
+            if isNumber(value) then
+                emitWritePointer(variable, value)
+            else 
+                begin
+                    value := varToMem(value);
+                    emitWritePointer(variable, value);
+                end;
         end;
 
     if peek() = 'ASSIGN' then // if its a := x etc etc

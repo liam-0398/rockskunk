@@ -5,9 +5,9 @@ F lowpass(x:f, a:f, yprev:f) {
 }
 
 P main() {
-    y := 0.0
-    x := 1.0
-    a := 0.5
+    y := 0.0f
+    x := 1.0f
+    a := 0.5f
     n := 0
 
     LF (n := 0 until 5000000) {

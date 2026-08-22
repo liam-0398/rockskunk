@@ -65,7 +65,7 @@ var
 
 {
    DO NOT FORGET LIST ====
-   REMEMBER REDO ASM OUTPUT PRIMITIVES AND LOOPS
+   REMEMBER REDO ASM OUTPUT PRIMITIVES
    PASCAL FFI
    VECTORS
    IF/ELSE
@@ -193,6 +193,8 @@ procedure closeIntermediateFile; begin fpClose(fd3); fpClose(fd4); end;
 
 // REG ALLOC ===========================================
 // ========================================================
+// Going to be resgister descriptor model, dragon book getReg ish
+// Do I know what im doing? Hell no. Am i going to figure it out? yes.
 
 procedure lock();
 begin
@@ -393,8 +395,6 @@ end;
 
 procedure emitMalloc(); begin end;            // cm(size)
 procedure emitFree(); begin end;              // fm(p)
-
-
 
 // MATH -----------------------------------------------------------
 procedure emitAdd(dst, src: String); begin WriteText('    add ' + dst + ', ' + src + #10); end;
@@ -641,7 +641,6 @@ end;
 // ========================================================
 // Helpers ------------------------------------
 
-// Used to check type (identifier) and value of words for decision making
 function peekV(): String; begin peekV := tokenValue[position]; end;
 function peekV2(): String; begin peekV2 := tokenValue[position+1]; end;
 function peekV3(): String; begin peekV3 := tokenValue[position+2]; end;
@@ -1528,7 +1527,12 @@ begin
     ll := StrToInt(looplimit);
     ls := StrToInt(loopstart);
 
-    if ll > 100 then
+
+    if ll > 10000 then
+        writeLn('DO LOOP > 10000 ITERATION - VAYA CON DIOS')
+    else if ll > 500 then
+        writeLn('WHOA THERE PARTNER - YOUR SOURCE IS ABOUT TO BE BIGGER THAN FIREFOX WITH > 500 ITERATIONS OF A DO LOOP')
+    else if ll > 100 then
         writeLn('YOU HAVE FRUSTRATED THE COMPILER - YOU DARE EXCEED 100 ITERATIONS OF A DO LOOP?');
 
     for n := ls to ll - 1 do
@@ -1702,7 +1706,7 @@ begin
                             end 
                         else
                             begin
-                                WriteLn(IntToStr(t_line[position]) + ' - ' + 'I CANT BELIEVE YOUVE DONE THIS - VARBLOCK - YOU HAVE FED ME GARBAGE>> ' + peek() + ' ' + peekV());
+                                WriteLn(IntToStr(t_line[position]) + ' - ' + 'I CANT BELIEVE YOUVE DONE THIS - VARBLOCK - THAT IS SOMETHING.... BUT NOT A DECLARATION>> ' + peek() + ' ' + peekV());
                                 Halt(1);
                             end;
             end;
@@ -1815,7 +1819,7 @@ begin
             //end
             else
             begin
-                WriteLn(IntToStr(t_line[position]) + ' - ' + 'I CANT BELIEVE YOUVE DONE THIS - PARSER - YOU HAVE FED ME GARBAGE>> ' + peek() + ' ' + peekV());
+                WriteLn(IntToStr(t_line[position]) + ' - ' + 'I CANT BELIEVE YOUVE DONE THIS - PARSER - YOU CORRUPTED MY PARSER WITH YOUR FILTH>> ' + peek() + ' ' + peekV());
                 Halt(1);
             end;
         
@@ -1899,9 +1903,9 @@ begin
 
         // TRIPLE CHARACHTER TOKENS
         case buf[i] + buf[i+1] + buf[i+2] of
-            'nor': assignDoubleChar('nor', 'NOR');
-            'xor': assignDoubleChar('xor', 'XOR');
-            'not': assignDoubleChar('not', 'NOT');
+            'nor': assignTripleChar('nor', 'NOR');
+            'xor': assignTripleChar('xor', 'XOR');
+            'not': assignTripleChar('not', 'NOT');
         end;
         // DOUBLE CHARACHTER TOKENS
         case buf[i] + buf[i+1] of
@@ -1942,7 +1946,7 @@ begin
                     ':': assignSingleChar(':', 'COLON');
                     '&': assignSingleChar('&', 'AMP');
                     '^': assignSingleChar('^', 'CARET');
-                    '$': assignSingleChar('^', 'DOLLAR');
+                    '$': assignSingleChar('$', 'DOLLAR');
                     '!': assignSingleChar('!', 'BANG');
 
                     ';': begin   // comment — skip to end of line, emits no token

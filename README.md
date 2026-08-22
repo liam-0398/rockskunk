@@ -1,7 +1,7 @@
 ## rockskunk
 # A terse, typeless (ish), no-bullshit language
 
-Very WIP. Using old C transpiler I had written for another language attempt and reworking it to output NASM x86_64 assembly, so far I am successful. WAY down the line I want to do a ppc32 version as well.
+Very WIP. WAY down the line I want to do a ppc32 version as well so i can get weird with my Power Macs. I have no formal education I am making this up as I go along.
 
 # Core tenants 
 
@@ -14,23 +14,23 @@ Very WIP. Using old C transpiler I had written for another language attempt and 
 7. Compiler auto-executes NASM so its a one shot compile
 8. floats are just defined with number ending in f for easy type check. a := 52.222f
 9. local variables auto declared on assignment
+10. The compiler isn't the the all seeing overlord. It will halt on obvious syntax violations but does not assume it knows more than the programmer and will warn rather than halt on stupid decisions. There is nothing stopping you from using inline asm to destroy the stack. If you really mess up, the nasm pass will call you out. If you know more than the compiler and want some weird stuff, as long as NASM approves you are free to do whatever you want. 
 
 # Conventions
 
 - First function called is always "main"
 - Many small functions over large blobs of doom
 - Use common functions inside functions to keep codebase small
-- Left to right associative for vector ops a ** b ** c
-- Normal operators evaluated left to right
+- Operators evaluated left to right
 - Closing bracket goes on last below last unless it is a loop/conditional, those are closed inline
-- floats must look like 10.0f with the . and the f
-- never mix floats and ints. use intfloat() or floatint()
+- Floats must look like 10.0f with the . and the f
+- Never mix floats and ints.
 - Functions are always declared before they are called
 
 
 ## What I have learned from bootstrap mistakes
 
-- Reverted change to record based system. Never again, practically starting over.
+- Reverted after changing to record based system. Never again.
 
 # Never
 
@@ -41,7 +41,6 @@ Very WIP. Using old C transpiler I had written for another language attempt and 
 # Always
 
 - Arrays and strings
-- Handwritten assembly
 - Simplicity over abstraction
 - Error checking
 
@@ -50,7 +49,7 @@ Very WIP. Using old C transpiler I had written for another language attempt and 
 - Vector support
 - Dead code elimination
 - Optimization via string/regex op pass over intermediate.asm
-- Register allocation via fixed pool
+- Register allocation
 - Code folding in-compiler
 
 # Inspiration
@@ -212,9 +211,9 @@ result := sys(num,a,b,c)
 <=
 >=
 | ;bitwise
-& ;bitwise
+$ ;bitwise
 or ;logical
-and ;logical
+and ;bitwise
 nor ;bitwise
 xor ;bitwise
 

@@ -22,7 +22,7 @@ procedure openFileO();
 begin
     WriteLn('OPTIMIZER - OPENING FILE');
     fd := fpOpen(filename, O_RDWR);
-    bytes := FpRead(fd, buf[bytes], SizeOf(buf));
+    bytes := FpRead(fd, buf[0], SizeOf(buf));
         if bytes = 0 then
             WriteLn('OPTIMIZER - I CANT BELIEVE YOUVE DONE THIS - EMPTY FILE');
     
@@ -74,8 +74,8 @@ begin
     RE := TRegExpr.Create();
     RE.ModifierM := True;
     deadCodePass;
-    deadCodePass;
-    deadCodePass;
+    deadCodePass; // another one
+    deadCodePass; // ANOTHER ONE
     writeFileO;
     RE.Free;
 end;

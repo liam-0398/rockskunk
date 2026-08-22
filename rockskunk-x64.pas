@@ -45,7 +45,7 @@ var
     bytes, bbytes, fd, fd2, fd3, fd4, fd5: CInt;
     filename, output_filename, stdlib_filename, returnAddr: String;
 
-    frameOffset, labelCounter, position, symCount, aCount, argCount, tokenCount: Integer;
+    frameOffset, labelCounter, position, symCount, aCount, argCount, tokenCount, fstackPosition: Integer;
 
 {
    DO NOT FORGET LIST ====
@@ -193,32 +193,43 @@ procedure emitFunctionSetup();
 begin 
     WriteText('    push rbp' + #10);
     WriteText('    mov rbp, rsp' + #10);
-    WriteText('    sub rsp, 128' + #10); // I KNOW I KNOW its temporary
+    WriteText('    sub rsp, ');
+    fstackPosition := FpLSeek(fd3, 0, Seek_Cur);   // fd3 — matches WriteText's target
+    WriteText('0000000128' + #10);
 end;
 
 procedure emitFunctionTeardown(result: String; isProcedure: Boolean);
 var
     rcheck: String;
     isFloat: Boolean;
+    savedPos: Int64;
+    alignedSize: Integer;
+    paddedSize: String;
 begin
-    WriteLn(IntToStr(t_line[position]) + ' - ' + 'TEARDOWN - START'); // DEBUG
-    if not isProcedure then // just ignore all this and do not return anything if its a procedure
-        begin
-            isFloat := False;
-            rcheck := WhoGoesThere(currentFN);
-            if rcheck = 'FLOAT' then
-                isFloat := True;
+    if not isProcedure then
+    begin
+        isFloat := False;
+        rcheck := WhoGoesThere(currentFN);
+        if rcheck = 'FLOAT' then
+            isFloat := True;
 
-            if not isFloat then
-                WriteText('    mov rax, ' + result + #10)
-            else
-                WriteText('    movsd xmm0, ' + result + #10);
-        end;
+        if not isFloat then
+            WriteText('    mov rax, ' + result + #10)
+        else
+            WriteText('    movsd xmm0, ' + result + #10);
+    end;
 
-    WriteText('    add rsp, 128' + #10);
+    alignedSize := (frameOffset + 15) and not 15;
+    paddedSize := Format('%.10d', [alignedSize]);
+    savedPos := FpLSeek(fd3, 0, Seek_Cur);
+
+    FpLSeek(fd3, fstackPosition, Seek_Set);
+    WriteText(paddedSize);
+    FpLSeek(fd3, savedPos, Seek_Set);
+
+    WriteText('    add rsp, ' + paddedSize + #10);
     WriteText('    pop rbp' + #10);
     WriteText('    ret' + #10 + #10);
-    WriteLn(IntToStr(t_line[position]) + ' - ' + 'TEARDOWN - END'); // DEBUG
 end;
 
 // CONTROL FLOW -----------------------------------------------------------

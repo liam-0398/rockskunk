@@ -1544,17 +1544,22 @@ begin
                 end;
             'RBRACE': begin 
                 consume;
-                    if loopDepth > 0 then
-                        begin
-                            Dec(loopDepth);
-                            WriteText('    jmp ' + loop_TLabel[loopDepth] + #10);
-                            emitLabel(loop_ELabel[loopDepth]);
-                        end
-                    else if conditionalDepth > 0 then
-                        begin
-                            Dec(conditionalDepth);
-                            emitLabel(conditional_ELabel[conditionalDepth]);
-                        end
+                    if cfDepth > 0 then
+                    begin
+                        Dec(cfDepth);
+                        case cfKind[cfDepth] of
+                            'FOR': begin
+                                WriteText('    inc qword ' + cfLVar[cfDepth] + #10); // or whatever your increment emit looks like
+                                WriteText('    jmp ' + cfTLabel[cfDepth] + #10);
+                                emitLabel(cfELabel[cfDepth]);
+                            end;
+                            'WHILE': begin
+                                WriteText('    jmp ' + cfTLabel[cfDepth] + #10);
+                                emitLabel(cfELabel[cfDepth]);
+                            end;
+                            'WHEN': emitLabel(cfELabel[cfDepth]);
+                        end;
+                    end
                     else
                         emitFunctionTeardown(returnAddr, isProcedure);
             end;
@@ -1868,8 +1873,8 @@ if ParamCount = 1 then
         closeIntermediateFile;
         writeASM;
         Optimize;
-        //sendToNASM(output_filename);
-        //deleteFile(output_filename + '.o');
+        sendToNASM(output_filename);
+        deleteFile(output_filename + '.o');
     end
 else
     begin

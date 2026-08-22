@@ -2,13 +2,14 @@
 |V array[100] |
 
 P main() {
-    k := 'abc'
-    str := 'string'
-    array[1] := 5
-    c := array[1]
-    ;printc(k)
-    i := 0;
+    a := 'str'
+    z := 10
+    j := 10
+    i := 0
+
+
     LF (i := 0 until 10) {
-    writeLn(str) 
-    }
+        W (z > 5) {
+        writeLn(a)
+        printw(j) } }
 } 

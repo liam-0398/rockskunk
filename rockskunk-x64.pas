@@ -5,6 +5,7 @@ uses
 
 const
     intRegs: array[0..5] of String = ('rdi', 'rsi', 'rdx', 'rcx', 'r8', 'r9'); // SYSV ABI
+    intRegIndex: array[0..5] of Integer = (7, 6, 2, 1, 8, 9); //encoding order
     acceptedKeywords: array[0..13] of String = // MAKE SURE TO UPDATE KEYWORD CHECK WHEN ADDING
     ('ADD', 'F', 'LF', 'LW', 'W', 'IF', 'E', 'P', 'OR', 'AND', 'NOR', 'XOR', 'CALL', 'DO');
     regName: array[0..31] of String = (
@@ -44,7 +45,7 @@ var
 
     // Alloc
     regOwner, regStamp: Array[0..31] of Integer;
-    regDirty, regLocked: Array[0..31] of Boolean;
+    regDirty, regLocked, symIsArrayElem: Array[0..31] of Boolean; // set isarrayelement in atom
     regClock, tempCount: Integer;
 
     // Symbol Table
@@ -196,39 +197,51 @@ procedure closeIntermediateFile; begin fpClose(fd3); fpClose(fd4); end;
 // Going to be resgister descriptor model, dragon book getReg ish
 // Do I know what im doing? Hell no. Am i going to figure it out? yes.
 
-procedure lock();
+// protects register from allocator interference
+procedure allocLock(r: Integer);
 begin
 end;
 
-procedure unlock();
+// self explanitory
+procedure allocUnlockAll();
 begin
 end;
 
-procedure release();
+procedure allocRelease();
 begin
 end;
 
-procedure flushAll();
+// check every used reg for one holding symbol, clear it and banish them to memory with store
+procedure allocFlushAll();
 begin
 end;
 
-procedure flushCallerSaved();
+// sweep every caller saved register, if dirty store to mem and clear
+// U: before call and syscall to save registers that arent going to be CLOBBERED
+procedure allocFlushCallerSaved();
 begin
 end;
 
-procedure invalidateAll();
+// samae as FlushALl but straight up throws away everything and clears them
+// U: Where symboyls have changed meaning
+procedure allocInvalidateAll();
 begin
 end;
 
-procedure intoRegister();
+// ises symIsArayElem to drop no store, can pin arrays in loops
+procedure allocInvalidateArrays();
 begin
 end;
 
-procedure destRegister();
+procedure allocIntoRegister();
 begin
 end;
 
-procedure readLocation();
+procedure allocDestRegister();
+begin
+end;
+
+procedure allocReadLocation();
 begin
 end;
 
@@ -249,6 +262,7 @@ end;
 
 procedure emitFunctionSetup();
 begin 
+    allocInvalidateAll;
     WriteText('    push rbp' + #10);
     WriteText('    mov rbp, rsp' + #10);
     WriteText('    sub rsp, ');
@@ -277,6 +291,8 @@ begin
             WriteText('    movsd xmm0, ' + result + #10);
     end;
 
+    allocFlushAll; // save and dump
+    allocInvalidateAll; // dump, ready for fresh
     alignedSize := (frameOffset + 15) and not 15;
     paddedSize := Format('%.10d', [alignedSize]);
     savedPos := FpLSeek(fd3, 0, Seek_Cur);
@@ -292,7 +308,7 @@ end;
 
 // CONTROL FLOW -----------------------------------------------------------
 
-procedure emitLabel(labelname: String); begin WriteText(labelname + ':' + #10) end;
+procedure emitLabel(labelname: String); begin allocFlushAll; WriteText(labelname + ':' + #10) end;
 
 // ASSIGNMENT -----------------------------------------------------------
 procedure emitAssign(variable : String; value : String);
@@ -304,6 +320,9 @@ end;
 
 procedure emitAssignArray(variable : String; value : String; atype: String);
 begin
+    if not isNumber(value) then
+        allocInvalidateAll; 
+
     if aType = 'BYTE' then 
         begin
             if value <> 'rax' then
@@ -481,6 +500,7 @@ end;
 
 function emitSyscall(num: String; a: String; b: String; c: String): String;
 begin 
+    allocFlushCallerSaved;
     WriteText('    mov rax, ' + num + #10);
     WriteText('    mov rdi, ' + a + #10);
     WriteText('    mov rsi, ' + b + #10);
@@ -742,6 +762,7 @@ end;
 
 function call(fname: String; first: String; returnsFloat: Boolean): String;
 begin
+        allocFlushCallerSaved; // may get nasty with argparser
           if returnsFloat then
             begin
                 WriteText('    call ' + fname + #10);
@@ -953,11 +974,13 @@ begin
             if isFloatArg then
                 begin
                     WriteText('    movsd xmm' + IntToStr(seenFloats) + ', ' + argname + #10);
+                    allocLock(16 + seenFloats);  // xmm base offset is 16
                     Inc(seenFloats);
                 end
             else
                 begin
                     WriteText('    mov ' + intRegs[seenInts] + ', ' + argname + #10);
+                    allocLock(intRegIndex[seenInts]);
                     Inc(seenInts);
                 end;
 
@@ -967,6 +990,7 @@ begin
                         Inc(argcounter);
         until peek() = 'RPAR';
             consume(); // )
+            allocUnlockAll; 
             argumentParser := call(fname, first, returnsFloat);
 end;
 
@@ -1205,6 +1229,8 @@ begin
             arrayType := 'WORD';
             consume;
             variable := arrayToMem(arrayname, arrayIndex);
+            if not isNumber(arrayIndex) then
+                allocInvalidateArrays;  
             rightside := evaluateExpression(False); 
             emitAssignArray(variable, rightside, arrayType);
             discriminateArrays := True;
@@ -1221,6 +1247,8 @@ begin
             arrayType := 'FLOAT';
             consume;
             variable := arrayToMem(arrayname, arrayIndex);
+            if not isNumber(arrayIndex) then
+                allocInvalidateArrays;  
             rightside := evaluateExpression(True); 
             emitAssignArray(variable, rightside, arrayType);
             discriminateArrays := True;
@@ -1238,6 +1266,8 @@ begin
             arrayType := 'BYTE';
             consume;
             variable := arrayToMem(arrayname, arrayIndex);
+            if not isNumber(arrayIndex) then
+                allocInvalidateArrays;  
             rightside := evaluateExpression(False); 
             emitAssignArray(variable, rightside, arrayType);
             discriminateArrays := True;
@@ -1284,6 +1314,7 @@ begin
 
     if peek() = 'CARET' then // dereference on left side of assign
         begin
+            allocInvalidateAll; // shit gets weird so clear it, memory has changed
 
         end;
 

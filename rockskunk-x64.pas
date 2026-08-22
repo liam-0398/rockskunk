@@ -7,14 +7,14 @@ const
     acceptedKeywords: array[0..13] of String = // MAKE SURE TO UPDATE KEYWORD CHECK WHEN ADDING
     ('ADD', 'F', 'LF', 'LW', 'W', 'IF', 'E', 'P', 'OR', 'AND', 'NOR', 'XOR', 'CALL', 'DO');
 var
-    buf, databuf, textbuf, bbuf: Array[0..65535] of Char;
+    buf, databuf, textbuf, bbuf: Array[0..1048575] of Char;
 
-    symName, symType: array[0..255] of String;
-    symOffset: array[0..255] of Integer;
-    aName, aType, aSize: array[0..255] of String;
+    symName, symType: array[0..1023] of String;
+    symOffset: array[0..1023] of Integer;
+    aName, aType, aSize: array[0..1023] of String;
 
-    tokenKind, tokenValue: Array[0..4096] of String;
-    t_line: Array[0..4096] of Integer;
+    tokenKind, tokenValue: Array[0..65535] of String;
+    t_line: Array[0..65535] of Integer;
 
     loop_TLabel: array [0..64] of String;
     loop_ELabel: array [0..64] of String;
@@ -60,6 +60,7 @@ var
 
 function WhoGoesThere(intruder: String): String; forward;
 function evaluateExpression(isFloat: Boolean): String; forward;
+procedure dispatch(); forward;
 
 // HELPERS =================================================
 // ========================================================
@@ -1231,7 +1232,7 @@ end;
 
 
 // ONE-OFFS ------------
-// all of these are completely broken
+// only do, if, else are broken
 procedure conditionalIntrinsic(); begin end;
 
    {cfKind, cfTLabel, cfELabel, cfLVar: Array[0..64] of String;
@@ -1310,7 +1311,9 @@ end;
 function loopDo(): Boolean;
 var
     loopvar, loopstart, looplimit, toplabel, endlabel: String;
+    loopCounter, doDepth, ls, ll, n, bodyStart, bodyEnd: Integer;
 begin
+    
     consume; //consume LF
     consume; // consume LPAR
     loopvar := consume;
@@ -1319,20 +1322,48 @@ begin
     consume; // until
     looplimit := consume; 
     consume; // RPAR
-    WriteText('    xor rbx, rbx' + #10);
-    WriteText('    cmp rbx, ' + looplimit + #10);
+  
+    loopCounter := position; // starting on {
+    doDepth := 0;
+    
+    repeat
+            if tokenKind[loopCounter] = 'LBRACE' then
+                begin
+                    Inc(doDepth);
+                end;
+            if tokenKind[loopCounter] = 'RBRACE' then
+                    Dec(doDepth);
 
-    toplabel := labelMaker('LF');
-    endlabel := labelMaker('LF');
-    emitLabel(toplabel);
+            Inc(loopCounter);
+        until doDepth = 0;
 
-    WriteText('    jge ' + endlabel + #10);
+    frameOffset := frameOffset + 8;
+    symOffset[symCount] := frameOffset;
+    symName[symCount] := loopvar;
+    Inc(symCount);
+    loopvar := varToMem(loopvar);
 
-    cfKind[cfDepth] := 'DO';
-    cfTLabel[cfDepth] := toplabel;
-    cfELabel[cfDepth] := endlabel;
-    cfLVar[cfDepth] := loopvar;
-    Inc(cfDepth);
+    bodyStart := position + 1;
+    bodyEnd := loopCounter - 1;
+
+    ll := StrToInt(looplimit);
+    ls := StrToInt(loopstart);
+
+    for n := ls to ll - 1 do
+        begin
+            WriteText('    mov qword ' + computeOffset(symOffset[symCount-1]) + ', ' + IntToStr(n) + #10);
+            position := bodyStart;
+            while position < bodyEnd do
+                dispatch;
+        end;
+
+    position := bodyEnd + 1;
+
+    //cfKind[cfDepth] := 'DO';
+    //cfTLabel[cfDepth] := toplabel;
+    //cfELabel[cfDepth] := endlabel;
+    //cfLVar[cfDepth] := loopvar;
+    //Inc(cfDepth);
     loopBodyNext := True;
 end;
 
@@ -1492,16 +1523,12 @@ begin
 end;
 
 // PARSER -----------
-
-procedure parser();
+procedure dispatch();
 var
     isProcedure: Boolean;
     i, seenFloats, seenInts: Integer;
 begin
-    i := 0;
-    position := 0;
-    repeat
-        case peek() of
+     case peek() of
             'F', 'P': begin 
                 isProcedure := constructFunction();
             end;
@@ -1610,6 +1637,17 @@ begin
             end;
         
         end;
+end;
+
+procedure parser();
+var
+    isProcedure: Boolean;
+    i, seenFloats, seenInts: Integer;
+begin
+    i := 0;
+    position := 0;
+    repeat
+       dispatch();
     until position >= tokenCount;
 
     asmFoundations();

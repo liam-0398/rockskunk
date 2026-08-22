@@ -1325,7 +1325,7 @@ begin
                 end;
         end;
 
-    if peek() = 'CARET' then // dereference on left side of assign
+    if peek() = 'CARET' then // dereferenc sym on left side of assign, write through pointer
         begin
             allocInvalidateAll; // shit gets weird so clear it, memory has changed
             consume; // :=

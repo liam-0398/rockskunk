@@ -1349,6 +1349,9 @@ begin
     ll := StrToInt(looplimit);
     ls := StrToInt(loopstart);
 
+    if ll > 100 then
+        writeLn('YOU HAVE FRUSTRATED THE COMPILER - YOU DARE EXCEED 100 ITERATIONS OF A DO LOOP?')
+
     for n := ls to ll - 1 do
         begin
             WriteText('    mov qword ' + computeOffset(symOffset[symCount-1]) + ', ' + IntToStr(n) + #10);

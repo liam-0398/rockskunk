@@ -1718,7 +1718,11 @@ procedure dispatch();
 var
     isProcedure: Boolean; // NEED TO GLOBALIZE, FUCKED
     i, seenFloats, seenInts: Integer;
+    asmgrab, atok, asmend: String;
 begin
+    asmend := '';
+    asmgrab := '';
+    atok := '';
      case peek() of
             'F', 'P': begin 
                 isProcedure := constructFunction();
@@ -1812,7 +1816,21 @@ begin
                 consume; // consume '
             end;
             'ASMBLOCK': begin 
-                consume; // consume '
+                consume; // consume |A
+                while peek() <> 'PIPE' Do
+                    begin
+                        asmgrab := '';
+                        while peek() <> 'TILDE' do
+                            begin
+                                atok := consume; 
+                                atok := atok + ' ';
+                                asmgrab := asmgrab + atok + '';
+                            end;
+                        asmend := asmend + '    ' + asmgrab + #10;
+                        consume; // ~
+                    end;
+                WriteText(asmend);
+                consume; // |    
             end;
             //'STRING': begin 
             //    consume; // consume '
@@ -1948,6 +1966,7 @@ begin
                     '^': assignSingleChar('^', 'CARET');
                     '$': assignSingleChar('$', 'DOLLAR');
                     '!': assignSingleChar('!', 'BANG');
+                    '~': assignSingleChar('~', 'TILDE');
 
                     ';': begin   // comment — skip to end of line, emits no token
                         while (i < bytes) and (buf[i] <> #10) do

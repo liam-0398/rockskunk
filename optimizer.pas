@@ -64,6 +64,15 @@ begin
     // xmm store reload
     RE.Expression := '^[ \t]*movsd[ \t]*\[rbp-(\d+)\][ \t]*,[ \t]*(xmm\d+)[ \t]*\r?\n[ \t]*movsd[ \t]*\2[ \t]*,[ \t]*\[rbp-\1\][ \t]*\r?\n';
     contents := RE.Replace(contents, '', True);  
+
+    // zero byte stack
+    RE.Expression := '^[ \t]*(sub|add)[ \t]+rsp[ \t]*,[ \t]*0+[ \t]*\r?\n';
+    contents := RE.Replace(contents, '', True);
+
+    // duplicates
+    RE.Expression := '^([ \t]*(mov|movsd|movss|lea|and|or|xor|add|sub|cmp)[ \t]+[^\r\n]+)\r?\n\1[ \t]*\r?\n';
+    contents := RE.Replace(contents, '$1' + LineEnding, True);
+
 end;
 
 procedure optimize();

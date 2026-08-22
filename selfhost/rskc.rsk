@@ -175,7 +175,6 @@ P arrayInit() {
 }
 
 F main() {
-    |A mov rax, 5~ |
     writeLn('RSCK - INIT')
     arrayInit()
     openFiles()

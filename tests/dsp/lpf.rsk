@@ -1,0 +1,18 @@
+F lowpass(x:f, a:f, yprev:f) {
+    diff := x - yprev
+    scaled := diff * a
+    r := yprev + scaled
+}
+
+P main() {
+    y := 0.0
+    x := 1.0
+    a := 0.5
+    n := 0
+
+    LF (n := 0 until 5000000) {
+        y := lowpass(x, a, y)
+    }
+
+    printf(y)
+}

@@ -1350,7 +1350,7 @@ begin
     ls := StrToInt(loopstart);
 
     if ll > 100 then
-        writeLn('YOU HAVE FRUSTRATED THE COMPILER - YOU DARE EXCEED 100 ITERATIONS OF A DO LOOP?')
+        writeLn('YOU HAVE FRUSTRATED THE COMPILER - YOU DARE EXCEED 100 ITERATIONS OF A DO LOOP?');
 
     for n := ls to ll - 1 do
         begin
@@ -1361,12 +1361,6 @@ begin
         end;
 
     position := bodyEnd + 1;
-
-    //cfKind[cfDepth] := 'DO';
-    //cfTLabel[cfDepth] := toplabel;
-    //cfELabel[cfDepth] := endlabel;
-    //cfLVar[cfDepth] := loopvar;
-    //Inc(cfDepth);
     loopBodyNext := True;
 end;
 
@@ -1446,7 +1440,7 @@ begin
                                             if peekV() = 'f' then
                                                 begin
                                                     symType[symCount - 1] := 'FLOAT'; // int param for now
-                                                    param_FType[param_FCount - 1] := 'FLOAT';
+                                                    param_FType[param_FCount] := 'FLOAT';
                                                     consume; // consume f
                                                 end
                                             else

@@ -1,0 +1,34 @@
+|V coeffs{4} signal{99} output{99} |
+
+P main() {
+    coeffs{0} := 0.25
+    coeffs{1} := 0.25
+    coeffs{2} := 0.25
+    coeffs{3} := 0.25
+
+    n := 0
+    LF (n := 0 until 100) {
+        signal{n} := 1.0
+    }
+
+    sum := 0.0
+    tap := 0.0
+    samp := 0.0
+    prod := 0.0
+
+    n := 3
+    LF (n := 3 until 100) {
+        sum := 0.0
+        DO (i := 0 until 4) {
+            idx := n - i
+            tap := coeffs{i}
+            samp := signal{idx}
+            prod := tap * samp
+            sum := sum + prod
+        }
+        output{n} := sum
+    }
+
+    r := output{19}
+    printf(r)
+}

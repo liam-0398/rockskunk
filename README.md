@@ -116,12 +116,13 @@ P functionName(a1, a2: f) { ; PROCEDURE, NO RETURN
 }
 
 ; For Loop
-LF (i := 1 until 10) {
+LF (i := 1 until x) {
     writeLn("ANNOYING MESSAGE")
 }
 
 ; Do Loop
 ; Use with only lits or static definitions, speed and efficieny increase over LF
+; Unrolled
 DO (i := 1 until 10) {
     writeLn("ANNOYING MESSAGE")
 }

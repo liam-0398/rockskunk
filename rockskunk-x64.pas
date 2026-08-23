@@ -119,6 +119,40 @@ procedure writeText(s: String); begin fpWrite(fd3, s[1], Length(s)); end;
 procedure writeData(s: String); begin fpWrite(fd4, s[1], Length(s)); end;
 procedure writeBSS(s: String); begin fpWrite(fd5, s[1], Length(s)); end;
 
+
+function matchName(variable, which: String): Boolean;
+var
+    i: LongInt;
+begin
+    matchName := False;
+    if which = 'ARRAY' then
+    begin
+        for i := 0 to aCount - 1 do
+            if variable = aName[i] then
+                matchName := True;
+    end
+    else if which = 'SYM' then
+    begin
+        for i := 0 to symCount - 1 do
+            if variable = symName[i] then
+                matchName := True;
+    end
+    else if which = 'PARAM' then
+    begin
+        for i := 0 to param_FCount - 1 do
+            if variable = param_FName[i] then
+                matchName := True;
+    end
+    else if which = 'RETURN' then
+    begin
+        for i := 0 to return_FCount - 1 do
+            if variable = return_FName[i] then
+                matchName := True;
+    end
+    else
+        WriteLn('YOU HAVE FRUSTRATED THE COMPLIER - MATCHNAME - WRONG SEARCH TYPE');
+end;
+
 function keywordCheck(word: String): Boolean; // Flag keywords
 var
     i: Integer;

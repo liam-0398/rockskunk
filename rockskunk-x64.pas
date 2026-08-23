@@ -22,7 +22,7 @@ const
         True,  True,  True,  True,  True,  True,  True,  True
     );
 var
-    Debug: Boolean = True;
+    Debug: Boolean = True; // TOGGLE DEBUG OUTPUT 
     Alloc: Boolean = False;
 
     // Tokens
@@ -86,7 +86,7 @@ procedure dispatch(); forward;
 
 procedure hardFault(location, input: String);
 begin
-    if not Debug then Exit else begin
+    if Debug = False then Exit else begin
          WriteLn(IntToStr(t_line[position]) + ' - ' + 'I CANT BELIEVE YOUVE DONE THIS - ' + location + ' - UNK SYMBOL>> ' + input);
             Halt(1); 
     end;
@@ -94,7 +94,7 @@ end;
 
 procedure statusMessage(input: String);
 begin
-    if not Debug then Exit else begin
+    if Debug = False then Exit else begin
          WriteLn(IntToStr(t_line[position]) + ' - ' + input);
             Halt(1); 
     end;
@@ -156,13 +156,13 @@ procedure openFile;
 var
     libBytes: CInt;
 begin
-    WriteLn('LOADING STANDARD LIBRARY');
+    WriteLn(#10 + 'LOADING STANDARD LIBRARY');
     FillChar(buf, SizeOf(buf), 0);
     fd := fpOpen(stdlib_filename, O_RdOnly);
     libBytes := FpRead(fd, buf, SizeOf(buf));
     fpClose(fd);
 
-    WriteLn(IntToStr(t_line[position]) + ' - ' + 'LOADING SOURCEFILE LIBRARY');
+    WriteLn('LOADING SOURCEFILE LIBRARY');
     fd := fpOpen(filename, O_RdOnly);
     bytes := FpRead(fd, buf[libBytes], SizeOf(buf) - libBytes);
     fpClose(fd);
@@ -2082,7 +2082,6 @@ begin
                         if isKeyword then  
                             begin
                                 tokenKind[tokenCount] := UpperCase(word);
-                                WriteLn(UpperCase(word)); // DEBUG PRINT
                             end
                             else
                                 begin
@@ -2245,7 +2244,7 @@ var
     cmd: String;
     result: Integer;
 begin
-    //WriteLn(IntToStr(t_line[position]) + ' - ' + 'NASM - START'); // DEBUG
+    WriteLn('FLY FREE LITTLE BIRD'); 
     cmd := 'nasm -f elf64 intermediate.asm -o ' + outputName + '.o';
     result := fpSystem(cmd);
     if result <> 0 then
@@ -2260,8 +2259,9 @@ begin
         begin
             WriteLn(IntToStr(t_line[position]) + ' - ' + 'I CANT BELIEVE YOUVE DONE THIS - LINK FAILED');
             Halt(1);
-        end;
-    //WriteLn(IntToStr(t_line[position]) + ' - ' + 'NASM - END'); // DEBUG
+        end
+    else
+        WriteLn('ASSEMBLED AND LINKED' + #10); 
 end;
 
 begin
@@ -2274,6 +2274,7 @@ if ParamCount = 1 then
         openFile;
         lexer;
         openIntermediateFile;
+        writeLn('DUTIFULLY PARSING');
         parser;
         closeIntermediateFile;
         writeASM;
@@ -2283,7 +2284,7 @@ if ParamCount = 1 then
     end
 else
     begin
-    WriteLn('No File Loaded');
+    WriteLn(#10 + 'No File Loaded' + #10);
     end;
 end.
 

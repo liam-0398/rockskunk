@@ -20,7 +20,6 @@ implementation
 
 procedure openFileO();
 begin
-    WriteLn('OPTIMIZER - OPENING FILE');
     fd := fpOpen(filename, O_RDWR);
     bytes := FpRead(fd, buf[0], SizeOf(buf));
         if bytes = 0 then
@@ -42,7 +41,6 @@ end;
 
 procedure deadCodePass();
 begin
-    WriteLn('OPTIMIZER - DEAD CODE');
 
     // store reload fix across all registers (label-safe)
     // store reload fix across all registers

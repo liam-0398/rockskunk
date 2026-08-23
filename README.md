@@ -81,9 +81,9 @@ ADD("dir/ofile.rsk")'
 ; global variables (before first function)
 |V
     a := 500
-    b := 42342/0f
+    b := 42342.0f
     string := 'bigfootisreal'
-    array[1] := 333' |
+    array[1] |
 
 
 ; Static assignments (before first function)
@@ -98,19 +98,29 @@ ADD("dir/ofile.rsk")'
     len := N+1
     fb := N+2 |
 
-delayLine.buf := 5'
-result := delayLine.wptr'
+delayLine.buf := 5
+result := delayLine.wptr
 
 
 ; assignments
     a := b
-    array[1] := 555 ; raw memory
-    array![1] := 3 ; byte array
-    array{1} := 23.4f ; float
-    array<1> := "hello world" ; string (not in yet)
+    array[1] := 555     ; raw memory
+    array![1] := 3      ; byte array
+    array{1} := 23.4f   ; float
+    array<1> := 'str'   ; string (not in yet)
 
 ; Misc
     BREAK ; you know what this is
+    [[label]] ; bypass the symbol table and use a nasm label directly
+
+; Intrinsics
+    ASM
+    printc() ;char
+    printf() ;float
+    printw() ;word (ints, the usual)
+    STANDARD LIBRARY
+    writeln()
+    tons of syscalls
 
 
 ; Functions

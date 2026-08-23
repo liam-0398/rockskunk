@@ -6,8 +6,8 @@ uses
 const
     intRegs: array[0..5] of String = ('rdi', 'rsi', 'rdx', 'rcx', 'r8', 'r9'); // SYSV ABI
     intRegIndex: array[0..5] of Integer = (7, 6, 2, 1, 8, 9); //encoding order
-    acceptedKeywords: array[0..13] of String = // MAKE SURE TO UPDATE KEYWORD CHECK WHEN ADDING
-    ('ADD', 'F', 'LF', 'LW', 'W', 'IF', 'E', 'P', 'OR', 'AND', 'NOR', 'XOR', 'CALL', 'DO');
+    acceptedKeywords: array[0..14] of String = // MAKE SURE TO UPDATE KEYWORD CHECK WHEN ADDING
+    ('ADD', 'F', 'LF', 'LW', 'W', 'IF', 'LOCATE', 'E', 'P', 'OR', 'AND', 'NOR', 'XOR', 'CALL', 'DO');
     regName: array[0..31] of String = (
         'rax', 'rcx', 'rdx', 'rbx', 'rsp', 'rbp', 'rsi', 'rdi',
         'r8',  'r9',  'r10', 'r11', 'r12', 'r13', 'r14', 'r15',
@@ -24,6 +24,9 @@ const
 var
     Debug: Boolean = True; // TOGGLE DEBUG OUTPUT 
     Alloc: Boolean = False;
+
+    // I/O
+    buf, databuf, textbuf, bbuf: Array[0..1048575] of Char;
 
     // Tokens
     tokenKind, tokenValue: Array[0..65535] of String;
@@ -58,9 +61,6 @@ var
     symOffset, symReg, symNextUse: array[0..1023] of Integer;
     aName, aType, aSize: array[0..1023] of String;
 
-    // I/O
-    buf, databuf, textbuf, bbuf: Array[0..1048575] of Char;
-
     currentFN: String;
     bytes, bbytes, fd, fd2, fd3, fd4, fd5: CInt;
     filename, output_filename, stdlib_filename, returnAddr: String;
@@ -81,6 +81,7 @@ var
 function WhoGoesThere(intruder: String): String; forward;
 function evaluateExpression(isFloat: Boolean): String; forward;
 procedure dispatch(); forward;
+function loopLocate(): Boolean; forward;
 
 // DEBUG
 
@@ -111,7 +112,7 @@ var
     i: Integer;
 begin
     keywordCheck := False;
-    for i := 0 to 13 do
+    for i := 0 to 14 do
         begin
             if word = acceptedKeywords[i] then 
                 begin
@@ -1573,6 +1574,75 @@ begin
     Inc(cfDepth);
 end;
 
+function loopLocate(): Boolean;
+var
+    cvar, needle, arrname, countTok, endlabel, toplabel, nextlabel: String;
+    elementSize, countVal, n: Integer;
+    arrType: String;
+    needleVal, cMem: String;
+    i: Integer;
+begin
+    consume; // LOCATE
+    consume; // (
+    cvar := varToMem(consume);         // c — must already be declared, per other loop vars
+    consume; // ,
+    needle := consume();
+    if not isNumber(needle) then
+        needle := varToMem(needle);    // reuse the same pattern as ifFloatIfVar for the needle operand
+    consume; // ,
+    arrname := consume();
+    consume; // [
+    countTok := consume();             // literal count in checking[N] — sets iteration bound directly
+    consume; // ]
+    consume; // )
+
+    for i := 0 to aCount - 1 do
+        if aName[i] = arrname then
+            arrType := aType[i];
+
+    if arrType = 'BYTE' then elementSize := 1 else elementSize := 8;
+
+    WriteText('    mov qword ' + cvar + ', -1' + #10);   // c := -1, assume not found
+
+    if isNumber(countTok) and (StrToInt(countTok) < 10) then
+        begin
+            countVal := StrToInt(countTok);
+            endlabel := labelMaker('LOC');
+            for n := 0 to countVal - 1 do
+                begin
+                    WriteText('    mov rax, [' + arrname + ' + ' + IntToStr(n * elementSize) + ']' + #10);
+                    WriteText('    cmp rax, ' + needle + #10);
+                    nextlabel := labelMaker('LOC');
+                    WriteText('    jne ' + nextlabel + #10);
+                    WriteText('    mov qword ' + cvar + ', ' + IntToStr(n) + #10);
+                    WriteText('    jmp ' + endlabel + #10);
+                    emitLabel(nextlabel);
+                end;
+            emitLabel(endlabel);
+        end
+    else
+        begin
+            WriteText('    mov r11, 0' + #10);            // loop counter, deliberately avoiding rax/rcx/rdx/r10 (syscall regs) and rbx
+            toplabel := labelMaker('LOC');
+            endlabel := labelMaker('LOC');
+            emitLabel(toplabel);
+            WriteText('    cmp r11, ' + countTok + #10);
+            WriteText('    jge ' + endlabel + #10);
+            WriteText('    mov rax, [' + arrname + ' + r11*' + IntToStr(elementSize) + ']' + #10);
+            WriteText('    cmp rax, ' + needle + #10);
+            nextlabel := labelMaker('LOC');
+            WriteText('    jne ' + nextlabel + #10);
+            WriteText('    mov qword ' + cvar + ', r11' + #10);
+            WriteText('    jmp ' + endlabel + #10);
+            emitLabel(nextlabel);
+            WriteText('    inc r11' + #10);
+            WriteText('    jmp ' + toplabel + #10);
+            emitLabel(endlabel);
+        end;
+
+    loopLocate := True;
+end;
+
 function loopDo(): Boolean;
 var
     loopvar, loopstart, looplimit, toplabel, endlabel: String;
@@ -1931,6 +2001,7 @@ begin
             'E': begin condElse(); end;
             'LF': begin loopFor(); end;
             'LW': begin loopWhile(); end;
+            'LOCATE': begin loopLocate(); end;
             'DO': begin loopDo(); end;
             'VARBLOCK': begin varBlock(); end;
             'STATICBLOCK': begin 
@@ -2019,7 +2090,7 @@ begin
     word := '';
     tokenCount := 0;
 
-    for i := 0 to 1023 do
+    for i := 0 to 32767 do
         begin
             tokenKind[i] := '';
             tokenValue[i] := '';
@@ -2162,6 +2233,12 @@ begin
                                 word := word + buf[i];
                             Inc(i);
                         end;
+
+                        if i >= bytes then
+                            begin
+                                WriteLn('I CANT BELIEVE YOUVE DONE THIS - FORGOT A CLOSING QUOTE AND NOW MY LEXER IS SPEAKING IN TOUNGES ' + IntToStr(linecount));
+                                Halt(1);
+                            end;
                         // buf[i] is now closing quote
                         assignSingleChar(word,'STRING');
                         // no Dec(i) needed, already on closing quote, main Inc(i) moves past it

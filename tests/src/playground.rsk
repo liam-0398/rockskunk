@@ -1,7 +1,12 @@
 
+|V checking[100] |
+
 P main() {
-    a := 5
-    b := 10
-    d := a + b
-    printw(d)
+    checking[88] := 55
+    variable := 55
+    c := 0
+    i := 0
+    LOCATE (c, variable, checking[100])
+        IF (c >= 0) { index := c writeln('GOT IT')}
+        E { writeln('NOT FOUND') }
 }

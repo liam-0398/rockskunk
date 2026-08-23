@@ -145,6 +145,12 @@ LW (i <= 500) {
     i++
 }
 
+; LOCATE - specialized array search. Do loop under 10 iterations, for loop for more.
+; c is local var and is returned -1 for no match and otherwise returns the index of the match
+LOCATE (c, variable, checking[100])
+        IF (c >= 0) { index := c }
+        E { writeln('NOT FOUND) }
+
 
 ; When (singluar if)
 W (i = 5) {

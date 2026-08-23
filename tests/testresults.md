@@ -1,6 +1,6 @@
 i7-9750H on battery, binary on NFS share.
 # dsp/lpf
-3 runs, 5,000,000 iterations
+5,000,000 iterations
 Optimizer dead code elimination, no register allocation
 /NFS/Code/rockskunk $ > time ./lpf
 1.000 
@@ -19,7 +19,7 @@ user    0m0.088s
 sys     0m0.006s
 
 # dsp/firfilter
-99 arrays, loops 100
+99 index arrays, loops 100 iterations
 Optimizer dead code elimination, no register allocation
 /NFS/Code/rockskunk $ > time ./firfilter
 1.000 
@@ -39,6 +39,7 @@ sys     0m0.007s
 /NFS/Code/rockskunk $ > 
 
 # dsp/advreverb
+200,000,000 iterations
 /NFS/Code/rockskunk $ > time ./advreverb 
 0.500 
 

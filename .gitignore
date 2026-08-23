@@ -13,3 +13,6 @@ bss.tmp
 rskc
 optimizer.ppu
 optimizer.o
+advreverb
+firfilter
+lpf

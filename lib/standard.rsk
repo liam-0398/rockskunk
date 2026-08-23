@@ -17,6 +17,52 @@ F fstat(fd, statbuf) { r := sys(5, fd, statbuf, 0, 0, 0, 0) }
 F mkdir(path, mode) { r := sys(83, path, mode, 0, 0, 0, 0) }
 F close(fd) { r := sys(3, fd, 0, 0, 0, 0, 0) }
 
+F stat(path, statbuf) { r := sys(4, path, statbuf, 0, 0, 0, 0) }
+F lstat(path, statbuf) { r := sys(6, path, statbuf, 0, 0, 0, 0) }
+F getdents64(fd, dirent, count) { r := sys(217, fd, dirent, count, 0, 0, 0) }
+F chdir(path) { r := sys(80, path, 0, 0, 0, 0, 0) }
+F getcwd(buf, size) { r := sys(79, buf, size, 0, 0, 0, 0) }
+F readlink(path, buf, bufsize) { r := sys(89, path, buf, bufsize, 0, 0, 0) }
+
+; EXEC -------------------------------------------------------------
+
+F execve(path, argv, envp) { r := sys(59, path, argv, envp, 0, 0, 0) }
+F execveat(dirfd, path, argv, envp, flags) { r := sys(322, dirfd, path, argv, envp, flags, 0) }
+F fork() { r := sys(57, 0, 0, 0, 0, 0, 0) }
+F vfork() { r := sys(58, 0, 0, 0, 0, 0, 0) }
+F clone(flags, stack, ptid, ctid, tls) { r := sys(56, flags, stack, ptid, ctid, tls, 0) }
+F wait4(pid, wstatus, options, rusage) { r := sys(61, pid, wstatus, options, rusage, 0, 0) }
+F exitgroup(code) { r := sys(231, code, 0, 0, 0, 0, 0) }
+F pipe2(pipefd, flags) { r := sys(293, pipefd, flags, 0, 0, 0, 0) }
+F dup2(oldfd, newfd) { r := sys(33, oldfd, newfd, 0, 0, 0, 0) }
+F kill(pid, sig) { r := sys(62, pid, sig, 0, 0, 0, 0) }
+
+; NETWORKING -----------------------------------------------------------
+
+; sockaddr_in, connect, bind, accept required point to packed byte array
+; not sure how to do this yet
+
+F socket(domain, type, protocol) { r := sys(41, domain, type, protocol, 0, 0, 0) }
+F connect(fd, addr, addrlen) { r := sys(42, fd, addr, addrlen, 0, 0, 0) }
+F accept(fd, addr, addrlen) { r := sys(43, fd, addr, addrlen, 0, 0, 0) }
+F accept4(fd, addr, addrlen, flags) { r := sys(288, fd, addr, addrlen, flags, 0, 0) }
+F bind(fd, addr, addrlen) { r := sys(49, fd, addr, addrlen, 0, 0, 0) }
+F listen(fd, backlog) { r := sys(50, fd, backlog, 0, 0, 0, 0) }
+F sendto(fd, buf, len, flags, addr, addrlen) { r := sys(44, fd, buf, len, flags, addr, addrlen) }
+F recvfrom(fd, buf, len, flags, addr, addrlen) { r := sys(45, fd, buf, len, flags, addr, addrlen) }
+F sockshutdown(fd, how) { r := sys(48, fd, how, 0, 0, 0, 0) }
+F getsockopt(fd, level, optname, optval, optlen) { r := sys(55, fd, level, optname, optval, optlen, 0) }
+F setsockopt(fd, level, optname, optval, optlen) { r := sys(54, fd, level, optname, optval, optlen, 0) }
+F getsockname(fd, addr, addrlen) { r := sys(51, fd, addr, addrlen, 0, 0, 0) }
+F getpeername(fd, addr, addrlen) { r := sys(52, fd, addr, addrlen, 0, 0, 0) }
+
+; Polling ------------------------------------------------------------------
+
+F poll(fds, nfds, timeout) { r := sys(7, fds, nfds, timeout, 0, 0, 0) }
+F epollcreate1(flags) { r := sys(291, flags, 0, 0, 0, 0, 0) }
+F epollctl(epfd, op, fd, event) { r := sys(233, epfd, op, fd, event, 0, 0) }
+F epollwait(epfd, events, maxevents, timeout) { r := sys(232, epfd, events, maxevents, timeout, 0, 0) }
+
 ; OUTPUT ----------------------------------------------------------------
 
 P writeln(s) { 
@@ -120,12 +166,29 @@ F sqr(a) {
 F cube(a) {
     r := a * a * a
 }
+; TIming ------------------------------------------------------------------
 
+F clockgettime(clockid, ts) { r := sys(228, clockid, ts, 0, 0, 0, 0) }
+F nanosleep(req, rem) { r := sys(35, req, rem, 0, 0, 0, 0) }
+F timercreate(clockid, sevp, timerid) { r := sys(222, clockid, sevp, timerid, 0, 0, 0) }
+F timersettime(timerid, flags, newval, oldval) { r := sys(223, timerid, flags, newval, oldval, 0, 0) }
 
-; Conversion -----------------------------------------------------------------
+; Memory -----------------------------------------------------------------
 
+F mmap(addr, len, prot, flags, fd, offset) { r := sys(9, addr, len, prot, flags, fd, offset) }
+F munmap(addr, len) { r := sys(11, addr, len, 0, 0, 0, 0) }
+F mprotect(addr, len, prot) { r := sys(10, addr, len, prot, 0, 0, 0) }
+F mlock(addr, len) { r := sys(149, addr, len, 0, 0, 0, 0) }
+F mlockall(flags) { r := sys(151, flags, 0, 0, 0, 0, 0) }
 
+; Sceduling -------------------------------------------------------------------
 
+F schedsetscheduler(pid, policy, param) { r := sys(144, pid, policy, param, 0, 0, 0) }
+F schedsetaffinity(pid, cpusetsize, mask) { r := sys(203, pid, cpusetsize, mask, 0, 0, 0) }
+
+; Devices ---------------------------------------------------------------------
+
+F ioctl(fd, request, arg) { r := sys(16, fd, request, arg, 0, 0, 0) }
 
 ; Utility --------------------------------------------------------------------
 

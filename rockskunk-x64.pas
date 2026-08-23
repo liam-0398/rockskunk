@@ -736,18 +736,35 @@ end;
 
 function varToMem(variable: String): String;
 var
-    i: Integer;
+    match: String;
+    i, foundIndex: Integer;
 begin
-    for i := 0 to aCount - 1 do       
-        if aName[i] = variable then
-            Exit(variable);
+    varToMem := '';
+    foundIndex := -1;
 
-    varToMem := ''; 
-    for i := 0 to symCount - 1 do
+    for i := 0 to aCount - 1 do // grab index for type check
+    begin
+        if aName[i] = variable then
         begin
+            foundIndex := i;
+            Break;
+        end;
+    end;
+
+    if foundIndex = - 1 then // if it wasnt found its a local
+    begin
+        for i := 0 to symCount - 1 do
             if symName[i] = variable then
                 VarToMem := '[rbp-' + IntToStr(symOffset[i]) + ']';
-        end;
+    end
+    else
+    begin
+        if aType[foundIndex] <> 'VAR' then // array
+            Exit(variable)
+        else // global
+            VarToMem := '[' + variable + ']';
+    end;
+
     if varToMem = '' then
         hardFault('VAR_TO_MEM', variable);
 end;

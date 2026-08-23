@@ -1,0 +1,98 @@
+; SKUNKINIT
+; NO-BULLSHIT INIT SYSTEM
+|V
+
+    fsckCall[3]
+    depmodCall[2]
+    servicesCall[2]
+    mountaCall[2]
+    swaponCall[2]
+    initmiscCall[2]
+|
+
+
+P misc() {
+    write(console, 'COMPLETING MISC FUNCTIONS\n', 26)
+
+    mountaCall[0] := 'mount'
+    mountaCall[1] := '-a'
+    mountaCall[3] := nil
+
+    pid := fork();
+        IF (pid = 0) {
+            ; rdrlog
+            execve('/bin/sh', fsckCall) }
+        E { } ; waitPID waitpid(pid, @status, 0)
+
+    ; reap
+}
+
+P services() {
+    write(console, 'STARTING SERVICES\n', 10)
+    logfile := '/etc/sinit/log_services'
+    servicesCall[0] := '/bin/sh'
+    servicesCall[1] := '/etc/sinit/init_services'
+    servicesCall[3] := nil
+
+    pid := fork();
+        IF (pid = 0) {
+            ; rdrlog
+            execve('/bin/sh', fsckCall) }
+        E { } ; waitPID waitpid(pid, @status, 0)
+
+    ; reap
+}
+
+P kMod() {
+    write(console, 'GENERATING KERNEL MODULE DEPENDENCIES\n', 37)
+    depmodCall[0] := 'depmod'
+    depmodCall[1] := '-a'
+    depmodCall[3] := nil
+
+    pid := fork();
+        IF (pid = 0) { execve('/usr/bin/depmod', fsckCall) }
+        E { } ; waitPID waitpid(pid, @status, 0)
+}
+
+P remount() {
+    write(console, 'REMOUNTING ROOT FILESYSTEM R/W\n', 31)
+    fsckCall[0] := 'fsck'
+    fsckCall[1] := '-A'
+    fsckCall[2] := '-a'
+    fsckCall[3] := nil
+
+    pid := fork();
+        IF (pid = 0) { execve('/sbin/fsck', fsckCall) }
+        E { } ; waitPID waitpid(pid, @status, 0)
+
+    mountroot := '/' + 8
+    mount(nil, mountroot, nil, 32, nil)
+}
+
+P initialMount() {
+    proc := 'proc' + 8      procs := '/proc' + 8
+    sys := 'sys' + 8        syss := '/sys' + 8
+    devt := 'devtmpfs' + 8  dev := '/dev' + 8
+
+    mount(proc, procs, proc, 0, nil)
+    mount(sys, syss, sys, 0, nil)
+    mount(devt, dev, devt, 0, nil)
+
+    console := open('/dev/console', 1)
+    write(console, 'INITIAL FILESYSTEMS MOUNTED\n', 28);
+}
+
+P main() {
+    IF (getpid() <> 1) { exit(1) }
+
+    initialMount()
+    remount()
+    kMod()
+    misc()
+    dev()
+    services()
+
+    spawnGetty()
+
+
+}

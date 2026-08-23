@@ -5,7 +5,7 @@ Very WIP. WAY down the line I want to do a ppc32 version as well so i can get we
 
 # Core tenants 
 
-1. Two types: Float64 (IEEE-754). String (pointer, legnth prepended). Everything else is just raw memory (8-byte qword)
+1. One formal type: Float64. Everything else is just raw memory (8-byte qword)
 2. Compiles directly to x86_64 NASM 
 3. Contains vector intrinsics that use SIMD registers based on what CPUFLAGS are availble. Can be set with command line argument to target older/newer CPUs. Detection is done in-compiler in Pascal with branching for every variation.
 4. Memory is flat, arrays are offsets. 
@@ -105,10 +105,9 @@ result := delayLine.wptr
 
 ; assignments
     a := b
-    array[1] := 555     ; raw memory
+    array[1] := 555     ; qword
     array![1] := 3      ; byte array
     array{1} := 23.4f   ; float
-    array<1> := 'str'   ; string (not in yet)
 
 ; Misc
     BREAK ; you know what this is

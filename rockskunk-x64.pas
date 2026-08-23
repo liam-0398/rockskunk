@@ -29,6 +29,7 @@ var
     // Control Flow
     cfKind, cfTLabel, cfELabel, cfLVar: Array[0..64] of String;
     cfDepth: Integer;
+    chainContinuing: Boolean;
 
     // for capturing return types so assingment to function return knows whats up
     return_FName: array[0..255] of String; 
@@ -69,7 +70,6 @@ var
    REMEMBER REDO ASM OUTPUT PRIMITIVES
    PASCAL FFI
    VECTORS
-   IF/ELSE
    REGISTER ALLOC
 }
 
@@ -1464,8 +1464,9 @@ begin
 end;
 
 
-// ONE-OFFS ------------
-// only do, if, else are broken
+// CONTROL FLOW =============================================================
+// USE AT YOUR OWN RISK ONLY DO , WHILE AND WHEN ARE PROVEN
+
 procedure conditionalIntrinsic(); begin end;
 
    {cfKind, cfTLabel, cfELabel, cfLVar: Array[0..64] of String;
@@ -1499,8 +1500,6 @@ begin
     toplabel := labelMaker('LW');
     endlabel := labelMaker('LW');
     emitLabel(toplabel); // it is I, the start of the loop
-    //loop_TLabelW[loop_IndexW] := toplabel;
-    //loop_ELabelW[loop_IndexW] := endlabel;
 
     WriteText('    mov rax, ' + loopvar + #10);    
     WriteText('    cmp rax, ' + looplimit + #10);    
@@ -1633,7 +1632,7 @@ end;
 
 procedure condIf(); 
 var
-    condvar, condition, condlimit, endlabel: String;
+    condvar, condition, condlimit, endlabel, misslabel: String;
 begin
     consume; //consume W
     consume; // consume LPAR
@@ -1646,19 +1645,39 @@ begin
     if not isNumber(condlimit) then
         condlimit := varToMem(condlimit);
 
-    endlabel := labelMaker('W');
+    if not chainContinuing then
+        begin
+            // first IF of a fresh chain - mint the ONE label every branch converges to
+            endlabel := labelMaker('IF');
+            cfELabel[cfDepth] := endlabel;
+            cfKind[cfDepth] := 'IF';
+            Inc(cfDepth);
+        end;
+    // else: chain already has a frame on top of the stack, reuse it as-is
+
+    misslabel := labelMaker('IF');
+    cfTLabel[cfDepth - 1] := misslabel;   // stash for RBRACE to emit when this branch's body closes
 
     WriteText('    mov rax, ' + condvar + #10);
     WriteText('    cmp rax, ' + condlimit + #10);
+    condJumpTable(condition, misslabel);  // jump HERE if false, not to endlabel
 
-    condJumpTable(condition, endlabel);
-
-    cfKind[cfDepth] := 'WHEN';
-    cfELabel[cfDepth] := endlabel;
-    Inc(cfDepth);
+    chainContinuing := False;
 end;
 
-procedure condElse(); begin consume; end;
+procedure condElse();
+begin
+    consume;
+
+    if not chainContinuing then
+        begin
+            WriteLn(IntToStr(t_line[position]) + ' - ' + 'I CANT BELIEVE YOUVE DONE THIS - COND_ELSE - E WITH NO PRECEDING IF');
+            Halt(1);
+        end;
+
+    cfKind[cfDepth - 1] := 'E';   
+    chainContinuing := False;
+end;
 
 function constructFunction(): Boolean;
 var
@@ -1791,6 +1810,37 @@ begin
 end;
 
 // PARSER -----------
+
+procedure rightbrace();
+begin
+    consume;
+            if cfDepth > 0 then
+                begin
+                    Dec(cfDepth);
+                    case cfKind[cfDepth] of
+                        'FOR': begin
+                            WriteText('    inc qword ' + cfLVar[cfDepth] + #10);
+                            WriteText('    jmp ' + cfTLabel[cfDepth] + #10);
+                            emitLabel(cfELabel[cfDepth]);
+                        end;
+                        'WHILE': begin
+                            WriteText('    jmp ' + cfTLabel[cfDepth] + #10);
+                            emitLabel(cfELabel[cfDepth]);
+                        end;
+                        'WHEN': begin emitLabel(cfELabel[cfDepth]); end;
+                        'IF': begin
+                            WriteText('    jmp ' + cfELabel[cfDepth] + #10);  
+                            emitLabel(cfTLabel[cfDepth]);                     
+                            chainContinuing := True;
+                            Inc(cfDepth);   
+                        end;
+                        'E': begin emitLabel(cfELabel[cfDepth]); end;
+                    end;
+                end
+                else
+                    emitFunctionTeardown(returnAddr, isProcedure);
+end;
+
 procedure dispatch();
 var
     isProcedure: Boolean; // NEED TO GLOBALIZE, FUCKED
@@ -1837,57 +1887,21 @@ begin
                                 end;
                     end;  
                 end;
-            'RBRACE': begin 
-                consume;
-                    if cfDepth > 0 then
-                    begin
-                        Dec(cfDepth);
-                        case cfKind[cfDepth] of
-                            'FOR': begin
-                                WriteText('    inc qword ' + cfLVar[cfDepth] + #10); // or whatever your increment emit looks like
-                                WriteText('    jmp ' + cfTLabel[cfDepth] + #10);
-                                emitLabel(cfELabel[cfDepth]);
-                            end;
-                            'WHILE': begin
-                                WriteText('    jmp ' + cfTLabel[cfDepth] + #10);
-                                emitLabel(cfELabel[cfDepth]);
-                            end;
-                            'WHEN': emitLabel(cfELabel[cfDepth]);
-                        end;
-                    end
-                    else
-                        emitFunctionTeardown(returnAddr, isProcedure);
-            end;
-            'IDENTIFIER': begin 
-                discriminateIdentifier();
-            end;
-            'ASSIGN': begin 
-                consume;
-            end;
+            'RBRACE': begin rightbrace(); end;
+            'IDENTIFIER': begin discriminateIdentifier(); end;
+            'ASSIGN': begin  consume; end;
             {'AMP': begin 
                 consume;
             end;
             'CARET': begin 
                 consume;
             end;}
-            'W': begin 
-                condWhen();
-            end;
-            'IF': begin 
-                condIf();
-            end;
-            'E': begin 
-                condElse();
-            end;
-            'LF': begin 
-                loopFor();
-            end;
-            'LW': begin 
-                loopWhile();
-            end;
-            'DO': begin 
-                loopDo();
-            end;
+            'W': begin condWhen(); end;
+            'IF': begin condIf(); end;
+            'E': begin condElse(); end;
+            'LF': begin loopFor(); end;
+            'LW': begin loopWhile(); end;
+            'DO': begin loopDo(); end;
             'VARBLOCK': begin varBlock(); end;
             'STATICBLOCK': begin 
                 consume; // consume '
@@ -1909,9 +1923,7 @@ begin
                 WriteText(asmend);
                 consume; // |    
             end;
-            //'STRING': begin 
-            //    consume; // consume '
-            //end
+
             else
             begin
                 WriteLn(IntToStr(t_line[position]) + ' - ' + 'I CANT BELIEVE YOUVE DONE THIS - PARSER - YOU CORRUPTED MY PARSER WITH YOUR FILTH>> ' + peek() + ' ' + peekV());
@@ -2213,6 +2225,7 @@ begin
     currentFN := '';
     returnAddr := '';
     isProcedure := False;
+    chainContinuing := False;
 
     regClock := 0;                  // LRU counter, bumped on every touch
     tempCount := 0;                 // synthetic temp namer

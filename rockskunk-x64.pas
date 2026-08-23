@@ -66,7 +66,7 @@ var
     filename, output_filename, stdlib_filename, returnAddr: String;
     isProcedure: Boolean;
 
-    frameOffset, labelCounter, position, symCount, aCount, argCount, tokenCount, fstackPosition: Integer;
+    frameOffset, labelCounter, position, symCount, aCount, argCount, tokenCount, fstackPosition: LongInt;
 
 {
    DO NOT FORGET LIST ====
@@ -2048,7 +2048,7 @@ end;
 
 procedure lexer();
 var
-    i, linecount: Integer;
+    i, linecount: LongInt;
     word: String;
     isKeyword, isFloat: Boolean;
     isMultiple: Boolean;
@@ -2090,7 +2090,7 @@ begin
     word := '';
     tokenCount := 0;
 
-    for i := 0 to 32767 do
+    for i := 0 to 65535 do
         begin
             tokenKind[i] := '';
             tokenValue[i] := '';

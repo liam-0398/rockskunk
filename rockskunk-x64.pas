@@ -1345,11 +1345,11 @@ end;
 
 procedure discriminateIdentifier();
 var
-    variable, rightside, twoname, argname, value: String;
+    variable, rightside, twoname, argname, value, gvar: String;
     isDeclared, isReturn, isFloat, didArrays: boolean;
     arrayname, arrayIndex, arrayType: String;
     i, ii, symIndex, argfindex: Integer;
-    returnsFloat: Boolean;
+    returnsFloat, isGlobal: Boolean;
 begin
     i := 0;
     ii := 0;
@@ -1359,6 +1359,11 @@ begin
     isDeclared := False;
     isReturn := False;
     isFloat := False;
+    isGlobal := False;
+
+    for i := 0 to aCount - 1 do
+        if variable = aName[i] then
+            isGlobal := True;
 
     variable := consume(); // consume the a in a := 5
 
@@ -1414,9 +1419,14 @@ begin
                                 end;
                         statusMessage('ASSIGN - DECLARED');
                 end
+            else if isGlobal then
+            begin
+                gvar := VarToMem(variable);
+                rightside := evaluateExpression(False);
+                emitAssign(gvar, rightside);
+            end
             else
                 begin
-                    
                     frameOffset := frameOffset + 8; // vars need to occupy different memory, increment
 
                     if peek2() = 'FLOAT' then // determine what it is and make it so

@@ -51,10 +51,6 @@ begin
     RE.Expression := '(mov (\w+), (.+)\r?\nmov (\[.+\]), \2\r?\n)mov \2, \4\r?\n';
     contents := RE.Replace(contents, '$1', True);
 
-    // syscall
-    //RE.Expression := '^[ \t]*mov[ \t]+(rsi|rdx)[ \t]*,[ \t]*0[ \t]*\r?\n[ \t]*mov[ \t]+(rsi|rdx)[ \t]*,[ \t]*0[ \t]*\r?\n([ \t]*syscall)';
-    //contents := RE.Replace(contents, '$3', True);
-
     // no-ops
     RE.Expression := 'mov ([a-z0-9]+), \1\r?\n';
     contents := RE.Replace(contents, '', True);

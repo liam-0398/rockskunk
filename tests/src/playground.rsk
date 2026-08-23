@@ -2,11 +2,7 @@
 |V checking[100] |
 
 P main() {
-    checking[88] := 55
-    variable := 55
-    c := 0
-    i := 0
-    LOCATE (c, variable, checking[100])
-        IF (c >= 0) { index := c writeln('GOT IT')}
-        E { writeln('NOT FOUND') }
+    str := 'STRING VAR'
+    writet(str)
+    writeln('INLINE DECLARATION')
 }

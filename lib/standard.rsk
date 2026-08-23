@@ -51,7 +51,7 @@ P writeln(s) {
     r2 := sys(1, 1, nldata, nllen, 0, 0, 0)
 }
 
-P writeT(s) { ; no newline
+P writet(s) { ; no newline
     len := s^
     bufaddr := s + 8
     r1 := sys(1, 1, bufaddr, len, 0, 0, 0)

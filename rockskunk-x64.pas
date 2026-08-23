@@ -229,6 +229,9 @@ procedure closeIntermediateFile; begin fpClose(fd3); fpClose(fd4); end;
 // Going to be resgister descriptor model, dragon book getReg ish
 // Do I know what im doing? Hell no. Am i going to figure it out? yes.
 
+// after planning and thinking it over i have no idea what i am  doing. This
+// will take me months.
+
 // protects register from allocator interference
 procedure allocLock(r: Integer);
 begin
@@ -388,50 +391,51 @@ begin
         Inc(labelCounter);
 end;
 
+// note to self; making a length label and a datalabel, no matter how much it sounds like, does not make
+// a length prefixed string. You will fight pointer math for quite some time before you realize that
+// to labels mean two locations in memory, dumbass.
 function emitStringConstant(content: String): String;
 var
-    slength, i: Integer;
-    dbLine: String;
+    sLength, i: LongInt;
+    theOneTrueEntry: String;
     inQuote: Boolean;
 begin
-        slength := length(content);
-        WriteData('   str_' + IntToStr(labelCounter) + '_len: dq ' + IntToStr(slength) + #10);
-
-        dbLine := '';
-        inQuote := False;
-        for i := 1 to length(content) do
+    theOneTrueEntry := '';
+    sLength := length(content);
+    for i := 1 to sLength do
+    begin
+        if (content[i] >= #32) and (content[i] <> #39) then // so pascal doesnt get sassy about '' inside ''
             begin
-                if (content[i] >= #32) and (content[i] <> #39) then // printable, not a quote char
-                    begin
-                        if not inQuote then
-                            begin
-                                if dbLine <> '' then dbLine := dbLine + ', ';
-                                dbLine := dbLine + #39;
-                                inQuote := True;
-                            end;
-                        dbLine := dbLine + content[i];
-                    end
-                else // control byte - break out of the quoted run, emit as a number
-                    begin
-                        if inQuote then
-                            begin
-                                dbLine := dbLine + #39;
-                                inQuote := False;
-                            end;
-                        if dbLine <> '' then dbLine := dbLine + ', ';
-                        dbLine := dbLine + IntToStr(Ord(content[i]));
-                    end;
+                if not inQuote then
+                begin
+                    if theOneTrueEntry <> '' then theOneTrueEntry := theOneTrueEntry + ', '; // split for nasm
+                        theOneTrueEntry := theOneTrueEntry + #39; // close token
+                    inQuote := True;
+                end;
+                theOneTrueEntry := theOneTrueEntry + content[i];
+            end
+        else  // if its a number or a ' then close the quotes and output it as ascii code
+        begin
+            if inQuote then
+            begin
+                theOneTrueEntry := theOneTrueEntry + #39;
+                inQuote := False;
             end;
-        if inQuote then
-            dbLine := dbLine + #39;
+            if theOneTrueEntry <> '' then theOneTrueEntry := theOneTrueEntry + ', ';
+            theOneTrueEntry := theOneTrueEntry + IntToStr(Ord(content[i]));
+        end;
+    end;
 
-        if dbLine <> '' then dbLine := dbLine + ', ';
-        dbLine := dbLine + '0';
+    if inQuote then // close the straggler
+        theOneTrueEntry := theOneTrueEntry + #39;
 
-        WriteData('   str_' + IntToStr(labelCounter) + ': db ' + dbLine + #10);
+    if theOneTrueEntry <> '' then theOneTrueEntry := theOneTrueEntry + ', '; // null terminator baby
+    theOneTrueEntry :=theOneTrueEntry + '0';
 
-        emitStringConstant := 'str_' + IntToStr(labelCounter) + '_len';
-        Inc(labelCounter);
+    WriteData('   str_' + IntToStr(labelCounter) + ': dq 10' + #10 + 'db ' + theOneTrueEntry + #10);
+
+    emitStringConstant := 'str_' + IntToStr(labelCounter);
+    Inc(labelCounter);
 end;
 
 // ARRAYS / MEMORY -----------------------------------------------------------
@@ -704,6 +708,7 @@ begin
     WriteText('    ret' + #10 + #10);
 
     // i did write these though
+    // probably explais why intToFloat is broken haha
     WriteText(#10 + 'intToFloat:' + #10);
     WriteText('    cvtsi2sd xmm0, rax' + #10);  
     WriteText('    ret' + #10 + #10);
@@ -1112,12 +1117,6 @@ begin
             Exit(emitAddressOf(ampaddr));
         end;
 
-    if peek() = 'STRING' then
-        begin
-            str := consume;
-            Exit(emitStringConstant(str));
-        end;
-
     if (peek()='IDENTIFIER') and (peek2()='CARET') then
         begin
             ident := consume;
@@ -1185,7 +1184,7 @@ begin
     str := '';
     returnsFloat := False;
 
-    if (peek() = 'AMP') or (peek() = 'STRING') or ((peek() = 'IDENTIFIER') and (peek2() = 'CARET')) or ((peekV() = 'sys') and (peek2() = 'LPAR')) then
+    if (peek() = 'AMP') or ((peek() = 'IDENTIFIER') and (peek2() = 'CARET')) or ((peekV() = 'sys') and (peek2() = 'LPAR')) then
         begin
             r := eeIncidentals();
             Exit(r);
@@ -1234,6 +1233,8 @@ begin
                     consume;                          // ]
                     consume;                          // ]
                 end
+                else if peek() = 'STRING' then
+                    first := emitStringConstant(consume)
                 else
                 begin
                     first := consume; // first operand (the a in a + b)

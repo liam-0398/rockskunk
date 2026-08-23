@@ -2249,7 +2249,7 @@ begin
     result := fpSystem(cmd);
     if result <> 0 then
         begin
-            WriteLn(IntToStr(t_line[position]) + ' - ' + 'YOU HAVE FRUSTRATED THE COMPILER - NASM FAILED - DONT BLAME ME, YOU WROTE IT');
+            WriteLn('YOU HAVE FRUSTRATED THE COMPILER - NASM FAILED - DONT BLAME ME, YOU WROTE IT');
             Halt(1);
         end;
 
@@ -2257,7 +2257,7 @@ begin
     result := fpSystem(cmd);
     if result <> 0 then
         begin
-            WriteLn(IntToStr(t_line[position]) + ' - ' + 'I CANT BELIEVE YOUVE DONE THIS - LINK FAILED');
+            WriteLn('I CANT BELIEVE YOUVE DONE THIS - LINK FAILED');
             Halt(1);
         end
     else

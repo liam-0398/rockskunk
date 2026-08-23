@@ -67,9 +67,9 @@ begin
     RE.Expression := '^[ \t]*(sub|add)[ \t]+rsp[ \t]*,[ \t]*0+[ \t]*\r?\n';
     contents := RE.Replace(contents, '', True);
 
-    // duplicates
-    RE.Expression := '^([ \t]*(mov|movsd|movss|lea|and|or|xor|add|sub|cmp)[ \t]+[^\r\n]+)\r?\n\1[ \t]*\r?\n';
-    contents := RE.Replace(contents, '$1' + LineEnding, True);
+    // duplicates - ight this one might be a little tooo spicy
+    //RE.Expression := '^([ \t]*(mov|movsd|movss|lea|and|or|xor|add|sub|cmp)[ \t]+[^\r\n]+)\r?\n\1[ \t]*\r?\n';
+    //contents := RE.Replace(contents, '$1' + LineEnding, True);
 
 end;
 

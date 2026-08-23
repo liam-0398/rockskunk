@@ -1,4 +1,4 @@
-i7-9750H on battery
+i7-9750H on battery, binary on NFS share.
 # dsp/lpf
 3 runs, 5,000,000 iterations
 Optimizer dead code elimination, no register allocation

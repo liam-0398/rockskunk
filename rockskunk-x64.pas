@@ -6,8 +6,8 @@ uses
 const
     intRegs: array[0..5] of String = ('rdi', 'rsi', 'rdx', 'rcx', 'r8', 'r9'); // SYSV ABI
     intRegIndex: array[0..5] of Integer = (7, 6, 2, 1, 8, 9); //encoding order
-    acceptedKeywords: array[0..14] of String = // MAKE SURE TO UPDATE KEYWORD CHECK WHEN ADDING
-    ('ADD', 'F', 'LF', 'LW', 'W', 'IF', 'LOCATE', 'E', 'P', 'OR', 'AND', 'NOR', 'XOR', 'CALL', 'DO');
+    acceptedKeywords: array[0..15] of String = // MAKE SURE TO UPDATE KEYWORD CHECK WHEN ADDING
+    ('ADD', 'F', 'LF', 'LW', 'W', 'IF', 'BREAK', 'LOCATE', 'E', 'P', 'OR', 'AND', 'NOR', 'XOR', 'CALL', 'DO');
     regName: array[0..31] of String = (
         'rax', 'rcx', 'rdx', 'rbx', 'rsp', 'rbp', 'rsi', 'rdi',
         'r8',  'r9',  'r10', 'r11', 'r12', 'r13', 'r14', 'r15',
@@ -112,7 +112,7 @@ var
     i: Integer;
 begin
     keywordCheck := False;
-    for i := 0 to 14 do
+    for i := 0 to 15 do
         begin
             if word = acceptedKeywords[i] then 
                 begin
@@ -1959,6 +1959,10 @@ begin
             end;
             'RPAR': begin 
                 consume; // PLACEHOLDER
+            end;
+            'BREAK': begin
+                consume; // BRK
+                WriteText('    jmp ' + cfELabel[cfDepth - 1] + #10);
             end;
            'LBRACE': begin 
                 consume;

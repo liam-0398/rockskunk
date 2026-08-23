@@ -1,8 +1,12 @@
 
 P main() {
-    a := 0
-    b := 555
-    IF (a > 4) { printw(a) }
-    IF (a = 2) { printw(a) }
-    E { printw(b) }
+    a := 2.0f
+    ;b := floatToInt(a)
+    ;printw(b)
+    c := 4
+    ;d := intToFloat(c)
+    ;printf(c)
+    e := 69
+    printw(e)
+
 }

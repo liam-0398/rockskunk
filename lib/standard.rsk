@@ -62,6 +62,7 @@ P printb(v) { ; BITWISE
 }
 
 ; MATH ----------------------------------------------------------------
+; floatToInt and intToFloat are intrinsic
 
 ; float conditionals are currently pissed
 ;F fabs(i: f) {
@@ -117,7 +118,7 @@ F sqr(a) {
 }
 
 F cube(a) {
-    r := a * a
+    r := a * a * a
 }
 
 

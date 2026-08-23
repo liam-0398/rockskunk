@@ -86,7 +86,7 @@ procedure dispatch(); forward;
 
 procedure hardFault(location, input: String);
 begin
-    if Debug = False then Exit else begin
+   if Debug = False then Exit else begin
          WriteLn(IntToStr(t_line[position]) + ' - ' + 'I CANT BELIEVE YOUVE DONE THIS - ' + location + ' - UNK SYMBOL>> ' + input);
             Halt(1); 
     end;
@@ -94,10 +94,8 @@ end;
 
 procedure statusMessage(input: String);
 begin
-    if Debug = False then Exit else begin
+    if Debug = False then Exit else 
          WriteLn(IntToStr(t_line[position]) + ' - ' + input);
-            Halt(1); 
-    end;
 end;
 
 // HELPERS =================================================
@@ -2310,6 +2308,7 @@ if ParamCount = 1 then
         writeASM;
         Optimize;
         sendToNASM(output_filename);
+        
         deleteFile(output_filename + '.o');
     end
 else

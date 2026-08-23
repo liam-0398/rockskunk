@@ -67,6 +67,7 @@ Very WIP. WAY down the line I want to do a ppc32 version as well so i can get we
 - Register Allocation
 - Malloc/Free
 - Directives
+- Compound operators
 
 ## Syntax
 
@@ -227,10 +228,10 @@ result := sys(num,a,b,c)
 >
 <=
 >=
+or ;logical
+and ;logical
 | ;bitwise
 $ ;bitwise
-or ;logical
-and ;bitwise
 nor ;bitwise
 xor ;bitwise
 

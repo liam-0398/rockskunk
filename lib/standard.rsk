@@ -2,8 +2,9 @@
 ; STANDARD LIBRARY
 
 |V  binbuf![65]
-charbuf![8] 
-
+    charbuf![8]
+    readbuf![256]
+    writebuf![256]
 |
 
 ; I/O ----------------------------------------------------------------
@@ -80,6 +81,29 @@ P printb(v) { ; BITWISE
             }
     binbuf![64] := 32
     sys(1, 1, binbuf, 65, 0, 0, 0)
+}
+
+F readln() {
+    input := ''
+    bytes := 0
+    i := 0
+    LF (i := 0 until 256) {
+        bytes := read(0, readbuf![i], 1)
+        W (readbuf![i] = 10) { index := i BREAK }
+    }
+
+    LF (i := 0 until index - 1) {
+        input := readbuf![i]
+        printc(input)
+    }
+
+    r := input
+}
+
+; STRING
+
+F length(s) {
+    r := s
 }
 
 ; Utility -----------------

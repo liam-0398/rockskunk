@@ -1,8 +1,7 @@
 
-|V checking[100] |
+
 
 P main() {
-    str := 'STRING VAR'
-    writet(str)
-    writeln('INLINE DECLARATION')
+    str := readln()
+    writeln(str)
 }

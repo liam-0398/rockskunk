@@ -450,6 +450,15 @@ begin
     Inc(labelCounter);
 end;
 
+function functionBytesToString(): String;
+begin
+
+
+
+
+
+end;
+
 // ARRAYS / MEMORY -----------------------------------------------------------
 
 function emitAddressOf(variable: String): String; // &a
@@ -1000,7 +1009,7 @@ end;
 
 function argumentParser(argname, fname, first: String; returnsFloat: Boolean; argfindex: Integer): String;
 var
-    strlabel: String;
+    strlabel, argIdent, arrayIndex: String;
     seenFloats, seenInts, argCounter: Integer;
     isFloatArg: Boolean;
 begin
@@ -1010,44 +1019,77 @@ begin
             seenFloats := 0;
             seenInts := 0;
 
-        repeat  // VERIFY LOOP
-            isFloatArg := False;
+            repeat  // VERIFY LOOP
+                isFloatArg := False;
 
-            if peek() = 'STRING' then
+                if peek() = 'STRING' then
                 begin
                     argname := consume();
                     strlabel := emitStringConstant(argname);
                     argname := strlabel;
                 end
-            else
+                else if (peek() = 'IDENTIFIER') and ((peek2() = 'LBRAC') or (peek2() = 'LBRACE') or (peek2() = 'BANG')) then
                 begin
-                    argname := consume();
+                    writeLn('ARRAY BRANCH OF ARGPARSER');
+                    argIdent := consume();  // the array name, NOT yet consumed by anything else
+                    if peek() = 'LBRAC' then
+                    begin
+                        consume; // [
+                        arrayIndex := consume;
+                        consume; // ]
+                        argname := arrayToMem(argIdent, arrayIndex);
+                        if not isNumber(arrayIndex) then
+                            allocInvalidateArrays;
+                    end
+                    else if peek() = 'LBRACE' then
+                    begin
+                        consume; // [
+                        arrayIndex := consume;
+                        consume; // ]
+                        argname := arrayToMem(argIdent, arrayIndex);
+                        if not isNumber(arrayIndex) then
+                            allocInvalidateArrays;
+                    end
+                    else if peek() = 'BANG' then
+                    begin
+                        consume; // !
+                        consume; // [
+                        arrayIndex := consume;
+                        consume; // ]
+                        argname := arrayToMem(argIdent, arrayIndex);
+                        if not isNumber(arrayIndex) then
+                            allocInvalidateArrays;
+                    end;
 
                     if param_FType[argfindex + argcounter] = 'FLOAT' then
-                                    isFloatArg := True;
-
+                        isFloatArg := True;
+                end
+                else
+                begin
+                    argname := consume();
+                    if param_FType[argfindex + argcounter] = 'FLOAT' then
+                        isFloatArg := True;
                     if not isNumber(argname) then
-                                    argname := varToMem(argname);
-            end;
+                        argname := varToMem(argname);
+                end;
 
-            if isFloatArg then
+                if isFloatArg then
                 begin
                     WriteText('    movsd xmm' + IntToStr(seenFloats) + ', ' + argname + #10);
-                    allocLock(16 + seenFloats);  // xmm base offset is 16
+                    allocLock(16 + seenFloats);
                     Inc(seenFloats);
                 end
-            else
+                else
                 begin
                     WriteText('    mov ' + intRegs[seenInts] + ', ' + argname + #10);
                     allocLock(intRegIndex[seenInts]);
                     Inc(seenInts);
                 end;
 
-            if peek() = 'COMMA' then
-                            consume;
-
-                        Inc(argcounter);
-        until peek() = 'RPAR';
+                if peek() = 'COMMA' then
+                    consume;
+                Inc(argcounter);
+            until peek() = 'RPAR';
             consume(); // )
             allocUnlockAll;
             argumentParser := call(fname, first, returnsFloat);
@@ -1081,7 +1123,7 @@ begin
         end;
 
     // Byte Arrays
-    if (peek2() = 'BANG') and (peek()='LBRAC') then
+    if (peek() = 'IDENTIFIER') and (peek2()='BANG') then
         begin
             arrayname := consume;
             consume;
@@ -1178,7 +1220,7 @@ begin
             Exit(r);
         end;
 
-    if ((peek() = 'IDENTIFIER') and (peek2() = 'LBRAC')) or ((peek() = 'IDENTIFIER') and (peek2() = 'LBRACE')) or ((peek() = 'LBRAC') and (peek2() = 'BANG')) then
+    if ((peek() = 'IDENTIFIER') and (peek2() = 'LBRAC')) or ((peek() = 'IDENTIFIER') and (peek2() = 'LBRACE')) or ((peek() = 'IDENTIFIER') and (peek2() = 'BANG')) then
         begin
             r := eeArrays();
             Exit(r);
@@ -1590,7 +1632,7 @@ begin
     consume; // :=
     loopstart := consume; // 0
     consume; // until
-    looplimit := consume;
+    looplimit := evaluateExpression(False);
     consume; // RPAR
     WriteText('    mov rax, ' + loopstart + #10);
     WriteText('    mov ' + loopvar + ', rax' + #10);
@@ -1751,9 +1793,6 @@ begin
     condlimit := evaluateExpression(False);
     consume; // RPAR
 
-    if not isNumber(condlimit) then
-        condlimit := varToMem(condlimit);
-
     endlabel := labelMaker('W');
 
     emitCompareAndJump(condvar, condlimit, condition, endlabel);
@@ -1775,9 +1814,6 @@ begin
     consume; // now eat it
     condlimit := evaluateExpression(False);
     consume; // RPAR
-
-    if not isNumber(condlimit) then
-        condlimit := varToMem(condlimit);
 
     if not chainContinuing then
         begin

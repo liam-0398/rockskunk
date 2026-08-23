@@ -20,17 +20,23 @@ const
         True,  True,  False, False, True,  True,  True,  True,
         True,  True,  True,  True,  True,  True,  True,  True,
         True,  True,  True,  True,  True,  True,  True,  True
-    );
+        );
+
+    // LIMITS
+    FILEBUF_SIZE = 67108864; // 64MB if you are a madman with the DO loops
+    INITIAL_TOKEN_CAP = 4096;
+    INITIAL_ARRAY_CAP = 256;
+    INITIAL_FUNC_CAP = 128;
 var
-    Debug: Boolean = True; // TOGGLE DEBUG OUTPUT 
+    Debug: Boolean = True; // TOGGLE DEBUG OUTPUT
     Alloc: Boolean = False;
 
     // I/O
     buf, databuf, textbuf, bbuf: Array[0..1048575] of Char;
 
     // Tokens
-    tokenKind, tokenValue: Array[0..65535] of String;
-    t_line: Array[0..65535] of Integer;
+    tokenKind, tokenValue: Array of String;
+    t_line: Array of Integer;
 
     // Control Flow
     cfKind, cfTLabel, cfELabel, cfLVar: Array[0..64] of String;
@@ -38,17 +44,17 @@ var
     chainContinuing: Boolean;
 
     // for capturing return types so assingment to function return knows whats up
-    return_FName: array[0..255] of String; 
-    return_FType: array[0..255] of String;
+    return_FName: array of String;
+    return_FType: array of String;
     return_FCount: Integer;
 
     // tracks types and persists with new functions so can fianlly just call func(a, b, c) typeless
-    param_FName:  array[0..255] of String;   // which function this param belongs to
-    param_FIndex: array[0..255] of Integer;  // which position (0, 1, 2...) within that function
-    param_FType:  array[0..255] of String;   
-    paramOffset: Array [0..128] of Integer;
+    param_FName:  array of String;
+    param_FIndex: array of Integer; // pos within function (1, 2, 3 ,4)
+    param_FType:  array of String;
+    paramOffset: array of Integer;
     param_FCount: Integer;
-    paramPending, awaitingFunctionOpen: Boolean; 
+    paramPending, awaitingFunctionOpen: Boolean;
 
     // Alloc
     regOwner, regStamp: Array[0..31] of Integer;
@@ -59,7 +65,7 @@ var
     symName, symType: array[0..1023] of String;
     symEscaped, symisTemp: array[0..1023] of Boolean;
     symOffset, symReg, symNextUse: array[0..1023] of Integer;
-    aName, aType, aSize: array[0..1023] of String;
+    aName, aType, aSize: array of String;
 
     currentFN: String;
     bytes, bbytes, fd, fd2, fd3, fd4, fd5: CInt;
@@ -80,8 +86,14 @@ var
 
 function WhoGoesThere(intruder: String): String; forward;
 function evaluateExpression(isFloat: Boolean): String; forward;
-procedure dispatch(); forward;
 function loopLocate(): Boolean; forward;
+
+procedure dispatch(); forward;
+procedure doubleTokenCapacity(); forward;
+procedure doubleArrayCapacity(); forward;
+procedure doubleReturnCapacity(); forward;
+procedure doubleParamCapacity(); forward;
+procedure doubleParamOffsetCapacity(); forward;
 
 // DEBUG
 
@@ -89,13 +101,13 @@ procedure hardFault(location, input: String);
 begin
    if Debug = False then Exit else begin
          WriteLn(IntToStr(t_line[position]) + ' - ' + 'I CANT BELIEVE YOUVE DONE THIS - ' + location + ' - UNK SYMBOL>> ' + input);
-            Halt(1); 
+            Halt(1);
     end;
 end;
 
 procedure statusMessage(input: String);
 begin
-    if Debug = False then Exit else 
+    if Debug = False then Exit else
          WriteLn(IntToStr(t_line[position]) + ' - ' + input);
 end;
 
@@ -114,7 +126,7 @@ begin
     keywordCheck := False;
     for i := 0 to 15 do
         begin
-            if word = acceptedKeywords[i] then 
+            if word = acceptedKeywords[i] then
                 begin
                     keywordCheck := True;
                     break;
@@ -135,7 +147,7 @@ begin
     if token[1] = '-' then
         start := 2;
 
-    if start > last then Exit;  
+    if start > last then Exit;
 
     isNumber := True;
     for i := start to last do
@@ -296,12 +308,12 @@ procedure loadXMM0(addr: String); begin WriteText('    movsd xmm0, ' + addr + #1
 
 // FUNCTIONS -----------------------------------------------------------
 procedure emitFN(fname : String);
-begin 
+begin
     WriteText(fname + ':' + #10);
 end;
 
 procedure emitFunctionSetup();
-begin 
+begin
     allocInvalidateAll;
     WriteText('    push rbp' + #10);
     WriteText('    mov rbp, rsp' + #10);
@@ -361,9 +373,9 @@ end;
 procedure emitAssignArray(variable : String; value : String; atype: String);
 begin
     if not isNumber(value) then
-        allocInvalidateAll; 
+        allocInvalidateAll;
 
-    if aType = 'BYTE' then 
+    if aType = 'BYTE' then
         begin
             if value <> 'rax' then
                     WriteText('    mov rax, ' + value + #10); // if i didnt do this i get mov rax, rax
@@ -441,10 +453,10 @@ end;
 // ARRAYS / MEMORY -----------------------------------------------------------
 
 function emitAddressOf(variable: String): String; // &a
-begin 
+begin
         WriteText('    lea rax, ' + variable + #10);
         emitAddressOf := 'rax';
-end;         
+end;
 
 function emitDereference(variable: String): String; // ^
 begin
@@ -494,34 +506,34 @@ procedure emitModFloat(); begin end;
 
 // BITWISE --------------------------------------------------
 
-procedure emitAnd(dst, src: String); 
-begin 
+procedure emitAnd(dst, src: String);
+begin
     WriteText('    mov rax, ' + dst + #10);
     WriteText('    and rax, ' + src + #10);
 end;
 
-procedure emitOr(dst, src: String); 
-begin 
+procedure emitOr(dst, src: String);
+begin
     WriteText('    mov rax, ' + dst + #10);
     WriteText('    or rax, ' + src + #10);
 end;
 
-procedure emitXor(dst, src: String); 
-begin 
+procedure emitXor(dst, src: String);
+begin
     WriteText('    mov rax, ' + dst + #10);
     WriteText('    xor rax, ' + src + #10);
 end;
 
-procedure emitNot(dst: String);         //no src 
-begin 
+procedure emitNot(dst: String);         //no src
+begin
     WriteText('    mov rax, ' + dst + #10);
     WriteText('    not rax' + #10);
 end;
 
 // NEED VAR DETECTION
 
-procedure emitShl(dst, src: String); 
-begin 
+procedure emitShl(dst, src: String);
+begin
     WriteText('    mov rax, ' + dst + #10);
     if isNumber(src) then
         WriteText('    shl rax, ' + src + #10)
@@ -532,8 +544,8 @@ begin
     end;
 end;
 
-procedure emitShr(dst, src: String); 
-begin 
+procedure emitShr(dst, src: String);
+begin
     WriteText('    mov rax, ' + dst + #10);
     if isNumber(src) then
         WriteText('    shr rax, ' + src + #10)
@@ -547,7 +559,7 @@ end;
 // SYSTEM ----------------------------------
 
 function emitSyscall(num, arg1, arg2, arg3, arg4, arg5, arg6: String): String;
-begin 
+begin
     allocFlushCallerSaved;
     WriteText('    mov rax, ' + num + #10);
     WriteText('    mov rdi, ' + arg1 + #10);
@@ -578,14 +590,26 @@ begin
     // placed at bottom for file
     WriteText(#10 + 'global _start' + #10);
     WriteText('_start:'+ #10);
-    WriteText('  mov rax, [rsp]'+ #10);        
+    WriteText('  mov rax, [rsp]'+ #10);
     WriteText('  mov [g_argc], rax'+ #10);
-    WriteText('  lea rax, [rsp + 8]'+ #10);     
+    WriteText('  lea rax, [rsp + 8]'+ #10);
     WriteText('  mov [g_argv], rax'+ #10);
     WriteText('  call main'+ #10);
     WriteText('  mov rdi, rax'+ #10);
     WriteText('  mov rax, 60'+ #10);
     WriteText('  syscall'+ #10);
+
+
+    // NOT MY WORK NEED TO REWRITE WHEN I KNOW MORE ASM> FOR DEBUGGING ONLY ===========
+    // char code in AL, writes it to stdout via digitbuf
+    WriteText(#10 + 'print_char:' + #10);
+    WriteText('    mov [digitbuf], al' + #10);
+    WriteText('    mov rax, 1' + #10);
+    WriteText('    mov rdi, 1' + #10);
+    WriteText('    mov rsi, digitbuf' + #10);
+    WriteText('    mov rdx, 1' + #10);
+    WriteText('    syscall' + #10);
+    WriteText('    ret' + #10 + #10);
 
     // print_qword function NASM no space for float use
     // word is in rax
@@ -616,41 +640,15 @@ begin
     WriteText('    mov rdx, rcx' + #10);                 // length = digit count
     WriteText('    syscall' + #10);
     WriteText('    ret' + #10 + #10);
+
     // print_qword function NASM
     // word is in rax
     // NOT MY WORK NEED TO REWRITE WHEN I KNOW MORE ASM> FOR DEBUGGING ONLY ===========
+    // consolidated: identical to print_qword_nosp, plus a trailing space
     WriteText(#10 + 'print_qword:' + #10);
-    WriteText('    mov rsi, digitbuf + 20' + #10);      // point past the end of the buffer
-    WriteText('    mov rcx, 0' + #10);                   // digit counter
-    WriteText('    cmp rax, 0' + #10);
-    WriteText('    jne .pq_loop' + #10);
-    WriteText('    dec rsi' + #10);
-    WriteText('    mov byte [rsi], 48' + #10);           // just write '0'
-    WriteText('    inc rcx' + #10);
-    WriteText('    jmp .pq_done' + #10);
-    WriteText('.pq_loop:' + #10);
-    WriteText('    cmp rax, 0' + #10);
-    WriteText('    je .pq_done' + #10);
-    WriteText('    cqo' + #10);
-    WriteText('    mov rbx, 10' + #10);
-    WriteText('    idiv rbx' + #10);
-    WriteText('    add rdx, 48' + #10);                  // remainder -> ASCII digit
-    WriteText('    dec rsi' + #10);
-    WriteText('    mov [rsi], dl' + #10);
-    WriteText('    inc rcx' + #10);
-    WriteText('    jmp .pq_loop' + #10);
-    WriteText('.pq_done:' + #10);
-    WriteText('    mov rax, 1' + #10);                   // syscall: write
-    WriteText('    mov rdi, 1' + #10);                   // fd: stdout
-    WriteText('    mov rdx, rcx' + #10);                 // length = digit count
-    WriteText('    syscall' + #10);
-    WriteText('    mov rax, 32' + #10);                  // ASCII space
-    WriteText('    mov [digitbuf], al' + #10);
-    WriteText('    mov rax, 1' + #10);                   // syscall: write
-    WriteText('    mov rdi, 1' + #10);                   // fd: stdout
-    WriteText('    mov rsi, digitbuf' + #10);
-    WriteText('    mov rdx, 1' + #10);                   // length = 1
-    WriteText('    syscall' + #10);                      // print separator space
+    WriteText('    call print_qword_nosp' + #10);
+    WriteText('    mov al, 32' + #10);                   // ASCII space
+    WriteText('    call print_char' + #10);
     WriteText('    ret' + #10 + #10);
     // NOT MY WORK NEED TO REWRITE WHEN I KNOW MORE ASM> FOR DEBUGGING ONLY ===========
 
@@ -668,22 +666,12 @@ begin
     WriteText('    pop rax' + #10);                     // restore integer part
     WriteText('    push rbx' + #10);                    // stash frac again
     WriteText('    call print_qword_nosp' + #10);            // print integer part
-    WriteText('    mov rax, 46' + #10);                 // ASCII '.'
-    WriteText('    mov [digitbuf], al' + #10);
-    WriteText('    mov rax, 1' + #10);
-    WriteText('    mov rdi, 1' + #10);
-    WriteText('    mov rsi, digitbuf' + #10);
-    WriteText('    mov rdx, 1' + #10);
-    WriteText('    syscall' + #10);                     // print '.'
+    WriteText('    mov al, 46' + #10);                  // ASCII '.'
+    WriteText('    call print_char' + #10);             // print '.'
     WriteText('    pop rax' + #10);                     // frac digits
     WriteText('    call print_frac3' + #10);            // print them, zero padded to 3
-    WriteText('    mov rax, 32' + #10);                 // ASCII space
-    WriteText('    mov [digitbuf], al' + #10);
-    WriteText('    mov rax, 1' + #10);
-    WriteText('    mov rdi, 1' + #10);
-    WriteText('    mov rsi, digitbuf' + #10);
-    WriteText('    mov rdx, 1' + #10);
-    WriteText('    syscall' + #10);                     // print separator space
+    WriteText('    mov al, 32' + #10);                  // ASCII space
+    WriteText('    call print_char' + #10);             // print separator space
     WriteText('    ret' + #10 + #10);
 
     // print_frac3 - value 0..999 in rax, always prints exactly 3 digits
@@ -710,7 +698,7 @@ begin
     // i did write these though
     // probably explais why intToFloat is broken haha
     WriteText(#10 + 'intToFloat:' + #10);
-    WriteText('    cvtsi2sd xmm0, rax' + #10);  
+    WriteText('    cvtsi2sd xmm0, rax' + #10);
     WriteText('    ret' + #10 + #10);
 
     WriteText(#10 + 'floatToInt:' + #10);
@@ -779,7 +767,7 @@ var
     i, intindex ,elementSize: Integer;
     arType: String;
 begin
-    arrayToMem := ''; 
+    arrayToMem := '';
     i := 0;
 
     for i := 0 to aCount - 1 do
@@ -804,7 +792,7 @@ begin
                         end;
                 end;
         end
-    else 
+    else
         begin
             WriteText('    mov r10, ' + varToMem(aindex) + #10);
             ArrayToMem := '   [' + arrayname + ' + r10*' + IntToStr(elementSize) + ']';
@@ -926,9 +914,9 @@ begin
                 if op = 'PLUS' then result1 := StrToFloat(first) + StrToFloat(second)
                 else if op = 'MINUS' then result1 := StrToFloat(first) - StrToFloat(second)
                 else if op = 'STAR' then result1 := StrToFloat(first) * StrToFloat(second)
-                else if op = 'SLASH' then result1 := StrToFloat(first) / StrToFloat(second);      
+                else if op = 'SLASH' then result1 := StrToFloat(first) / StrToFloat(second);
                 foldCode := (FloatToStr(result1));
-                end 
+                end
             else
                 begin
                 if op = 'PLUS' then result2 := StrToInt(first) + StrToInt(second)
@@ -948,7 +936,7 @@ begin
 
     if (Length(misformattedBastard) > 0) and (misformattedBastard[1] = '[') then
         begin
-            opResolver := misformattedBastard; 
+            opResolver := misformattedBastard;
             Exit;
         end;
 
@@ -968,7 +956,7 @@ function ifFloatIfVar(second: String): String;
 begin
         if isFloatLiteral(second) then
             ifFloatIfVar := opResolver(second)
-        else if not isNumber(second) then    
+        else if not isNumber(second) then
             ifFloatIfVar := varToMem(second)
         else
             ifFloatIfVar := second; // if its just a lowly number
@@ -996,7 +984,7 @@ begin
                             isFloat := True;
                 end;
     end;
-  
+
     for i := 0 to return_FCount - 1 do // Function
         begin
             if intruder = return_FName[i] then
@@ -1061,7 +1049,7 @@ begin
                         Inc(argcounter);
         until peek() = 'RPAR';
             consume(); // )
-            allocUnlockAll; 
+            allocUnlockAll;
             argumentParser := call(fname, first, returnsFloat);
 end;
 
@@ -1134,7 +1122,7 @@ begin
             c := resolveSyscall(); consume;
             d := resolveSyscall(); consume;
             e := resolveSyscall(); consume;
-            f := resolveSyscall(); consume; 
+            f := resolveSyscall(); consume;
             Exit(emitSyscall(num, a, b, c, d, e, f));
         end
 
@@ -1145,13 +1133,13 @@ var
     second, op: String;
 begin
     statusMessage('EEVAL - BITWISE');
-    loadRAX(first); 
+    loadRAX(first);
 
     while ((peek() = 'DOLLAR') or (peek() = 'PIPE') or (peek() = 'NOR') or (peek() = 'NOY') or (peek() = 'SHL') or (peek() = 'SHR')) do
     begin
-        op := peek(); 
+        op := peek();
         consume;
-        second := consume(); 
+        second := consume();
         second := ifFloatIfVar(second);
 
         if      op = 'DOLLAR' then emitAnd('rax', second)
@@ -1195,10 +1183,10 @@ begin
             r := eeArrays();
             Exit(r);
         end;
-        
-    if (peek() = 'IDENTIFIER') and (peek2() = 'LPAR') then 
+
+    if (peek() = 'IDENTIFIER') and (peek2() = 'LPAR') then
     begin
-        fname := consume(); 
+        fname := consume();
 
         if WhoGoesThere(fname) = 'FLOAT' then
             returnsFloat := True;
@@ -1264,21 +1252,21 @@ begin
                     if isFloat then
                         loadXMM0(first) // floats need Xtra Math Man
                     else
-                        loadRAX(first); 
+                        loadRAX(first);
 
                     // BEHOLD THE CHAINER OR OPERATORS, SOLVER OF EXPRESSIONS
-                    while ((peek() = 'PLUS') or (peek() = 'MINUS') or (peek() = 'STAR') or (peek() = 'SLASH')) do 
+                    while ((peek() = 'PLUS') or (peek() = 'MINUS') or (peek() = 'STAR') or (peek() = 'SLASH')) do
                         begin
-                            op := peek(); 
+                            op := peek();
                             consume;
-                            second := consume(); 
+                            second := consume();
                             second := ifFloatIfVar(second); // resolve assignment of var
-                            
+
                             math_ret := emitMath(op, second, isFloat);
                         end;
                     Exit(math_ret)
                 end;
-        end;   
+        end;
 end;
 
 function discriminateArrays(variable: String): Boolean;
@@ -1298,8 +1286,8 @@ begin
             consume;
             variable := arrayToMem(arrayname, arrayIndex);
             if not isNumber(arrayIndex) then
-                allocInvalidateArrays;  
-            rightside := evaluateExpression(False); 
+                allocInvalidateArrays;
+            rightside := evaluateExpression(False);
             emitAssignArray(variable, rightside, arrayType);
             discriminateArrays := True;
             Exit;
@@ -1316,8 +1304,8 @@ begin
             consume;
             variable := arrayToMem(arrayname, arrayIndex);
             if not isNumber(arrayIndex) then
-                allocInvalidateArrays;  
-            rightside := evaluateExpression(True); 
+                allocInvalidateArrays;
+            rightside := evaluateExpression(True);
             emitAssignArray(variable, rightside, arrayType);
             discriminateArrays := True;
             Exit;
@@ -1335,8 +1323,8 @@ begin
             consume;
             variable := arrayToMem(arrayname, arrayIndex);
             if not isNumber(arrayIndex) then
-                allocInvalidateArrays;  
-            rightside := evaluateExpression(False); 
+                allocInvalidateArrays;
+            rightside := evaluateExpression(False);
             emitAssignArray(variable, rightside, arrayType);
             discriminateArrays := True;
             Exit;
@@ -1393,7 +1381,7 @@ begin
             value := consume;
             if isNumber(value) then
                 emitWritePointer(variable, value)
-            else 
+            else
                 begin
                     value := varToMem(value);
                     emitWritePointer(variable, value);
@@ -1403,7 +1391,7 @@ begin
 
     if peek() = 'ASSIGN' then // if its a := x etc etc
         begin
-            
+
             if isDeclared = True then
                 begin // turn into something nasm understands instead of just "variable"
                     variable := computeOffset(symOffset[symIndex]);
@@ -1437,7 +1425,7 @@ begin
                     if peek2() = 'IDENTIFIER' then
                         begin
                             twoname := peekV2();
-                            for ii := 0 to symCount-1 do 
+                            for ii := 0 to symCount-1 do
                                 begin
                                     if symName[ii] = twoname then
                                         symType[symCount] := symType[ii];
@@ -1447,13 +1435,13 @@ begin
                     if (peek2() = 'IDENTIFIER') and (peek3() = 'LPAR') then
                         begin
                             twoname := peekV2();
-                            for ii := 0 to symCount-1 do 
+                            for ii := 0 to symCount-1 do
                                 begin
                                     if return_FName[ii] = twoname then
                                         symType[symCount] := return_FType[ii];
                                 end;
                         end;
-                    
+
                     isFloat := (symType[symCount] = 'FLOAT');
                         symOffset[symCount] := frameOffset;
                         symName[symCount] := variable;
@@ -1461,6 +1449,7 @@ begin
 
                     if isReturn then
                         begin
+                        doubleReturnCapacity();
                         return_FName[return_FCount] := currentFN;
                         return_FType[return_FCount] := symType[symCount];
                         variable := computeOffset(symOffset[symCount]);
@@ -1469,7 +1458,7 @@ begin
                         end;
 
                         inc(symCount);
-                        consume(); // :=  
+                        consume(); // :=
 
                     if isFloat then // send to expression evaulator to find out what to do to right side
                         begin
@@ -1485,10 +1474,10 @@ begin
                     end;
         end
         else
-            begin 
-                if peek() = 'LPAR' then 
+            begin
+                if peek() = 'LPAR' then
                     begin
-                        
+
                         if ((variable = 'printw') or (variable = 'printf') or (variable = 'sys')) then
                             begin
                                 statusMessage('DI - ASM');
@@ -1517,9 +1506,9 @@ begin
                                     begin
                                         consume; //)
                                         call(variable, argname, returnsFloat);
-                                    end;  
-                            end; 
-                
+                                    end;
+                            end;
+
                 end
                     else
                         begin
@@ -1569,7 +1558,7 @@ function loopWhile(): Boolean;
 var
     loopvar, loopcond, looplimit, toplabel, endlabel: String;
 begin
-    consume; //consume LW 
+    consume; //consume LW
     consume; // consume LPAR
     loopvar := varToMem(consume);
     loopcond := peek; // grab TYPE not the damn value
@@ -1580,11 +1569,11 @@ begin
     endlabel := labelMaker('LW');
     emitLabel(toplabel); // it is I, the start of the loop
 
-    WriteText('    mov rax, ' + loopvar + #10);    
-    WriteText('    cmp rax, ' + looplimit + #10);    
-    
-    condJumpTable(loopCond, endLabel);  
-   
+    WriteText('    mov rax, ' + loopvar + #10);
+    WriteText('    cmp rax, ' + looplimit + #10);
+
+    condJumpTable(loopCond, endLabel);
+
     cfKind[cfDepth] := 'WHILE';
     cfTLabel[cfDepth] := toplabel;
     cfELabel[cfDepth] := endlabel;
@@ -1601,7 +1590,7 @@ begin
     consume; // :=
     loopstart := consume; // 0
     consume; // until
-    looplimit := consume; 
+    looplimit := consume;
     consume; // RPAR
     WriteText('    mov rax, ' + loopstart + #10);
     WriteText('    mov ' + loopvar + ', rax' + #10);
@@ -1695,19 +1684,19 @@ var
     loopvar, loopstart, looplimit, toplabel, endlabel: String;
     loopCounter, doDepth, ls, ll, n, bodyStart, bodyEnd: Integer;
 begin
-    
+
     consume; //consume LF
     consume; // consume LPAR
     loopvar := consume;
     consume; // :=
     loopstart := consume; // 0
     consume; // until
-    looplimit := consume; 
+    looplimit := consume;
     consume; // RPAR
-  
+
     loopCounter := position; // starting on {
     doDepth := 0;
-    
+
     repeat
             if tokenKind[loopCounter] = 'LBRACE' then
                 begin
@@ -1778,7 +1767,7 @@ begin
     condWhen := True;
 end;
 
-procedure condIf(); 
+procedure condIf();
 var
     condvar, condition, condlimit, endlabel, misslabel: String;
 begin
@@ -1825,7 +1814,7 @@ begin
             Halt(1);
         end;
 
-    cfKind[cfDepth - 1] := 'E';   
+    cfKind[cfDepth - 1] := 'E';
     chainContinuing := False;
 end;
 
@@ -1846,13 +1835,13 @@ begin
                                 symName[i] := '';
                                 symType[i] := '';
                                 symOffset[i] := 0;
-                                symReg[i] := -1;        
+                                symReg[i] := -1;
                                 symNextUse[i] := -1;
                                 symEscaped[i] := False;
                                 symIsTemp[i] := False;
                             end;
 
-                        for i := 0 to 31 do             
+                        for i := 0 to 31 do
                             begin
                                 regOwner[i] := -1;
                                 regDirty[i] := False;
@@ -1863,11 +1852,12 @@ begin
                 if peek() = 'LPAR' then // arg detection
                     begin
                         consume; // (
-                        if peek() <> 'RPAR' then 
+                        if peek() <> 'RPAR' then
                         begin
-                        repeat 
+                        repeat
                                 frameOffset := frameOffset + 8;
                                 symOffset[symCount] := frameOffset;
+                                doubleParamCapacity();
                                 param_FName[param_FCount] := currentFN;
                                 symName[symCount] := consume(); // grab param name
                                 symType[symCount] := 'NUMBER'; // int param for now
@@ -1875,7 +1865,7 @@ begin
                                 param_FIndex[param_FCount] := param_FCount;
                                 inc(symCount);
                                     if peek() = 'COLON' then
-                                        begin        
+                                        begin
                                             consume; // consume colon
                                             if peekV() = 'f' then
                                                 begin
@@ -1888,7 +1878,8 @@ begin
                                                     // STRING EVENTUALLY
                                                 end;
                                         end;
-                                paramPending := True;                
+                                paramPending := True;
+                                doubleParamOffsetCapacity();
                                 paramOffset[argCount] := frameOffset;
                                 inc(argCount);
                                 inc(param_FCount);
@@ -1896,7 +1887,7 @@ begin
                                         consume;
                             until peek() = 'RPAR';
                     end;
-                        consume; // )     
+                        consume; // )
          end;
 end;
 
@@ -1910,7 +1901,7 @@ begin
     variable := '';
     value := '';
     consume; // consume |V
-        while peek() <> 'PIPE' do 
+        while peek() <> 'PIPE' do
             begin
                 if peek2() = 'ASSIGN' then // globals
                             begin
@@ -1921,9 +1912,10 @@ begin
                                 aType[aCount] := 'VAR';
                                 WriteData(variable + ': dq ' + value + #10);
                                 Inc(aCount);
-                            end 
+                            end
                         else if peek2() = 'BANG' then // byte arrays
                             begin
+                                doubleArrayCapacity();
                                 arrayName := consume;
                                 consume;
                                 consume;
@@ -1934,9 +1926,10 @@ begin
                                 aType[aCount] := 'BYTE';
                                 WriteBSS(arrayName + ': resb ' + arraySize + #10);
                                 Inc(aCount);
-                            end 
+                            end
                         else if peek2() = 'LBRAC' then // word arrays
                             begin
+                                doubleArrayCapacity();
                                 arrayName := consume;
                                 consume;
                                 arraySize := consume;
@@ -1946,9 +1939,10 @@ begin
                                 aType[aCount] := 'WORD';
                                 WriteBSS(arrayName + ': resq ' + arraySize + #10);
                                 Inc(aCount);
-                            end 
+                            end
                         else if peek2() = 'LBRACE' then // float arrays
                             begin
+                                doubleArrayCapacity();
                                 arrayName := consume;
                                 consume;
                                 arraySize := consume;
@@ -1958,7 +1952,7 @@ begin
                                 aType[aCount] := 'FLOAT';
                                 WriteBSS(arrayName + ': resq ' + arraySize + #10);
                                 Inc(aCount);
-                            end 
+                            end
                         else
                             begin
                                 WriteLn(IntToStr(t_line[position]) + ' - ' + 'I CANT BELIEVE YOUVE DONE THIS - VARBLOCK - THAT IS SOMETHING.... BUT NOT A DECLARATION>> ' + peek() + ' ' + peekV());
@@ -1988,10 +1982,10 @@ begin
                         end;
                         'WHEN': begin emitLabel(cfELabel[cfDepth]); end;
                         'IF': begin
-                            WriteText('    jmp ' + cfELabel[cfDepth] + #10);  
-                            emitLabel(cfTLabel[cfDepth]);                     
+                            WriteText('    jmp ' + cfELabel[cfDepth] + #10);
+                            emitLabel(cfTLabel[cfDepth]);
                             chainContinuing := True;
-                            Inc(cfDepth);   
+                            Inc(cfDepth);
                         end;
                         'E': begin emitLabel(cfELabel[cfDepth]); end;
                     end;
@@ -2009,13 +2003,13 @@ begin
     asmgrab := '';
     atok := '';
      case peek() of
-            'F', 'P': begin 
+            'F', 'P': begin
                 isProcedure := constructFunction();
             end;
             'LPAR': begin
                 consume; // PLACEHOLDER
             end;
-            'RPAR': begin 
+            'RPAR': begin
                 consume; // PLACEHOLDER
             end;
             'BREAK': begin
@@ -2028,7 +2022,7 @@ begin
                 else
                     WriteText('    jmp ' + cfELabel[d] + #10);
             end;
-           'LBRACE': begin 
+           'LBRACE': begin
                 consume;
                 if awaitingFunctionOpen then
                     begin
@@ -2053,15 +2047,15 @@ begin
                                         end;
                                     paramPending := False;
                                 end;
-                    end;  
+                    end;
                 end;
             'RBRACE': begin rightbrace(); end;
             'IDENTIFIER': begin discriminateIdentifier(); end;
             'ASSIGN': begin  consume; end;
-            {'AMP': begin 
+            {'AMP': begin
                 consume;
             end;
-            'CARET': begin 
+            'CARET': begin
                 consume;
             end;}
             'W': begin condWhen(); end;
@@ -2072,17 +2066,17 @@ begin
             'LOCATE': begin loopLocate(); end;
             'DO': begin loopDo(); end;
             'VARBLOCK': begin varBlock(); end;
-            'STATICBLOCK': begin 
+            'STATICBLOCK': begin
                 consume; // consume '
             end;
-            'ASMBLOCK': begin 
+            'ASMBLOCK': begin
                 consume; // consume |A
                 while peek() <> 'PIPE' Do
                     begin
                         asmgrab := '';
                         while peek() <> 'TILDE' do
                             begin
-                                atok := consume; 
+                                atok := consume;
                                 atok := atok + ' ';
                                 asmgrab := asmgrab + atok + '';
                             end;
@@ -2090,7 +2084,7 @@ begin
                         consume; // ~
                     end;
                 WriteText(asmend);
-                consume; // |    
+                consume; // |
             end;
 
             else
@@ -2098,7 +2092,7 @@ begin
                 WriteLn(IntToStr(t_line[position]) + ' - ' + 'I CANT BELIEVE YOUVE DONE THIS - PARSER - YOU CORRUPTED MY PARSER WITH YOUR FILTH>> ' + peek() + ' ' + peekV());
                 Halt(1);
             end;
-        
+
         end;
 end;
 
@@ -2121,9 +2115,10 @@ var
     isKeyword, isFloat, prevIsValue: Boolean;
     isMultiple: Boolean;
 
-    // 
+    //
     procedure assignSingleChar(Tvalue: String; Ttype: String);
     begin
+        doubleTokenCapacity();
         tokenKind[tokenCount] := Ttype;
         tokenValue[tokenCount] := Tvalue;
         t_line[tokenCount] := linecount;
@@ -2132,6 +2127,7 @@ var
 
     procedure assignDoubleChar(Tvalue: String; Ttype: String);
     begin
+        doubleTokenCapacity();
         tokenKind[tokenCount] := Ttype;
         tokenValue[tokenCount] := Tvalue;
         t_line[tokenCount] := linecount;
@@ -2142,6 +2138,7 @@ var
 
     procedure assignTripleChar(Tvalue: String; Ttype: String);
     begin
+        doubleTokenCapacity();
         tokenKind[tokenCount] := Ttype;
         tokenValue[tokenCount] := Tvalue;
         t_line[tokenCount] := linecount;
@@ -2158,15 +2155,9 @@ begin
     word := '';
     tokenCount := 0;
 
-    for i := 0 to 65535 do
-        begin
-            tokenKind[i] := '';
-            tokenValue[i] := '';
-        end;
-    
-    i := 0; // POSITION TRACKER  
+    i := 0; // POSITION TRACKER
     repeat
-        isMultiple := False; 
+        isMultiple := False;
 
         if buf[i] = #10 then // NEWLINE
             Inc(linecount);
@@ -2225,10 +2216,10 @@ begin
                 isMultiple := True; // suppress the old single-char '-' case
             end;
 
-        // SINGLE CHARACHTER TOKENS 
-        if not isMultiple then 
-            begin       
-                case buf[i] of 
+        // SINGLE CHARACHTER TOKENS
+        if not isMultiple then
+            begin
+                case buf[i] of
                     '=': assignSingleChar('=', 'EQUAL');
                     '+': assignSingleChar('+', 'PLUS');
                     '-': assignSingleChar('-', 'MINUS');
@@ -2257,7 +2248,7 @@ begin
                             Inc(i);
                         if buf[i] = #10 then Inc(linecount);
                     end
-                     
+
         else
                 if buf[i] in ['a'..'z', 'A'..'Z', '_'] then // Handle letters
                     begin
@@ -2282,16 +2273,19 @@ begin
                         end
                     else
                         begin
-                            isKeyword := keywordCheck(word); 
-                            if isKeyword then  
-                                tokenKind[tokenCount] := UpperCase(word)
+                            isKeyword := keywordCheck(word);
+                            if isKeyword then
+                                begin
+                                doubleTokenCapacity();
+                                tokenKind[tokenCount] := UpperCase(word);
+                                end
                             else
                                 tokenKind[tokenCount] := 'IDENTIFIER';
 
                             tokenValue[tokenCount] := word;
                             t_line[tokenCount] := linecount;
                             Inc(tokenCount);
-                            Dec(i);  
+                            Dec(i);
                         end;
                     end
                 else if buf[i] in ['0'..'9'] then
@@ -2303,7 +2297,7 @@ begin
                             word := word + buf[i];
                             Inc(i);
                         end;
-                    
+
                    if (Pos('.', word) > 0) or (Pos('f', word) > 0) then
                         isFloat := True;
 
@@ -2313,7 +2307,7 @@ begin
                             assignSingleChar(word,'NUMBER');
 
                     Dec(i);
-              
+
                 end
 
                 else if buf[i] = #39 then // Handle single quote strings
@@ -2350,9 +2344,9 @@ begin
                         assignSingleChar(word,'STRING');
                         // no Dec(i) needed, already on closing quote, main Inc(i) moves past it
                     end;
-                
-            end; 
-        end; 
+
+            end;
+        end;
         Inc(i); // Increment position in buffer
     until i >= bytes; // Runs until EOF
 
@@ -2363,7 +2357,54 @@ begin
     end;
 end;
 
-// INIT ============================================
+// INIT / MAINTENANCE ============================================
+// SUSPICIOUS TECHNOLOGY
+// first time using dynamic arrays to this is relatively unproven
+
+procedure doubleTokenCapacity();
+begin
+    if tokenCount >= Length(tokenKind) then
+    begin
+        SetLength(tokenKind, Length(tokenKind) * 2);
+        SetLength(tokenValue, Length(tokenValue) * 2);
+        SetLength(t_line, Length(t_line) * 2);
+    end;
+end;
+
+procedure doubleArrayCapacity();
+begin
+    if aCount >= Length(aName) then
+    begin
+        SetLength(aName, Length(aName) * 2);
+        SetLength(aType, Length(aType) * 2);
+        SetLength(aSize, Length(aSize) * 2);
+    end;
+end;
+
+procedure doubleReturnCapacity();
+begin
+    if return_FCount >= Length(return_FName) then
+    begin
+        SetLength(return_FName, Length(return_FName) * 2);
+        SetLength(return_FType, Length(return_FType) * 2);
+    end;
+end;
+
+procedure doubleParamCapacity();
+begin
+    if param_FCount >= Length(param_FName) then
+    begin
+        SetLength(param_FName, Length(param_FName) * 2);
+        SetLength(param_FIndex, Length(param_FIndex) * 2);
+        SetLength(param_FType, Length(param_FType) * 2);
+    end;
+end;
+
+procedure doubleParamOffsetCapacity();
+begin
+    if argCount >= Length(paramOffset) then
+        SetLength(paramOffset, Length(paramOffset) * 2);
+end;
 
 procedure arrayInit();
 var
@@ -2372,53 +2413,48 @@ begin
     frameOffset := 0;
 
     for i := 0 to 1023 do
-        begin
-            symName[i] := '';
-            symType[i] := '';
-            symOffset[i] := 0;
-            aName[i] := '';
-            aType[i] := '';
-            aSize[i] := '';
-            t_line[i] := 0;
-        end;
+    begin
+        symName[i] := '';
+        symType[i] := '';
+        symOffset[i] := 0;
+    end;
 
-    for i := 0 to 255 do
-        begin
-            param_FIndex[i] := 0;
-            param_FName[i] := '';
-            param_FType[i] := '';
-            return_FName[i] := '';
-            return_FType[i] := '';
-        end;
-
-    for i := 0 to 128 do
-        paramOffset[i] := 0;
+    SetLength(aName, INITIAL_ARRAY_CAP);
+    SetLength(aType, INITIAL_ARRAY_CAP);
+    SetLength(aSize, INITIAL_ARRAY_CAP);
+    SetLength(tokenKind, INITIAL_TOKEN_CAP);
+    SetLength(tokenValue, INITIAL_TOKEN_CAP);
+    SetLength(t_line, INITIAL_TOKEN_CAP);
+    SetLength(return_FName, INITIAL_FUNC_CAP);
+    SetLength(return_FType, INITIAL_FUNC_CAP);
+    SetLength(param_FName, INITIAL_FUNC_CAP);
+    SetLength(param_FIndex, INITIAL_FUNC_CAP);
+    SetLength(param_FType, INITIAL_FUNC_CAP);
+    SetLength(paramOffset, INITIAL_FUNC_CAP);
 
     for i := 0 to 64 do
-        begin
-            cfKind[i] := '';
-            cfTLabel[i] := '';
-            cfELabel[i] := '';
-            cfLVar[i] := '';
-        end;
+    begin
+        cfKind[i] := '';
+        cfTLabel[i] := '';
+        cfELabel[i] := '';
+        cfLVar[i] := '';
+    end;
 
-    // register file state
     for i := 0 to 31 do
-        begin
-            regOwner[i] := -1;      // -1 means nobody lives here
-            regStamp[i] := 0;
-            regDirty[i] := False;
-            regLocked[i] := False;
-        end;
+    begin
+        regOwner[i] := -1;      // -1 means nobody lives here
+        regStamp[i] := 0;
+        regDirty[i] := False;
+        regLocked[i] := False;
+    end;
 
-    // per symbol state
     for i := 0 to 1023 do
-        begin
-            symReg[i] := -1;        // -1 means not in a register
-            symNextUse[i] := -1;    // -1 means not yet scanned
-            symEscaped[i] := False;
-            symIsTemp[i] := False;
-        end;
+    begin
+        symReg[i] := -1;        // -1 means not in a register
+        symNextUse[i] := -1;    // -1 means not yet scanned
+        symEscaped[i] := False;
+        symIsTemp[i] := False;
+    end;
 
     deleteFile('intermediate.asm');
     deleteFile('text.tmp');
@@ -2441,8 +2477,8 @@ begin
     isProcedure := False;
     chainContinuing := False;
 
-    regClock := 0;                  // LRU counter, bumped on every touch
-    tempCount := 0;                 // synthetic temp namer
+    regClock := 0;                  // LRU counter
+    tempCount := 0;
 end;
 
 procedure sendToNASM(outputName: String);
@@ -2450,7 +2486,7 @@ var
     cmd: String;
     result: Integer;
 begin
-    WriteLn('FLY FREE LITTLE BIRD'); 
+    WriteLn('FLY FREE LITTLE BIRD');
     cmd := 'nasm -f elf64 intermediate.asm -o ' + outputName + '.o';
     result := fpSystem(cmd);
     if result <> 0 then
@@ -2467,7 +2503,7 @@ begin
             Halt(1);
         end
     else
-        WriteLn('ASSEMBLED AND LINKED' + #10); 
+        WriteLn('ASSEMBLED AND LINKED' + #10);
 end;
 
 begin
@@ -2486,7 +2522,7 @@ if ParamCount = 1 then
         writeASM;
         Optimize;
         sendToNASM(output_filename);
-        
+
         deleteFile(output_filename + '.o');
     end
 else

@@ -17,25 +17,17 @@ F onepole(sig: f, coef: f, state: f) {
 }
 
 P main() {
-    xin  := 0.25f
-    g    := 0.5f
-    damp := 0.05f
-    smth := 0.02f
+    xin  := 0.25f   g    := 0.5f
+    damp := 0.05f   smth := 0.02f
     zero := 0.0f
 
-    y   := 0.0f
-    dly := 0.0f
-    fb  := 0.0f
-    v   := 0.0f
-    sig := 0.0f
-    sv  := 0.0f
-    ds  := 0.0f
-    dm  := 0.0f
+    y   := 0.0f     dly := 0.0f
+    fb  := 0.0f     v   := 0.0f
+    sig := 0.0f     sv  := 0.0f
+    ds  := 0.0f     dm  := 0.0f
 
-    wp  := 0
-    wpv := 0
-    wpp := &wp
-    i   := 0
+    wp  := 0        wpv := 0
+    wpp := &wp      i   := 0
     n   := 0
 
     LF (i := 0 until 4096) {

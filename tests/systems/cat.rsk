@@ -1,0 +1,16 @@
+; CAT
+
+|V buf[8192] |
+
+P doCatThings() {
+    bytes := 1
+    filename := argv(1)
+    fd := open(filename, 0, 0)
+
+    LW (bytes > 0) {
+        bytes := read(fd, buf, 8192)
+        write(1, buf, bytes) }
+    close(fd)
+}
+
+F main() { doCatThings() }

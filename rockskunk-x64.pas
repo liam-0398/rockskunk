@@ -124,15 +124,21 @@ end;
 
 function isNumber(token: String): Boolean;
 var
-    i, last: Integer;
+    i, last, start: Integer;
 begin
     isNumber := False;
     last := Length(token);
-    if token[last] = 'f' then    // Not counting the f was pissing off the loop for multiple expressions
+    if token[last] = 'f' then
         Dec(last);
 
+    start := 1;
+    if token[1] = '-' then
+        start := 2;
+
+    if start > last then Exit;  
+
     isNumber := True;
-    for i := 1 to last do
+    for i := start to last do
         if not (token[i] in ['0'..'9', '.']) then
             isNumber := False;
 end;
@@ -2060,7 +2066,7 @@ procedure lexer();
 var
     i, linecount: LongInt;
     word: String;
-    isKeyword, isFloat: Boolean;
+    isKeyword, isFloat, prevIsValue: Boolean;
     isMultiple: Boolean;
 
     // 
@@ -2134,6 +2140,37 @@ begin
             '<<': assignDoubleChar('<<', 'SHL');
             '[[': assignDoubleChar('[[', 'VESCAPE');
         end;
+
+        prevIsValue := (tokenCount > 0) and
+            ( (tokenKind[tokenCount-1] = 'NUMBER')     or
+              (tokenKind[tokenCount-1] = 'FLOAT')      or
+              (tokenKind[tokenCount-1] = 'IDENTIFIER') or
+              (tokenKind[tokenCount-1] = 'RPAR')       or
+              (tokenKind[tokenCount-1] = 'RBRAC')      or
+              (tokenKind[tokenCount-1] = 'STRING') );
+
+        if (not isMultiple) and (buf[i] = '-') and (buf[i+1] in ['0'..'9']) and (not prevIsValue) then
+            begin
+                word := '-';
+                Inc(i); // step past the '-', land on the first digit
+                isFloat := False;
+                while buf[i] in ['0'..'9', '.', 'f'] do
+                    begin
+                        word := word + buf[i];
+                        Inc(i);
+                    end;
+
+                if (Pos('.', word) > 0) or (Pos('f', word) > 0) then
+                    isFloat := True;
+
+                if isFloat then
+                    assignSingleChar(word, 'FLOAT')
+                else
+                    assignSingleChar(word, 'NUMBER');
+
+                Dec(i); // outer Inc(i) below will land correctly
+                isMultiple := True; // suppress the old single-char '-' case
+            end;
 
         // SINGLE CHARACHTER TOKENS 
         if not isMultiple then 

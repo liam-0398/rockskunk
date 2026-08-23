@@ -16,3 +16,8 @@ optimizer.o
 advreverb
 firfilter
 lpf
+cat 
+1.text
+ddr
+cpr
+lsr

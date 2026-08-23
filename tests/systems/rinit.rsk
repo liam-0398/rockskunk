@@ -1,0 +1,36 @@
+; NO-BULLSHIT INIT SYSTEM
+
+
+P remount() {
+    write(console, 'REMOUNTING ROOT FILESYSTEM R/W\n', 31)
+    pid := fork();
+        IF (pid = 0) { execve('/sbin/fsck', BITS) }
+}
+
+P initialMount() {
+    proc := 'proc' + 8      procs := '/proc' + 8
+    sys := 'sys' + 8        syss := '/sys' + 8
+    devt := 'devtmpfs' + 8  dev := '/dev' + 8
+
+    mount(proc, procs, proc, 0, nil)
+    mount(sys, syss, sys, 0, nil)
+    mount(devt, dev, devt, 0, nil)
+
+    console := open('/dev/console', 1)
+    write(console, 'INITIAL FILESYSTEMS MOUNTED\n', 28);
+}
+
+P main() {
+    IF (getpid() <> 1) { exit(1) }
+
+    initialMount()
+    remount()
+    kMod()
+    misc()
+    dev()
+    services()
+
+    spawnGetty()
+
+
+}

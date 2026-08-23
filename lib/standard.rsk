@@ -16,13 +16,14 @@ F unlink(path) { r := sys(87, path, 0, 0, 0, 0, 0) }
 F fstat(fd, statbuf) { r := sys(5, fd, statbuf, 0, 0, 0, 0) }
 F mkdir(path, mode) { r := sys(83, path, mode, 0, 0, 0, 0) }
 F close(fd) { r := sys(3, fd, 0, 0, 0, 0, 0) }
-
 F stat(path, statbuf) { r := sys(4, path, statbuf, 0, 0, 0, 0) }
 F lstat(path, statbuf) { r := sys(6, path, statbuf, 0, 0, 0, 0) }
 F getdents64(fd, dirent, count) { r := sys(217, fd, dirent, count, 0, 0, 0) }
 F chdir(path) { r := sys(80, path, 0, 0, 0, 0, 0) }
 F getcwd(buf, size) { r := sys(79, buf, size, 0, 0, 0, 0) }
 F readlink(path, buf, bufsize) { r := sys(89, path, buf, bufsize, 0, 0, 0) }
+F mount(source, target, fstype, flags, data) { r := sys(165, source, target, fstype, flags, data, 0) }
+F umount2(target, flags) { r := sys(166, target, flags, 0, 0, 0, 0) }
 
 ; EXEC -------------------------------------------------------------
 

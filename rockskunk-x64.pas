@@ -1521,10 +1521,20 @@ begin
     else if condition = 'MORE' then
         WriteText('    jle ' + endlabel + #10)      // jump if less or equal
     else if condition = 'EQUAL' then
-        WriteText('    jne ' + endlabel + #10);     // jump if not equal
+        WriteText('    jne ' + endlabel + #10)     // jump if not equal
     else if condition = 'NOTEQUAL' then
         WriteText('    je ' + endlabel + #10);
 
+end;
+
+procedure emitCompareAndJump(leftVal, rightVal, condition, skipLabel: String);
+begin
+    WriteText('    mov rax, ' + leftVal + #10);
+    WriteText('    push rax' + #10);
+    WriteText('    mov rbx, ' + rightVal + #10);
+    WriteText('    pop rax' + #10);
+    WriteText('    cmp rax, rbx' + #10);
+    condJumpTable(condition, skipLabel);
 end;
 
 function loopWhile(): Boolean;
@@ -1714,14 +1724,14 @@ end;
 
 function condWhen(): Boolean;
 var
-    condvar, condition, condlimit, endlabel: String;
+    condvar, condition, condlimit, endlabel, misslabel: String;
 begin
     consume; //consume W
     consume; // consume LPAR
-    condvar := varToMem(consume);
+    condvar := evaluateExpression(False);
     condition := peek; // grab TYPE not the damn value
     consume; // now eat it
-    condlimit := consume; // 0
+    condlimit := evaluateExpression(False);
     consume; // RPAR
 
     if not isNumber(condlimit) then
@@ -1732,7 +1742,7 @@ begin
     WriteText('    mov rax, ' + condvar + #10);
     WriteText('    cmp rax, ' + condlimit + #10);
 
-    condJumpTable(condition, endlabel);
+    emitCompareAndJump(condvar, condlimit, condition, misslabel);
 
     cfKind[cfDepth] := 'WHEN';
     cfELabel[cfDepth] := endlabel;
@@ -1746,10 +1756,10 @@ var
 begin
     consume; //consume W
     consume; // consume LPAR
-    condvar := varToMem(consume);
+    condvar := evaluateExpression(False);
     condition := peek; // grab TYPE not the damn value
     consume; // now eat it
-    condlimit := consume; // 0
+    condlimit := evaluateExpression(False);
     consume; // RPAR
 
     if not isNumber(condlimit) then
@@ -1757,16 +1767,18 @@ begin
 
     if not chainContinuing then
         begin
-            // first IF of a fresh chain - mint the ONE label every branch converges to
+
             endlabel := labelMaker('IF');
             cfELabel[cfDepth] := endlabel;
             cfKind[cfDepth] := 'IF';
             Inc(cfDepth);
         end;
-    // else: chain already has a frame on top of the stack, reuse it as-is
+
 
     misslabel := labelMaker('IF');
-    cfTLabel[cfDepth - 1] := misslabel;   // stash for RBRACE to emit when this branch's body closes
+    cfTLabel[cfDepth - 1] := misslabel;
+
+    emitCompareAndJump(condvar, condlimit, condition, misslabel);
 
     WriteText('    mov rax, ' + condvar + #10);
     WriteText('    cmp rax, ' + condlimit + #10);
@@ -1862,16 +1874,25 @@ end;
 
 procedure varBlock();
 var
-    arrayName, arrayType, arraySize: String;
+    arrayName, arrayType, arraySize, variable, value: String;
 begin
     arrayName := '';
     arrayType := '';
     arraySize := '';
+    variable := '';
+    value := '';
     consume; // consume |V
         while peek() <> 'PIPE' do 
             begin
-                        if peek2() = 'ASSIGN' then // globals
+                if peek2() = 'ASSIGN' then // globals
                             begin
+                                variable := consume;
+                                consume;
+                                value := consume; // no floats
+                                aName[aCount] := variable;
+                                aType[aCount] := 'VAR';
+                                WriteData(variable + ': dq ' + value + #10);
+                                Inc(aCount);
                             end 
                         else if peek2() = 'BANG' then // byte arrays
                             begin
@@ -2219,7 +2240,14 @@ begin
                             Inc(i);
                         end;
 
-                    if word = 'NEXTFILE' then
+                    if word = 'nil' then
+                    begin
+                        tokenKind[tokenCount] := 'NUMBER';
+                        tokenValue[tokenCount] := '0';
+                        t_line[tokenCount] := linecount;
+                        Inc(tokenCount);
+                    end
+                    else if word = 'NEXTFILE' then
                         begin
                             linecount := 0;   // see note below on why 0, not 1
                             Dec(i);

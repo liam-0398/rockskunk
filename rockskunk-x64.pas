@@ -1522,6 +1522,9 @@ begin
         WriteText('    jle ' + endlabel + #10)      // jump if less or equal
     else if condition = 'EQUAL' then
         WriteText('    jne ' + endlabel + #10);     // jump if not equal
+    else if condition = 'NOTEQUAL' then
+        WriteText('    je ' + endlabel + #10);
+
 end;
 
 function loopWhile(): Boolean;
@@ -2139,6 +2142,7 @@ begin
             '>>': assignDoubleChar('>>', 'SHR');
             '<<': assignDoubleChar('<<', 'SHL');
             '[[': assignDoubleChar('[[', 'VESCAPE');
+            '<>': assignDoubleChar('<>', 'NOTEQUAL');
         end;
 
         prevIsValue := (tokenCount > 0) and

@@ -19,7 +19,7 @@ F close(fd) { r := sys(3, fd, 0, 0) }
 
 ; OUTPUT ----------------------------------------------------------------
 
-P writeLn(s) { 
+P writeln(s) { 
     len := s^
     bufaddr := s + 8
     r1 := sys(1, 1, bufaddr, len)
@@ -41,12 +41,12 @@ F ccmp(p, q) {
     ; needs the byte-deref primitive either way
 }
 
-P printC(c) { ; CHAR
+P printc(c) { ; CHAR
     charbuf![0] := c
     sys(1, 1, charbuf, 1)
 }
 
-P printB(v) { ; BITWISE
+P printb(v) { ; BITWISE
     samt := 0
     bit := 0
     i := 0
@@ -63,18 +63,82 @@ P printB(v) { ; BITWISE
 
 ; MATH ----------------------------------------------------------------
 
+; float conditionals are currently pissed
+;F fabs(i: f) {
+;    W (i < 0) {
+;        r := 0.0f - i
+;    }
+;    W (i > 0) {
+;        r := i
+;    }
+;}
+
+F absi(i) {
+    W (i < 0) {
+        r := 0 - i
+    }
+    W (i > 0) {
+        r := i
+    }
+}
+
+F min(a, b) {
+    W (a < b) {
+        r := a
+    }
+    W (b > a) {
+        r := b
+    }
+}
+
+F max(a, b) {
+    W (a > b) {
+        r := a
+    }
+    W (b < a) {
+        r := b
+    }
+}
+
+F flerp(a: f, b: f, t: f) {
+    r := b - a + a + t
+}
+
+F fsqr(a: f) {
+    r := a * a
+}
+
+F fcube(a: f) {
+    r := a * a
+}
+
+F sqr(a) {
+    r := a * a
+}
+
+F cube(a) {
+    r := a * a
+}
+
+
+; Conversion -----------------------------------------------------------------
+
+
+
 
 ; Utility --------------------------------------------------------------------
+
+
 
 F getpid() { r := sys(39, 0, 0, 0) }
 F brk(addr) { r := sys(12, addr, 0, 0) }
 F exit(code) { r := sys(60, code, 0, 0) }
 
-F argC() {
+F argc() {
     r := [[g_argc]]          
 }
 
-F argV(i) {
+F argv(i) {
     byteOffset := i * 8
     a := [[g_argv]] + byteOffset
     r := a^ 

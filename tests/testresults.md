@@ -37,3 +37,25 @@ real    0m0.021s
 user    0m0.013s
 sys     0m0.007s
 /NFS/Code/rockskunk $ > 
+
+# dsp/advreverb
+/NFS/Code/rockskunk $ > time ./advreverb 
+0.500 
+
+real    0m4.529s
+user    0m4.527s
+sys     0m0.004s
+/NFS/Code/rockskunk $ > time ./advreverb 
+0.500 
+
+real    0m4.470s
+user    0m4.449s
+sys     0m0.021s
+/NFS/Code/rockskunk $ > time ./advreverb 
+0.500 
+
+real    0m4.438s
+user    0m4.427s
+sys     0m0.008s
+/NFS/Code/rockskunk $ > 
+

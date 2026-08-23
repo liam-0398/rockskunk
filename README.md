@@ -236,6 +236,7 @@ fm(p) ; free
 
 p := &a ; load specific address
 v := p^        ; v now holds whatever qword lives at that address
+p^ := b        ; write through
 
 ; strings are length-prefixed pointers, null terminated for C compat
 len := s^         ; length of string s

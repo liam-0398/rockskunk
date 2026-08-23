@@ -1611,6 +1611,9 @@ begin
     condlimit := consume; // 0
     consume; // RPAR
 
+    if not isNumber(condlimit) then
+        condlimit := varToMem(condlimit);
+
     endlabel := labelMaker('W');
 
     WriteText('    mov rax, ' + condvar + #10);

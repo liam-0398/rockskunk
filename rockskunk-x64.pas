@@ -120,7 +120,7 @@ procedure writeData(s: String); begin fpWrite(fd4, s[1], Length(s)); end;
 procedure writeBSS(s: String); begin fpWrite(fd5, s[1], Length(s)); end;
 
 
-function matchName(variable, which: String): Boolean;
+function matchName(variable: String; which: String): Boolean;
 var
     i: LongInt;
 begin
@@ -151,6 +151,38 @@ begin
     end
     else
         WriteLn('YOU HAVE FRUSTRATED THE COMPLIER - MATCHNAME - WRONG SEARCH TYPE');
+end;
+
+function matchType(variable, which: String): String;
+var
+    i: LongInt;
+begin
+    if which = 'ARRAY' then
+    begin
+        for i := 0 to aCount - 1 do
+            if variable = aName[i] then
+                matchType := aType[i];
+    end
+    else if which = 'SYM' then
+    begin
+        for i := 0 to symCount - 1 do
+            if variable = symName[i] then
+                matchType := symType[i];
+    end
+    else if which = 'PARAM' then
+    begin
+        for i := 0 to param_FCount - 1 do
+            if variable = param_FName[i] then
+                matchType := param_FType[i];
+    end
+    else if which = 'RETURN' then
+    begin
+        for i := 0 to return_FCount - 1 do
+            if variable = return_FType[i] then
+                matchType := return_FType[i];
+    end
+    else
+        WriteLn('YOU HAVE FRUSTRATED THE COMPLIER - MATCHTYPE - WRONG SEARCH TYPE');
 end;
 
 function keywordCheck(word: String): Boolean; // Flag keywords
@@ -778,6 +810,8 @@ begin
     varToMem := '';
     foundIndex := -1;
 
+
+
     for i := 0 to aCount - 1 do // grab index for type check
     begin
         if aName[i] = variable then
@@ -788,11 +822,8 @@ begin
     end;
 
     if foundIndex = - 1 then // if it wasnt found its a local
-    begin
-        for i := 0 to symCount - 1 do
-            if symName[i] = variable then
-                VarToMem := '[rbp-' + IntToStr(symOffset[i]) + ']';
-    end
+        if matchName(variable, 'SYM') then
+                VarToMem := '[rbp-' + IntToStr(symOffset[i]) + ']'
     else
     begin
         if aType[foundIndex] <> 'VAR' then // array
@@ -1020,7 +1051,7 @@ begin
         end
     else
         begin // VAR
-            for i := 0 to symCount - 1 do
+            for i := 0 to symCount - 1 do // NAME AND TYPE ===========================
                 begin
                     if intruder = symName[i] then
                         if symType[i] = 'FLOAT' then
@@ -1267,7 +1298,7 @@ begin
         if WhoGoesThere(fname) = 'FLOAT' then
             returnsFloat := True;
 
-        for i := 0 to param_FCount - 1 do
+        for i := 0 to param_FCount - 1 do // INDEX
             if fname = param_FName[i] then
                 begin
                     argfindex := param_FIndex[i];
@@ -1426,9 +1457,7 @@ begin
     isFloat := False;
     isGlobal := False;
 
-    for i := 0 to aCount - 1 do
-        if variable = aName[i] then
-            isGlobal := True;
+    if matchName(variable, 'ARRAY') then isGlobal := True;
 
     variable := consume(); // consume the a in a := 5
 
@@ -1708,9 +1737,7 @@ begin
     consume; // ]
     consume; // )
 
-    for i := 0 to aCount - 1 do
-        if aName[i] = arrname then
-            arrType := aType[i];
+    arrType := matchType(arrName, 'ARRAY');
 
     if arrType = 'BYTE' then elementSize := 1 else elementSize := 8;
 

@@ -1,0 +1,23 @@
+; DD
+
+|V buf[8192] |
+
+P destroyDisk() {
+    bytes := 1
+    filename := argv(1)
+    destname := argv(2)
+    fd := open(filename, 0, 0)
+        ; raw linux syscall, no libc -1 isnt catchall for error
+        W (fd < 0 ) { writeln('NO SOURCE FILE') exit(1)}
+    fd2 := open(destname, 65, 420)
+        W (fd2 < 0 ) { writeln('NO DESTINATION FILE') exit(1)}
+
+    LW (bytes > 0) {
+        bytes := read(fd, buf, 8192)
+        write(fd2, buf, bytes) }
+    close(fd)
+    close(fd2)
+    
+}
+
+P main() { destroyDisk() exit(0)}

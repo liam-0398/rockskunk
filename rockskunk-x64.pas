@@ -1471,6 +1471,20 @@ procedure conditionalIntrinsic(); begin end;
    {cfKind, cfTLabel, cfELabel, cfLVar: Array[0..64] of String;
     cfDepth: Integer;}
 
+procedure condJumpTable(condition, endLabel: String);
+begin
+    if condition = 'LESSEQUAL' then  // all the shit is backwards here
+        WriteText('    jg ' + endlabel + #10)       // jump if greater (skip when i > limit)
+    else if condition = 'LESS' then
+        WriteText('    jge ' + endlabel + #10)      // jump if greater or equal
+    else if condition = 'GREQUAL' then
+        WriteText('    jl ' + endlabel + #10)       // jump if less
+    else if condition = 'MORE' then
+        WriteText('    jle ' + endlabel + #10)      // jump if less or equal
+    else if condition = 'EQUAL' then
+        WriteText('    jne ' + endlabel + #10);     // jump if not equal
+end;
+
 function loopWhile(): Boolean;
 var
     loopvar, loopcond, looplimit, toplabel, endlabel: String;
@@ -1491,17 +1505,7 @@ begin
     WriteText('    mov rax, ' + loopvar + #10);    
     WriteText('    cmp rax, ' + looplimit + #10);    
     
-    if loopcond = 'LESSEQUAL' then  // all the shit is backwards here
-        WriteText('    jg ' + endlabel + #10)       // jump if greater (i > limit)
-    else if loopcond = 'LESS' then
-        WriteText('    jge ' + endlabel + #10)      // jump if greater or equal
-    else if loopcond = 'GREQUAL' then
-        WriteText('    jl ' + endlabel + #10)       // jump if less
-    else if loopcond = 'GREATER' then
-        WriteText('    jle ' + endlabel + #10)      // jump if less or equal
-    else if loopcond = 'EQUAL' then
-        WriteText('    jne ' + endlabel + #10);     // jump if not equa  
-
+    condJumpTable(loopCond, endLabel);  
    
     cfKind[cfDepth] := 'WHILE';
     cfTLabel[cfDepth] := toplabel;
@@ -1619,16 +1623,7 @@ begin
     WriteText('    mov rax, ' + condvar + #10);
     WriteText('    cmp rax, ' + condlimit + #10);
 
-    if condition = 'LESSEQUAL' then  // all the shit is backwards here
-        WriteText('    jg ' + endlabel + #10)       // jump if greater (skip when i > limit)
-    else if condition = 'LESS' then
-        WriteText('    jge ' + endlabel + #10)      // jump if greater or equal
-    else if condition = 'GREQUAL' then
-        WriteText('    jl ' + endlabel + #10)       // jump if less
-    else if condition = 'MORE' then
-        WriteText('    jle ' + endlabel + #10)      // jump if less or equal
-    else if condition = 'EQUAL' then
-        WriteText('    jne ' + endlabel + #10);     // jump if not equal
+    condJumpTable(condition, endlabel);
 
     cfKind[cfDepth] := 'WHEN';
     cfELabel[cfDepth] := endlabel;
@@ -1636,7 +1631,33 @@ begin
     condWhen := True;
 end;
 
-procedure condIf(); begin consume; end;
+procedure condIf(); 
+var
+    condvar, condition, condlimit, endlabel: String;
+begin
+    consume; //consume W
+    consume; // consume LPAR
+    condvar := varToMem(consume);
+    condition := peek; // grab TYPE not the damn value
+    consume; // now eat it
+    condlimit := consume; // 0
+    consume; // RPAR
+
+    if not isNumber(condlimit) then
+        condlimit := varToMem(condlimit);
+
+    endlabel := labelMaker('W');
+
+    WriteText('    mov rax, ' + condvar + #10);
+    WriteText('    cmp rax, ' + condlimit + #10);
+
+    condJumpTable(condition, endlabel);
+
+    cfKind[cfDepth] := 'WHEN';
+    cfELabel[cfDepth] := endlabel;
+    Inc(cfDepth);
+end;
+
 procedure condElse(); begin consume; end;
 
 function constructFunction(): Boolean;

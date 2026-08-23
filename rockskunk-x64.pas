@@ -22,6 +22,9 @@ const
         True,  True,  True,  True,  True,  True,  True,  True
     );
 var
+    Debug: Boolean = True;
+    Alloc: Boolean = False;
+
     // Tokens
     tokenKind, tokenValue: Array[0..65535] of String;
     t_line: Array[0..65535] of Integer;
@@ -78,6 +81,24 @@ var
 function WhoGoesThere(intruder: String): String; forward;
 function evaluateExpression(isFloat: Boolean): String; forward;
 procedure dispatch(); forward;
+
+// DEBUG
+
+procedure hardFault(location, input: String);
+begin
+    if not Debug then Exit else begin
+         WriteLn(IntToStr(t_line[position]) + ' - ' + 'I CANT BELIEVE YOUVE DONE THIS - ' + location + ' - UNK SYMBOL>> ' + input);
+            Halt(1); 
+    end;
+end;
+
+procedure statusMessage(input: String);
+begin
+    if not Debug then Exit else begin
+         WriteLn(IntToStr(t_line[position]) + ' - ' + input);
+            Halt(1); 
+    end;
+end;
 
 // HELPERS =================================================
 // ========================================================
@@ -704,10 +725,7 @@ begin
                 VarToMem := '[rbp-' + IntToStr(symOffset[i]) + ']';
         end;
     if varToMem = '' then
-        begin    
-            WriteLn(IntToStr(t_line[position]) + ' - ' + 'I CANT BELIEVE YOUVE DONE THIS - VAR_TO_MEM - UNK SYMBOL>> ' + variable);
-            Halt(1); // Loop for multiple opererators was getting pissed becuase '+' was making its way into here
-        end;
+        hardFault('VAR_TO_MEM', variable);
 end;
 
 function arrayToMem(arrayName, aindex: String): String;
@@ -747,10 +765,7 @@ begin
         end;
 
     if arrayToMem = '' then
-        begin    
-            WriteLn(IntToStr(t_line[position]) + ' - ' + 'I CANT BELIEVE YOUVE DONE THIS - ARRAY_TO_MEM - UNK SYMBOL>> ' + arrayName);
-            Halt(1); // Loop for multiple opererators was getting pissed becuase '+' was making its way into here
-        end;
+        hardFault('ARRAY_TO_MEM', arrayName);
 end;
 
 function resolveSyscall(): String;
@@ -800,10 +815,7 @@ begin
             else if op = 'STAR'  then emitMulFloat('xmm0', second)
             else if op = 'SLASH' then emitDivFloat('xmm0', second)
             else
-                begin
-                    WriteLn(IntToStr(t_line[position]) + ' - ' + 'I CANT BELIEVE YOUVE DONE THIS - EMIT_MATH - UNK OP >> ' + op);
-                    Halt(1);
-                end;
+                hardFault('EMIT_MATH', op);
         end
     else
         begin
@@ -812,10 +824,7 @@ begin
             else if op = 'STAR'  then emitMul('rax', second)
             else if op = 'SLASH' then emitDiv('rax', second)
             else
-                begin
-                    WriteLn(IntToStr(t_line[position]) + ' - ' + 'I CANT BELIEVE YOUVE DONE THIS - EMIT_MATH - UNK OP >> ' + op);
-                    Halt(1);
-                end;
+                hardFault('EMIT_MATH', op);
         end;
 end;
 
@@ -861,7 +870,7 @@ begin
             op := peek(); // Operator
             consume;
             second := consume; // Operand
-            WriteLn('OPTIMIZATION');
+            statusMessage('OPTIMIZATION');
 
             if isFloat then
                 begin
@@ -886,7 +895,7 @@ var
     isFloat: Boolean;
 begin
     isFloat := False;  // THROW IN ISFLOTLIT CHECK LATER
-     WriteLn(IntToStr(t_line[position]) + ' - ' + 'OPRESOLVER'); // DEBUG
+    statusMessage('OPRESOLVER');
 
     if (Length(misformattedBastard) > 0) and (misformattedBastard[1] = '[') then
         begin
@@ -958,7 +967,8 @@ var
     seenFloats, seenInts, argCounter: Integer;
     isFloatArg: Boolean;
 begin
-            WriteLn('ARGUMENT PARSER - I' + IntToStr(argfindex) + '- N' + argname); // DEBUG
+            //WriteLn('ARGUMENT PARSER - I' + IntToStr(argfindex) + '- N' + argname); // DEBUG
+            statusMessage('ARGPARSER');
             argcounter := 0;
             seenFloats := 0;
             seenInts := 0;
@@ -1010,7 +1020,7 @@ function eeArrays(): String;
 var
     arrayname, arrayIndex, arrayType, str: String;
 begin
-     WriteLn(IntToStr(t_line[position]) + ' - ' + 'EXPRESSION EVAL - ARRAYS'); // DEBUG
+    statusMessage('EEVAL - ARRAYS');
         // Word Arrays
     if (peek()='IDENTIFIER') and (peek2()='LBRAC') then
         begin
@@ -1087,7 +1097,7 @@ function bitwiseEvaluator(first: String; isFloat: Boolean): String;
 var
     second, op: String;
 begin
-    WriteLn(IntToStr(t_line[position]) + ' - ' + 'EXPRESSION EVAL - BITWISE BRANCH');
+    statusMessage('EEVAL - BITWISE');
     loadRAX(first); 
 
     while ((peek() = 'DOLLAR') or (peek() = 'PIPE') or (peek() = 'NOR') or (peek() = 'NOY') or (peek() = 'SHL') or (peek() = 'SHR')) do
@@ -1104,10 +1114,7 @@ begin
         else if op = 'SHL'    then emitShl('rax', second)
         else if op = 'SHR'    then emitShr('rax', second)
         else
-        begin
-            WriteLn(IntToStr(t_line[position]) + ' - ' + 'I CANT BELIEVE YOUVE DONE THIS - EMIT_BITWISE - UNK OP >> ' + op);
-            Halt(1);
-        end;
+            hardFault('BITWISE', op);
     end;
 
     bitwiseEvaluator := 'rax';
@@ -1171,7 +1178,7 @@ begin
         end
     else
         begin
-            WriteLn(IntToStr(t_line[position]) + ' - ' + 'EXPRESSION EVAL - NOT OPERATOR BRANCH'); // DEBUG
+            statusMessage('EEVAL - NOT OP');
            if peek() = 'VESCAPE' then
                 begin
                     consume;                          // [[
@@ -1203,7 +1210,7 @@ begin
                 evaluateExpression := first
             else
                 begin
-                    WriteLn(IntToStr(t_line[position]) + ' - ' + 'EXPRESSION EVAL - OPERATOR BRANCH');
+                    statusMessage('EEVAL - OP');
 
                     if isFloat then
                         loadXMM0(first) // floats need Xtra Math Man
@@ -1357,7 +1364,7 @@ begin
                                 rightside := evaluateExpression(isFloat);
                                 emitAssign(variable, rightside);
                                 end;
-                        WriteLn(IntToStr(t_line[position]) + ' - ' + 'ASSIGN BRANCH - DECLARED'); // DEBUG
+                        statusMessage('ASSIGN - DECLARED');
                 end
             else
                 begin
@@ -1415,7 +1422,7 @@ begin
                             rightside := evaluateExpression(isFloat);
                             emitAssign(variable,rightside);
                          end;
-                        WriteLn(IntToStr(t_line[position]) + ' - ' + 'ASSIGN BRANCH - UNDECLARED'); // DEBUG
+                        statusMessage('ASSIGN - UNDECLARED');
                     end;
         end
         else
@@ -1425,12 +1432,12 @@ begin
                         
                         if ((variable = 'printw') or (variable = 'printf') or (variable = 'sys')) then
                             begin
-                                WriteLn(IntToStr(t_line[position]) + ' - ' + 'DI BRANCH - ASM'); // DEBUG
+                                statusMessage('DI - ASM');
                                 asmFunctionCalls(variable, argname);
                             end
                         else
                             begin
-                                WriteLn(IntToStr(t_line[position]) + ' - ' + 'DI BRANCH - F CALL'); // DEBUG
+                                statusMessage('DI - FUNCTION CALL');
                                 consume(); // (
                                 if peek() <> 'RPAR' then
                                     begin
@@ -1671,7 +1678,7 @@ begin
 
     if not chainContinuing then
         begin
-            WriteLn(IntToStr(t_line[position]) + ' - ' + 'I CANT BELIEVE YOUVE DONE THIS - COND_ELSE - E WITH NO PRECEDING IF');
+            WriteLn(IntToStr(t_line[position]) + ' - ' + 'I CANT BELIEVE YOUVE DONE THIS - ALL ELSE NO IF HUH?');
             Halt(1);
         end;
 

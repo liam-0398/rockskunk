@@ -34,7 +34,7 @@ Very WIP. WAY down the line I want to do a ppc32 version as well so i can get we
 
 # Never
 
-- Records/Structs tracking state
+- Records/Structs tracking state in the compiler
 - Formal IR
 - Giant AST
 
@@ -59,8 +59,6 @@ Very WIP. WAY down the line I want to do a ppc32 version as well so i can get we
 
 ## Not Implemented Yet
 
-- If/Else
-- Inline ASM
 - Vectors
 - Pascal FFI
 - Records
@@ -109,7 +107,10 @@ result := delayLine.wptr'
     array[1] := 555 ; raw memory
     array![1] := 3 ; byte array
     array{1} := 23.4f ; float
-    array<1> := "hello world" ; string
+    array<1> := "hello world" ; string (not in yet)
+
+; Misc
+    BREAK ; you know what this is
 
 
 ; Functions

@@ -1944,7 +1944,7 @@ end;
 
 procedure dispatch();
 var
-    i, seenFloats, seenInts: Integer;
+    i, d, seenFloats, seenInts: Integer;
     asmgrab, atok, asmend: String;
 begin
     asmend := '';
@@ -1961,8 +1961,14 @@ begin
                 consume; // PLACEHOLDER
             end;
             'BREAK': begin
-                consume; // BRK
-                WriteText('    jmp ' + cfELabel[cfDepth - 1] + #10);
+                consume;
+                d := cfDepth - 1;
+                while (d >= 0) and (cfKind[d] <> 'FOR') and (cfKind[d] <> 'WHILE') do
+                    Dec(d);
+                if d < 0 then
+                    hardFault('BREAK', 'YOU DARE BREAK OUTSIDE OF CONTROL FLOW? JUST HIT CTRL-C ITS EASIER')
+                else
+                    WriteText('    jmp ' + cfELabel[d] + #10);
             end;
            'LBRACE': begin 
                 consume;

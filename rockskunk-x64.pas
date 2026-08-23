@@ -2152,8 +2152,10 @@ begin
     until i >= bytes; // Runs until EOF
 
     i := 0;
+    if Debug then begin
     for i := 0 to tokenCount - 1 do
         WriteLn(IntToStr(i) + ': ' + tokenKind[i] + '  ' + tokenValue[i]);
+    end;
 end;
 
 // INIT ============================================

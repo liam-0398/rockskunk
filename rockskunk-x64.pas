@@ -554,6 +554,20 @@ begin
     WriteText('    call print_float' + #10);
 end;
 
+procedure functionIntToFloat(source: String);
+begin
+    WriteText('    mov rax, ' + source + #10);
+    WriteText('    cvtsi2sd xmm0, rax' + #10);
+    WriteText('    ret' + #10);
+end;
+
+procedure functionFloatToInt(source: String);
+begin
+    WriteText('    movsd xmm0, ' + source + #10);
+    WriteText('    cvttsd2si rax, xmm0' + #10);
+    WriteText('    ret' + #10);
+end;
+
 procedure asmFoundations();
 begin
     // placed at bottom for file
@@ -847,6 +861,22 @@ begin
             if not isNumber(argname) then argname := varToMem(argname);
             consume; // )
             functionPrintW(argname);
+        end
+    else if variable = 'intToFloat' then
+        begin
+            consume; // (
+            argname := consume();
+            if not isNumber(argname) then argname := varToMem(argname);
+            consume; // )
+            functionIntToFloat(argname);
+        end
+    else if variable = 'floatToInt' then
+        begin
+            consume; // (
+            argname := consume();
+            if not isNumber(argname) then argname := varToMem(argname);
+            consume; // )
+            functionFloatToInt(argname);
         end
     else if variable = 'sys' then
         begin
@@ -1430,7 +1460,7 @@ begin
                 if peek() = 'LPAR' then 
                     begin
                         
-                        if ((variable = 'printw') or (variable = 'printf') or (variable = 'sys')) then
+                        if ((variable = 'printw') or (variable = 'printf') or (variable = 'intToFloat') or (variable = 'floatToInt') or (variable = 'sys')) then
                             begin
                                 statusMessage('DI - ASM');
                                 asmFunctionCalls(variable, argname);

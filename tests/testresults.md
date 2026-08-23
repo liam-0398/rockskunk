@@ -39,6 +39,7 @@ sys     0m0.007s
 /NFS/Code/rockskunk $ > 
 
 # dsp/advreverb
+i7-9750H Plugged in
 200,000,000 iterations
 /NFS/Code/rockskunk $ > time ./advreverb 
 0.500 
@@ -58,5 +59,25 @@ sys     0m0.021s
 real    0m4.438s
 user    0m4.427s
 sys     0m0.008s
-/NFS/Code/rockskunk $ > 
+
+i7-9750H Battery Power
+200,000,000 iterations
+/NFS/Code/rockskunk $ > time ./advreverb 
+0.500 
+
+real    0m4.999s
+user    0m4.990s
+sys     0m0.004s
+/NFS/Code/rockskunk $ > time ./advreverb 
+0.500 
+
+real    0m5.112s
+user    0m5.108s
+sys     0m0.000s
+/NFS/Code/rockskunk $ > time ./advreverb 
+0.500 
+
+real    0m5.003s
+user    0m4.996s
+sys     0m0.004s
 

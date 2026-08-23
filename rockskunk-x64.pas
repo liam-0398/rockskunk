@@ -1756,10 +1756,7 @@ begin
 
     endlabel := labelMaker('W');
 
-    WriteText('    mov rax, ' + condvar + #10);
-    WriteText('    cmp rax, ' + condlimit + #10);
-
-    emitCompareAndJump(condvar, condlimit, condition, misslabel);
+    emitCompareAndJump(condvar, condlimit, condition, endlabel);
 
     cfKind[cfDepth] := 'WHEN';
     cfELabel[cfDepth] := endlabel;
@@ -1796,10 +1793,6 @@ begin
     cfTLabel[cfDepth - 1] := misslabel;
 
     emitCompareAndJump(condvar, condlimit, condition, misslabel);
-
-    WriteText('    mov rax, ' + condvar + #10);
-    WriteText('    cmp rax, ' + condlimit + #10);
-    condJumpTable(condition, misslabel);  // jump HERE if false, not to endlabel
 
     chainContinuing := False;
 end;

@@ -2,63 +2,63 @@
 ; STANDARD LIBRARY
 
 |V  binbuf![65]
-    charbuf![8] 
+charbuf![8] 
 
 |
 
 ; I/O ----------------------------------------------------------------
 
-F read(fd, buf, count) { r := sys(0,fd ,buf ,count) }
-F write(fd, buf, count) { r := sys(1,fd ,buf ,count) }
-F open(path, flags, mode) { r := sys(2,path , flags, mode) }
-F lseek(fd, offset, whence) { r := sys(8, fd, offset, whence) }
-F unlink(path) { r := sys(87, path, 0, 0) }
-F fstat(fd, statbuf) { r := sys(5, fd, statbuf, 0) }
-F mkdir(path, mode) { r := sys(83, path, mode, 0) }
-F close(fd) { r := sys(3, fd, 0, 0) }
+F read(fd, buf, count) { r := sys(0, fd, buf, count, 0, 0, 0) }
+F write(fd, buf, count) { r := sys(1, fd, buf, count, 0, 0, 0) }
+F open(path, flags, mode) { r := sys(2, path, flags, mode, 0, 0, 0) }
+F lseek(fd, offset, whence) { r := sys(8, fd, offset, whence, 0, 0, 0) }
+F unlink(path) { r := sys(87, path, 0, 0, 0, 0, 0) }
+F fstat(fd, statbuf) { r := sys(5, fd, statbuf, 0, 0, 0, 0) }
+F mkdir(path, mode) { r := sys(83, path, mode, 0, 0, 0, 0) }
+F close(fd) { r := sys(3, fd, 0, 0, 0, 0, 0) }
 
 ; OUTPUT ----------------------------------------------------------------
 
 P writeln(s) { 
     len := s^
     bufaddr := s + 8
-    r1 := sys(1, 1, bufaddr, len)
+    r1 := sys(1, 1, bufaddr, len, 0, 0, 0)
 
     nl := '\n'
     nllen := nl^
     nldata := nl + 8
-    r2 := sys(1, 1, nldata, nllen)
+    r2 := sys(1, 1, nldata, nllen, 0, 0, 0)
 }
 
 P writeT(s) { ; no newline
     len := s^
     bufaddr := s + 8
-    r1 := sys(1, 1, bufaddr, len)
+    r1 := sys(1, 1, bufaddr, len, 0, 0, 0)
 }
 
 F ccmp(p, q) {
-    ; walk both byte-by-byte until mismatch or double null
-    ; needs the byte-deref primitive either way
+; walk both byte-by-byte until mismatch or double null
+; needs the byte-deref primitive either way
 }
 
 P printc(c) { ; CHAR
     charbuf![0] := c
-    sys(1, 1, charbuf, 1)
+    sys(1, 1, charbuf, 1, 0, 0, 0)
 }
 
 P printb(v) { ; BITWISE
     samt := 0
     bit := 0
     i := 0
-    LF (i := 0 until 64) {
+        LF (i := 0 until 64) {
         samt := 63 - i
         bit := v >> samt
         bit := bit $ 1
         bit := bit + 48
         binbuf![i] := bit
-    }
+            }
     binbuf![64] := 32
-    sys(1, 1, binbuf, 65)
+    sys(1, 1, binbuf, 65, 0, 0, 0)
 }
 
 ; MATH ----------------------------------------------------------------
@@ -76,29 +76,29 @@ P printb(v) { ; BITWISE
 
 F absi(i) {
     W (i < 0) {
-        r := 0 - i
-    }
+    r := 0 - i
+        }
     W (i > 0) {
-        r := i
-    }
+    r := i
+        }
 }
 
 F min(a, b) {
     W (a < b) {
-        r := a
-    }
+    r := a
+        }
     W (b > a) {
-        r := b
-    }
+    r := b
+        }
 }
 
 F max(a, b) {
     W (a > b) {
-        r := a
-    }
+    r := a
+        }
     W (b < a) {
-        r := b
-    }
+    r := b
+        }
 }
 
 F flerp(a: f, b: f, t: f) {
@@ -131,9 +131,9 @@ F cube(a) {
 
 
 
-F getpid() { r := sys(39, 0, 0, 0) }
-F brk(addr) { r := sys(12, addr, 0, 0) }
-F exit(code) { r := sys(60, code, 0, 0) }
+F getpid() { r := sys(39, 0, 0, 0, 0, 0, 0) }
+F brk(addr) { r := sys(12, addr, 0, 0, 0, 0, 0) }
+F exit(code) { r := sys(60, code, 0, 0, 0, 0, 0) }
 
 F argc() {
     r := [[g_argc]]          

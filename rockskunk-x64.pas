@@ -152,7 +152,8 @@ end;
 
 procedure openFile;
 var
-    libBytes: CInt;
+    libBytes, markerLen, i: CInt;
+    marker: String;
 begin
     WriteLn(#10 + 'LOADING STANDARD LIBRARY');
     FillChar(buf, SizeOf(buf), 0);
@@ -160,12 +161,17 @@ begin
     libBytes := FpRead(fd, buf, SizeOf(buf));
     fpClose(fd);
 
+    marker := #10 + 'NEXTFILE' + #10;
+    markerLen := Length(marker);
+    for i := 1 to markerLen do
+        buf[libBytes + i - 1] := marker[i];
+
     WriteLn('LOADING SOURCEFILE LIBRARY');
     fd := fpOpen(filename, O_RdOnly);
-    bytes := FpRead(fd, buf[libBytes], SizeOf(buf) - libBytes);
+    bytes := FpRead(fd, buf[libBytes + markerLen], SizeOf(buf) - libBytes - markerLen);
     fpClose(fd);
 
-    bytes := bytes + libBytes;
+    bytes := bytes + libBytes + markerLen;
 end;
 
 procedure openIntermediateFile; // open temp sourcefile
@@ -529,16 +535,19 @@ end;
 
 // SYSTEM ----------------------------------
 
-function emitSyscall(num: String; a: String; b: String; c: String): String;
+function emitSyscall(num, arg1, arg2, arg3, arg4, arg5, arg6: String): String;
 begin 
     allocFlushCallerSaved;
     WriteText('    mov rax, ' + num + #10);
-    WriteText('    mov rdi, ' + a + #10);
-    WriteText('    mov rsi, ' + b + #10);
-    WriteText('    mov rdx, ' + c + #10);
+    WriteText('    mov rdi, ' + arg1 + #10);
+    WriteText('    mov rsi, ' + arg2 + #10);
+    WriteText('    mov rdx, ' + arg3 + #10);
+    WriteText('    mov r10, ' + arg4 + #10);
+    WriteText('    mov r8, ' + arg5 + #10);
+    WriteText('    mov r9, ' + arg6 + #10);
     WriteText('    syscall ' + #10);
     emitSyscall := 'rax';
-end; 
+end;
 
 procedure functionPrintW(source: String);
 begin
@@ -689,7 +698,7 @@ begin
 
     // i did write these though
     WriteText(#10 + 'intToFloat:' + #10);
-    WriteText('    cvtsi2sd xmm0, rdi' + #10);   // arg comes in rdi per SYSV
+    WriteText('    cvtsi2sd xmm0, rax' + #10);  
     WriteText('    ret' + #10 + #10);
 
     WriteText(#10 + 'floatToInt:' + #10);
@@ -838,7 +847,7 @@ end;
 
 procedure asmFunctionCalls(variable: String; argname: String);
 var
-    a, b, c, num: String;
+    a, b, c, d, e, f, num: String;
 begin
     if variable = 'printf' then
         begin
@@ -862,8 +871,11 @@ begin
             num := resolveSyscall(); consume;
             a := resolveSyscall(); consume;
             b := resolveSyscall(); consume;
-            c := resolveSyscall(); consume; // )
-            emitSyscall(num, a, b, c);
+            c := resolveSyscall(); consume;
+            d := resolveSyscall(); consume;
+            e := resolveSyscall(); consume;
+            f := resolveSyscall(); consume;
+            emitSyscall(num, a, b, c, d, e, f);
         end
     else
         WriteText('call ' + variable + #10);
@@ -1067,7 +1079,7 @@ end;
 function eeIncidentals(): String;
 var
     arrayname, arrayIndex, arrayType, str, ampaddr, ident: String;
-    num, a, b, c: String;
+    a, b, c, d, e, f, num: String;
 begin
     if peek() = 'AMP' then
         begin
@@ -1091,13 +1103,17 @@ begin
 
     if (peekV() = 'sys') and (peek2() = 'LPAR') then
         begin
-            consume; consume; 
+            consume;// sys, (
+            consume;
             num := resolveSyscall(); consume;
             a := resolveSyscall(); consume;
             b := resolveSyscall(); consume;
             c := resolveSyscall(); consume;
-            Exit(emitSyscall(num, a, b, c));
-        end;
+            d := resolveSyscall(); consume;
+            e := resolveSyscall(); consume;
+            f := resolveSyscall(); consume; 
+            Exit(emitSyscall(num, a, b, c, d, e, f));
+        end
 
 end;
 
@@ -1858,7 +1874,6 @@ end;
 
 procedure dispatch();
 var
-    isProcedure: Boolean; // NEED TO GLOBALIZE, FUCKED
     i, seenFloats, seenInts: Integer;
     asmgrab, atok, asmend: String;
 begin
@@ -1949,19 +1964,13 @@ begin
 end;
 
 procedure parser();
-var
-    isProcedure: Boolean;
-    i, seenFloats, seenInts: Integer;
 begin
-    i := 0;
     position := 0;
     repeat
        dispatch();
     until position >= tokenCount;
-
     asmFoundations();
-
-    end;
+end;
 
 // LEXER ==================================================
 // ========================================================
@@ -2072,36 +2081,41 @@ begin
                     '!': assignSingleChar('!', 'BANG');
                     '~': assignSingleChar('~', 'TILDE');
 
-                    ';': begin   // comment — skip to end of line, emits no token
+                    ';': begin
                         while (i < bytes) and (buf[i] <> #10) do
                             Inc(i);
-            end          
+                        if buf[i] = #10 then Inc(linecount);
+                    end
+                     
         else
                 if buf[i] in ['a'..'z', 'A'..'Z', '_'] then // Handle letters
                     begin
                     word := '';
                     while buf[i] in ['a'..'z', 'A'..'Z', '_', '0'..'9'] do
                         begin
-                            word := word + buf[i];  // Collect words, add charachters to word
-                            Inc(i); // Increment position in file, +1 charachter
+                            word := word + buf[i];
+                            Inc(i);
                         end;
-              
-                        isKeyword := keywordCheck(word); 
-                        if isKeyword then  
-                            begin
-                                tokenKind[tokenCount] := UpperCase(word);
-                            end
+
+                    if word = 'NEXTFILE' then
+                        begin
+                            linecount := 0;   // see note below on why 0, not 1
+                            Dec(i);
+                        end
+                    else
+                        begin
+                            isKeyword := keywordCheck(word); 
+                            if isKeyword then  
+                                tokenKind[tokenCount] := UpperCase(word)
                             else
-                                begin
                                 tokenKind[tokenCount] := 'IDENTIFIER';
-                                end;
 
-                        tokenValue[tokenCount] := word;
-                        t_line[tokenCount] := linecount;
-                        Inc(tokenCount);
-                        Dec(i);  
+                            tokenValue[tokenCount] := word;
+                            t_line[tokenCount] := linecount;
+                            Inc(tokenCount);
+                            Dec(i);  
+                        end;
                     end
-
                 else if buf[i] in ['0'..'9'] then
                 begin
                     word := '';

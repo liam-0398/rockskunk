@@ -1,12 +1,7 @@
 
 P main() {
-    a := 2.0f
-    b := floatToInt(a)
-    printw(b)
-    c := 4
-    d := intToFloat(c)
-    printf(d)
-    e := 69
-    printw(e)
-
+    a := 5
+    b := 10
+    d := a + b
+    printw(d)
 }

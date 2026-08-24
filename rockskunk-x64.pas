@@ -217,6 +217,16 @@ begin
         WriteLn('YOU HAVE FRUSTRATED THE COMPLIER - MATCHINDEX - WRONG SEARCH TYPE');
 end;
 
+procedure setFrame(); // BROKEN BROKEN BROKEN AND SO I WAS I REPLACED IT WITH
+var
+    loopvar: String;
+begin
+    frameOffset := frameOffset + 8;
+    symOffset[symCount] := frameOffset;
+    symName[symCount] := loopvar;
+    Inc(symCount);
+end;
+
 function keywordCheck(word: String): Boolean; // Flag keywords
 var
     i: Integer;
@@ -1160,7 +1170,6 @@ begin
                 end
                 else if (peek() = 'IDENTIFIER') and ((peek2() = 'LBRAC') or (peek2() = 'LBRACE') or (peek2() = 'BANG')) then
                 begin
-                    writeLn('ARRAY BRANCH OF ARGPARSER');
                     arrayName := consume();
                     discriminateArrays(arrayname);
                 end
@@ -1297,6 +1306,31 @@ begin
     bitwiseEvaluator := 'rax';
 end;
 
+function parseCall(argname, fname, first: String; returnsFloat: Boolean; argfindex: Integer): String;
+var
+    call_ret: string;
+begin
+    fname := consume();
+
+    if WhoGoesThere(fname) = 'FLOAT' then
+        returnsFloat := True;
+
+    argfindex := matchIndex(fname, 'PARAM');
+
+    consume(); // (
+    if peek() <> 'RPAR' then
+    begin
+        call_ret := argumentParser(argname, fname, first, returnsFloat, argfindex);
+    end
+    else
+    begin
+        consume(); // )
+        call_ret := call(fname, argname, returnsFloat);
+    end;
+
+    Exit(call_ret);
+end;
+
 function evaluateExpression(isFloat: Boolean): String;
 var
     first, second, op, argname, fname, return, math_ret, call_ret, ampaddr, r, ident: String;
@@ -1327,27 +1361,7 @@ begin
         end;
 
     if (peek() = 'IDENTIFIER') and (peek2() = 'LPAR') then
-    begin
-        fname := consume();
-
-        if WhoGoesThere(fname) = 'FLOAT' then
-            returnsFloat := True;
-
-        argfindex := matchIndex(fname, 'PARAM');
-
-        consume(); // (
-        if peek() <> 'RPAR' then
-        begin
-            call_ret := argumentParser(argname, fname, first, returnsFloat, argfindex);
-        end
-        else
-        begin
-            consume(); // )
-            call_ret := call(fname, argname, returnsFloat);
-        end;
-
-        Exit(call_ret);
-        end
+        call_ret := parseCall(argname, fname, first, returnsFloat, argfindex)
     else
         begin
             statusMessage('EEVAL - NOT OP');
@@ -1537,7 +1551,7 @@ begin
                     end;
         end
         else
-            begin
+        begin // callParser goes here eventuallyy need to wire in
                 if peek() = 'LPAR' then
                     begin
 
@@ -1713,7 +1727,7 @@ begin
         end
     else
         begin
-            WriteText('    mov r11, 0' + #10);            // loop counter, deliberately avoiding rax/rcx/rdx/r10 (syscall regs) and rbx
+            WriteText('    mov r11, 0' + #10);
             toplabel := labelMaker('LOC');
             endlabel := labelMaker('LOC');
             emitLabel(toplabel);
@@ -1763,10 +1777,7 @@ begin
             Inc(loopCounter);
         until doDepth = 0;
 
-    frameOffset := frameOffset + 8;
-    symOffset[symCount] := frameOffset;
-    symName[symCount] := loopvar;
-    Inc(symCount);
+    setFrame();
     loopvar := varToMem(loopvar);
 
     bodyStart := position + 1;
@@ -2289,8 +2300,7 @@ begin
                         while (i < bytes) and (buf[i] <> #10) do
                             Inc(i);
                         if buf[i] = #10 then Inc(linecount);
-                    end
-
+            end
         else
                 if buf[i] in ['a'..'z', 'A'..'Z', '_'] then // Handle letters
                     begin
@@ -2302,12 +2312,7 @@ begin
                         end;
 
                     if word = 'nil' then
-                    begin
-                        tokenKind[tokenCount] := 'NUMBER';
-                        tokenValue[tokenCount] := '0';
-                        t_line[tokenCount] := linecount;
-                        Inc(tokenCount);
-                    end
+                        assignSingleChar('0','NUMBER')
                     else if word = 'NEXTFILE' then
                         begin
                             linecount := 0;   // see note below on why 0, not 1
@@ -2322,11 +2327,7 @@ begin
                                 tokenKind[tokenCount] := UpperCase(word);
                                 end
                             else
-                                tokenKind[tokenCount] := 'IDENTIFIER';
-
-                            tokenValue[tokenCount] := word;
-                            t_line[tokenCount] := linecount;
-                            Inc(tokenCount);
+                                assignSingleChar(word,'IDENTIFIER');
                             Dec(i);
                         end;
                     end
@@ -2369,7 +2370,7 @@ begin
                                     '\': word := word + '\';
                                     #39: word := word + #39;
                                     else
-                                        word := word + buf[i]; // unrecognized escape, take it literally
+                                        word := word + buf[i];
                                 end;
                             end
                             else
@@ -2384,9 +2385,7 @@ begin
                             end;
                         // buf[i] is now closing quote
                         assignSingleChar(word,'STRING');
-                        // no Dec(i) needed, already on closing quote, main Inc(i) moves past it
                     end;
-
             end;
         end;
         Inc(i); // Increment position in buffer

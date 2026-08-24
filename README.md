@@ -251,8 +251,7 @@ array := makeVector(array) ;vectorize (auto width based on cpuflags)
 - rockskunk (whenever vectors get added in 2035)
 ```
 ; one-pole lowpass, N voices in parallel (SIMD lanes), auto-width via v()
-|V'
-    prevOut[4] := 0 |
+|V' prevOut[4] := 0 |
 
 F lowpass4(sampleVec, cutoffVec) {
     delta := v(sampleVec) -- v(prevOut)

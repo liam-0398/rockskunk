@@ -1,20 +1,19 @@
+; DISCLAIMER: CLAUDE GENERATED SPECIFICALLY FOR STRESS TEST
 |V coeffs{4} signal{100} output{100} |
 
 P main() {
-    coeffs{0} := 0.25
-    coeffs{1} := 0.25
-    coeffs{2} := 0.25
-    coeffs{3} := 0.25
+    coeffs{0} := 0.25f
+    coeffs{1} := 0.25f
+    coeffs{2} := 0.25f
+    coeffs{3} := 0.25f
 
     n := 0
     LF (n := 0 until 100) {
-        signal{n} := 1.0
+        signal{n} := 1.0f
     }
 
-    sum := 0.0
-    tap := 0.0
-    samp := 0.0
-    prod := 0.0
+    sum := 0.0f  tap := 0.0f
+    samp := 0.0f prod := 0.0f
 
     n := 3
     LF (n := 3 until 100) {

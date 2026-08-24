@@ -1,4 +1,5 @@
 ; SKUNKINIT
+; porting my proven Pascal pinit to rockskunk
 |V
     fsckCall[3]
     depmodCall[2]

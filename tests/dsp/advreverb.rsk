@@ -1,5 +1,5 @@
 ; ADVANCED REVERB TESTING
-
+; DISCLAIMER: CLAUDE GENERATED SPECIFICALLY FOR STRESS TEST
 ; ============================================================
 ; schroeder comb + damping cascade + output smoother
 ; DC in 0.25, comb feedback 0.5  ->  1/(1-g) * 0.25 = 0.5

@@ -1299,12 +1299,14 @@ begin
     bitwiseEvaluator := 'rax';
 end;
 
-function parseCall(argname, fname, first: String; returnsFloat: Boolean; argfindex: Integer): String;
+function parseCall(fname: String): String;
 var
-    call_ret: string;
+    call_ret, argname, first: string;
+    returnsFloat: Boolean;
+    argfindex: Integer;
 begin
-    fname := consume();
-
+    first := fname;
+    argname := fname;
     if WhoGoesThere(fname) = 'FLOAT' then
         returnsFloat := True;
 
@@ -1326,8 +1328,10 @@ end;
 
 function theOracle(): String;
 var
-    float, str, ident: String;
+    float, str, ident, arrayName, index, ampaddr: String;
+    isFloat: Boolean;
 begin
+    isFloat := False;
     case peek() of
         'NUMBER': begin theOracle := consume; end;
         'FLOAT': begin
@@ -1335,10 +1339,10 @@ begin
                 float := copy(float, 1, Length(float) - 1);
                 theOracle := '[' + emitFloatConstant(float) + ']'; end;
         'STRING': begin
-        str := consume;
-        emitStringConstant(str);
-        theOracle := emitStringConstant(str);
-        end;
+                str := consume;
+                emitStringConstant(str);
+                theOracle := emitStringConstant(str);
+                end;
         'VESCAPE': begin
                 consume;                          // [[
                 theOracle := '[' + consume() + ']';   // label, wrapped
@@ -1357,9 +1361,16 @@ begin
                     consume;
                     Exit(emitDereference(VarToMem(ident)))
                 end
-                else if (peek2() = 'LBRAC') or peek2() = 'LBRACE') or peek2() = 'BANG') then
+                else if (peek2() = 'LBRAC') or (peek2() = 'LBRACE') or (peek2() = 'BANG') then
                 begin
-                    discriminateArrays(consume);
+                    allocInvalidateArrays;
+                    if peek2() = 'LBRACE' then isFloat := True;
+                    arrayName := consume;
+                    consume;
+                    if peek() = 'BANG' then consume;
+                    index := consume;
+                    consume;
+                    theOracle := arrayToMem(arrayName, index)
                 end
                 else if peek2() = 'LPAR' then
                 begin
@@ -1406,7 +1417,7 @@ begin
         end;
 
     if (peek() = 'IDENTIFIER') and (peek2() = 'LPAR') then
-        call_ret := parseCall(argname, fname, first, returnsFloat, argfindex)
+        call_ret := parseCall(fname)
     else
         begin
             statusMessage('EEVAL - NOT OP');

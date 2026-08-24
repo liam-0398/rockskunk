@@ -34,17 +34,10 @@ Very WIP. WAY WAY down the line I want to do a ppc32 version as well so i can ge
 ## What I have learned from bootstrap compiler mistakes
 
 - Reverted after changing to record based system. Never again.
+- Never again non-array state tracking in the compiler
+- Never a Formal IR
+- Never an AST in general
 
-# Never
-
-- Records/Structs tracking state in the compiler
-- Formal IR
-- Giant AST
-
-# Always
-
-- Arrays and strings
-- Simplicity over abstraction
 
 ## Not Implemented Yet
 

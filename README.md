@@ -28,8 +28,9 @@ Very WIP. WAY WAY down the line I want to do a ppc32 version as well so i can ge
 
 # Inspiration
 
-- Original FORTRAN Compiler
-- Old Pascal Compilers
+- B
+- Pascal
+- Common Lisp
 
 ## What I have learned from bootstrap compiler mistakes
 

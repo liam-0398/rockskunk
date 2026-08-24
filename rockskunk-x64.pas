@@ -217,15 +217,7 @@ begin
         WriteLn('YOU HAVE FRUSTRATED THE COMPLIER - MATCHINDEX - WRONG SEARCH TYPE');
 end;
 
-procedure setFrame(); // BROKEN BROKEN BROKEN AND SO I WAS I REPLACED IT WITH
-var
-    loopvar: String;
-begin
-    frameOffset := frameOffset + 8;
-    symOffset[symCount] := frameOffset;
-    symName[symCount] := loopvar;
-    Inc(symCount);
-end;
+
 
 function keywordCheck(word: String): Boolean; // Flag keywords
 var
@@ -1777,7 +1769,11 @@ begin
             Inc(loopCounter);
         until doDepth = 0;
 
-    setFrame();
+    frameOffset := frameOffset + 8;
+    symOffset[symCount] := frameOffset;
+    symName[symCount] := loopvar;
+    Inc(symCount);
+
     loopvar := varToMem(loopvar);
 
     bodyStart := position + 1;

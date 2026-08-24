@@ -179,7 +179,7 @@ begin
     else if which = 'RETURN' then
     begin
         for i := 0 to return_FCount - 1 do
-            if variable = return_FType[i] then
+            if variable = return_FName[i] then
                 matchType := return_FType[i];
     end
     else
@@ -190,6 +190,7 @@ function matchIndex(variable, which: String): Integer;
 var
     i: LongInt;
 begin
+    matchIndex := -1; // never had a false and all hell broke loose
     if which = 'ARRAY' then
     begin
         for i := 0 to aCount - 1 do
@@ -211,7 +212,7 @@ begin
     else if which = 'RETURN' then
     begin
         for i := 0 to return_FCount - 1 do
-            if variable = return_FType[i] then
+            if variable = return_FName[i] then
                 matchIndex := i;
     end
     else
@@ -240,6 +241,7 @@ var
     i, last, start: Integer;
 begin
     isNumber := False;
+    if Length(token) = 0 then Exit;
     last := Length(token);
     if token[last] = 'f' then
         Dec(last);
@@ -293,6 +295,14 @@ begin
 
     bytes := bytes + libBytes + markerLen;
 end;
+
+{procedure openFile;
+begin
+    WriteLn('LOADING SOURCEFILE LIBRARY');
+    fd := fpOpen(filename, O_RdOnly);
+    bytes := FpRead(fd, buf, SizeOf(buf));
+    fpClose(fd);
+end;}
 
 procedure openIntermediateFile; // open temp sourcefile
 begin
@@ -492,8 +502,15 @@ end;
 
 procedure emitAssignFloat(variable : String; value : String);
 begin
-    if value <> 'xmm0' then
-        WriteText('    movsd xmm0, ' + value + #10); // if i didnt do this i get mov rax, rax
+    if value = 'rax' then // let floats play with pointers
+        WriteText('    movq xmm0, rax' + #10)
+    else if isNumber(value) then
+    begin // keeps getting sassy about being passed normal registers
+        WriteText('    mov rax, ' + value + #10);
+        WriteText('    cvtsi2sd xmm0, rax' + #10);
+    end
+    else if value <> 'xmm0' then
+        WriteText('    movsd xmm0, ' + value + #10);
     WriteText('    movsd ' + variable + ', xmm0' + #10);
 end;
 
@@ -839,23 +856,22 @@ end;
 
 function varToMem(variable: String): String;
 var
-    match: String;
-    i, foundIndex: Integer;
+    foundIndex: Integer;
 begin
     varToMem := '';
-    foundIndex := -1;
-
     foundIndex := matchIndex(variable, 'ARRAY');
 
-    if foundIndex = - 1 then // if it wasnt found its a local
+    if foundIndex = -1 then
+    begin
         if matchName(variable, 'SYM') then
-                VarToMem := '[rbp-' + IntToStr(symOffset[i]) + ']'
+            varToMem := '[rbp-' + IntToStr(symOffset[matchIndex(variable, 'SYM')]) + ']';
+    end
     else
     begin
-        if aType[foundIndex] <> 'VAR' then // array
+        if aType[foundIndex] <> 'VAR' then
             Exit(variable)
-        else // global
-            VarToMem := '[' + variable + ']';
+        else
+            varToMem := '[' + variable + ']';
     end;
 
     if varToMem = '' then
@@ -997,41 +1013,37 @@ begin
         end;
 end;
 
-procedure asmFunctionCalls(variable: String; argname: String);
+function parseIntrinsic(name: String): String;
 var
     a, b, c, d, e, f, num: String;
     isFloat: Boolean;
 begin
-    if variable = 'printf' then
-        begin
-            consume; // (
-            argname := consume();
-            if not isNumber(argname) then theOracle(isFloat);
-            consume; // )
-            functionPrintF(argname);
-        end
-    else if variable = 'printw' then
-        begin
-            consume; // (
-            argname := consume();
-            if not isNumber(argname) then theOracle(isFloat);
-            consume; // )
-            functionPrintW(argname);
-        end
-    else if variable = 'sys' then
-        begin
-            consume;// sys, (
-            num := theOracle(isFloat); consume;
-            a := theOracle(isFloat); consume;
-            b := theOracle(isFloat); consume;
-            c := theOracle(isFloat); consume;
-            d := theOracle(isFloat); consume;
-            e := theOracle(isFloat); consume;
-            f := theOracle(isFloat); consume;
-            emitSyscall(num, a, b, c, d, e, f);
-        end
-    else
-        WriteText('call ' + variable + #10);
+    consume; // (
+    if name = 'printf' then
+    begin
+        a := theOracle(isFloat);
+        consume; // )
+        functionPrintF(a);
+        parseIntrinsic := '';
+    end
+    else if name = 'printw' then
+    begin
+        a := theOracle(isFloat);
+        consume; // )
+        functionPrintW(a);
+        parseIntrinsic := '';
+    end
+    else if name = 'sys' then
+    begin
+        num := theOracle(isFloat); consume;
+        a   := theOracle(isFloat); consume;
+        b   := theOracle(isFloat); consume;
+        c   := theOracle(isFloat); consume;
+        d   := theOracle(isFloat); consume;
+        e   := theOracle(isFloat); consume;
+        f   := theOracle(isFloat); consume;
+        parseIntrinsic := emitSyscall(num, a, b, c, d, e, f);
+    end;
 end;
 
 function foldCode(first: String; isFloat: boolean): String;
@@ -1093,7 +1105,6 @@ function argumentParser(fname: String; returnsFloat: Boolean; argfindex: Integer
 var
     strlabel, arrayName, arrayIndex, argname: String;
     seenFloats, seenInts, argCounter: Integer;
-    isFloatArg: Boolean;
     isFloat: Boolean;
 begin
             //WriteLn('ARGUMENT PARSER - I' + IntToStr(argfindex) + '- N' + argname); // DEBUG
@@ -1105,7 +1116,7 @@ begin
             repeat
                 argname := theOracle(isFloat);
 
-                if isFloatArg then
+                if isFloat then
                 begin
                     WriteText('    movsd xmm' + IntToStr(seenFloats) + ', ' + argname + #10);
                     allocLock(16 + seenFloats);
@@ -1137,7 +1148,9 @@ begin
 
     while ((peek() = 'DOLLAR') or (peek() = 'PIPE') or (peek() = 'NOR') or (peek() = 'NOY') or (peek() = 'SHL') or (peek() = 'SHR')) do
     begin
-        theOracle(isFloat);
+        op := peek();
+        consume;
+        second := theOracle(isFloat);
 
         if      op = 'DOLLAR' then emitAnd('rax', second)
         else if op = 'PIPE'   then emitOr('rax', second)
@@ -1148,7 +1161,6 @@ begin
         else
             hardFault('BITWISE', op);
     end;
-
     bitwiseEvaluator := 'rax';
 end;
 
@@ -1197,7 +1209,7 @@ begin
                     Exit(return);
                 end;
 
-            theOracle(isFloat);
+            first := theOracle(isFloat);
 
             if ((peek() = 'DOLLAR') or (peek() = 'PIPE') or (peek() = 'NOR') or (peek() = 'NOY') or (peek() = 'SHL') or (peek() = 'SHR')) then
                 Exit(bitwiseEvaluator(first, isFloat));
@@ -1216,20 +1228,27 @@ begin
 
                     // BEHOLD THE CHAINER OR OPERATORS, SOLVER OF EXPRESSIONS
                     while ((peek() = 'PLUS') or (peek() = 'MINUS') or (peek() = 'STAR') or (peek() = 'SLASH')) do
-                        begin
-                            theOracle(isFloat);
-
-                            math_ret := emitMath(op, second, isFloat);
-                        end;
+                    begin
+                        op := peek();
+                        consume;
+                        second := theOracle(isFloat);
+                        math_ret := emitMath(op, second, isFloat);
+                    end;
                     Exit(math_ret)
                 end;
 end;
 
+// You name it, the oracle knows it.
+// Has caused significant bugs because old DI/EE only method would only give strict instructions to the emitters.
+// now theyre being talked too more freely and NASM is getting sassy. Overall I am very happy with this
+// it makes bug chasing much easier and is also boosting my assembly knowledge having to hunt down the
+// edge cases.
 function theOracle(var isFloat: Boolean): String;
 var
     float, str, ident, arrayName, index, ampaddr: String;
 begin
     isFloat := False;
+    statusMessage('YOU HAVE ENTERED THE ORACLE');
     case peek() of
         'NUMBER': begin theOracle := consume; isFloat := False ;end;
         'FLOAT': begin
@@ -1270,20 +1289,31 @@ begin
                     allocInvalidateArrays;
                     if peek2() = 'LBRACE' then isFloat := True;
                     arrayName := consume;
-                    consume;
                     if peek() = 'BANG' then consume;
+                    consume;
                     index := consume;
                     consume;
                     theOracle := arrayToMem(arrayName, index)
                 end
                 else if peek2() = 'LPAR' then
                 begin
-                    // Do intrinsic things
-                    theOracle := parseCall(consume);
+                    ident := consume;
+                    if (ident = 'sys') or (ident = 'printf') or (ident = 'printw') then
+                    begin
+                        theOracle := parseIntrinsic(ident); isFloat := False;
+                    end
+                    else
+                    begin
+                        theOracle := parseCall(ident);
+                        if WhoGoesThere(ident) = 'FLOAT' then isFloat := True;
+                    end;
                 end
                 else
                 begin
-                    varToMem(consume);
+                    ident := consume;
+                    theOracle := varToMem(ident);
+                    if matchType(ident, 'SYM') = 'FLOAT' then
+                        isFloat := True;
                 end;
             end;
         else
@@ -1316,9 +1346,14 @@ begin
     if variable = 'r' then isReturn := True;
 
     didArrays := discriminateArrays(variable);
-        if didArrays then Exit;
+    if didArrays then Exit;
 
-    if matchName(variable, 'SYM') then isDeclared := True;
+    if matchName(variable, 'SYM') then
+        begin
+            isDeclared := True;
+            symIndex := matchIndex(variable, 'SYM');
+        end;
+
     if matchType(variable, 'SYM') = 'FLOAT' then isFloat := True;
 
     if peek() = 'CARET' then // dereferenc sym on left side of assign, write through pointer
@@ -1425,11 +1460,11 @@ begin
                 if peek() = 'LPAR' then
                     begin
 
-                        if ((variable = 'printw') or (variable = 'printf') or (variable = 'sys')) then
-                            begin
-                                statusMessage('DI - ASM');
-                                asmFunctionCalls(variable, argname);
-                            end
+                        if (variable = 'sys') or (variable = 'printf') or (variable = 'printw') then
+                        begin
+                            statusMessage('DI - ASM');
+                            parseIntrinsic(variable);
+                        end
                         else
                             begin
                                 statusMessage('DI - FUNCTION CALL');
@@ -2198,7 +2233,7 @@ begin
                             if isKeyword then
                                 begin
                                 doubleTokenCapacity();
-                                tokenKind[tokenCount] := UpperCase(word);
+                                assignSingleChar(UpperCase(word), UpperCase(word))
                                 end
                             else
                                 assignSingleChar(word,'IDENTIFIER');

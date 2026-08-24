@@ -1,7 +1,14 @@
 
+|V array[100] |
 
+
+P other() {
+    v := 100
+    b := v
+}
 
 P main() {
-    str := readln()
-    writeln(str)
+    str := 'STRING'
+    a := 5
+    b := a * 3
 }

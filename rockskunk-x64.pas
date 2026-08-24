@@ -1098,7 +1098,8 @@ begin
             Exit(misformattedBastard)
     else
         begin
-            if misformattedBastard[Length(misformattedBastard)] = 'f' then misformattedBastard := copy(misformattedBastard, 1, Length(misformattedBastard) - 1); // strip f from float
+            if misformattedBastard[Length(misformattedBastard)] = 'f' then
+                misformattedBastard := copy(misformattedBastard, 1, Length(misformattedBastard) - 1); // strip f from float
             opResolver := '[' + emitFloatConstant(misformattedBastard) + ']';
         end;
 end;
@@ -1322,6 +1323,58 @@ begin
 
     Exit(call_ret);
 end;
+
+function theOracle(): String;
+var
+    float, str, ident: String;
+begin
+    case peek() of
+        'NUMBER': begin theOracle := consume; end;
+        'FLOAT': begin
+                float := consume;
+                float := copy(float, 1, Length(float) - 1);
+                theOracle := '[' + emitFloatConstant(float) + ']'; end;
+        'STRING': begin
+        str := consume;
+        emitStringConstant(str);
+        theOracle := emitStringConstant(str);
+        end;
+        'VESCAPE': begin
+                consume;                          // [[
+                theOracle := '[' + consume() + ']';   // label, wrapped
+                consume;                          // ]
+                consume;                          // ]
+            end;
+        'AMP': begin
+                consume;
+                ampaddr := VarToMem(consume);
+                Exit(emitAddressOf(ampaddr));
+            end;
+        'IDENTIFIER': begin
+                if peek2() = 'CARET' then
+                begin
+                    ident := consume;
+                    consume;
+                    Exit(emitDereference(VarToMem(ident)))
+                end
+                else if (peek2() = 'LBRAC') or peek2() = 'LBRACE') or peek2() = 'BANG') then
+                begin
+                    discriminateArrays(consume);
+                end
+                else if peek2() = 'LPAR' then
+                begin
+                    theOracle := parseCall(consume);
+                end
+                else
+                begin
+                    varToMem(consume);
+                end;
+            end;
+        else
+            hardFault('I CANT BELEIVE YOUVE DONE THIS - YOU HAVE DISPLEASED THE ORACLE', peek() + ' ' + peekV());
+    end;
+end;
+
 
 function evaluateExpression(isFloat: Boolean): String;
 var

@@ -27,6 +27,18 @@ Very WIP. WAY down the line I want to do a ppc32 version as well so i can get we
 - Never mix floats and ints.
 - Functions are always declared before they are called
 
+# Requirements
+
+- Vector support
+- Dead code elimination
+- Optimization via string/regex op pass over intermediate.asm
+- Register allocation
+- Code folding in-compiler
+
+# Inspiration
+
+- Original FORTRAN Compiler
+- Old Pascal Compilers
 
 ## What I have learned from bootstrap mistakes
 
@@ -42,20 +54,6 @@ Very WIP. WAY down the line I want to do a ppc32 version as well so i can get we
 
 - Arrays and strings
 - Simplicity over abstraction
-- Error checking
-
-# Requirements
-
-- Vector support
-- Dead code elimination
-- Optimization via string/regex op pass over intermediate.asm
-- Register allocation
-- Code folding in-compiler
-
-# Inspiration
-
-- Original FORTRAN Compiler
-- Old Pascal Compilers
 
 ## Not Implemented Yet
 
@@ -63,7 +61,6 @@ Very WIP. WAY down the line I want to do a ppc32 version as well so i can get we
 - Pascal FFI
 - Records
 - Static declarations
-- Global variables (arrays are fine)
 - Register Allocation
 - Malloc/Free
 - Directives

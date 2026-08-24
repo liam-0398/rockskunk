@@ -14,10 +14,9 @@ P copy() {
 
     LW (bytes > 0) {
         bytes := read(fd, buf, 8192)
-        write(fd2, buf, bytes) }
+        W (bytes > 0) { write(fd2, buf, bytes) } }
     close(fd)
     close(fd2)
-    
 }
 
 P main() { copy() exit(0)}

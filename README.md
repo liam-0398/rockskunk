@@ -246,133 +246,71 @@ array := makeVector(array) ;vectorize (auto width based on cpuflags)
                            ; make this data/data structure able to be used with ** ++ etc
 
 ```
-# Psuedocode
-- Note: These examples are generated and therefore probably bullshit, but I want to demonstrate the terse syntax.
-- rockskunk (whenever vectors get added in 2035)
+# Example
+- rockskunk
 ```
-; one-pole lowpass, N voices in parallel (SIMD lanes), auto-width via v()
-|V' prevOut[4] := 0 |
+|V buf[8192] |
 
-F lowpass4(sampleVec, cutoffVec) {
-    delta := v(sampleVec) -- v(prevOut)
-    prevOut := v(prevOut) ++ (v(cutoffVec) ** delta)
-    r := prevOut
-    }
+P copy() {
+    bytes := 1
+    filename := argv(1)
+    destname := argv(2)
+    fd := open(filename, 0, 0) ; raw linux syscall, no libc -1 isnt catchall for error
+        W (fd < 0 ) { writeln('NO SOURCE FILE') exit(1)}
+    fd2 := open(destname, 65, 420)
+        W (fd2 < 0 ) { writeln('NO DESTINATION FILE') exit(1)}
+
+    LW (bytes > 0) {
+        bytes := read(fd, buf, 8192)
+        W (bytes > 0) { write(fd2, buf, bytes) } }
+    close(fd)
+    close(fd2)
+}
+
+P main() { copy() exit(0)}
 ```
 - C
 ```
-#include <immintrin.h>
+#include <fcntl.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
 
-typedef struct {
-	__m256d	prevOut;	/* 4 x float64, one lane per voice */
-} LowpassState;
+char buf[8192];
 
 void
-lowpass4_init(LowpassState *state)
+copy(char *argv[])
 {
-	state->prevOut = _mm256_setzero_pd();
+	char	*destname, *filename;
+	ssize_t	 bytes;
+	int	 fd, fd2;
+
+	filename = argv[1];
+	destname = argv[2];
+	fd = open(filename, O_RDONLY, 0);
+	if (fd < 0) {
+		puts("NO SOURCE FILE");
+		exit(1);
+	}
+	fd2 = open(destname, O_WRONLY | O_CREAT, 0644);
+	if (fd2 < 0) {
+		puts("NO DESTINATION FILE");
+		exit(1);
+	}
+	do {
+		bytes = read(fd, buf, 8192);
+		if (bytes > 0)
+			write(fd2, buf, bytes);
+	} while (bytes > 0);
+	close(fd);
+	close(fd2);
 }
 
-static inline __m256d
-lowpass4(LowpassState *state, __m256d sampleVec, __m256d cutoffVec)
+int
+main(int argc, char *argv[])
 {
-	__m256d	delta;
-
-	delta = _mm256_sub_pd(sampleVec, state->prevOut);
-	state->prevOut = _mm256_add_pd(state->prevOut,
-	    _mm256_mul_pd(cutoffVec, delta));
-	return state->prevOut;
+	copy(argv);
+	exit(0);
 }
 ```
-- rockskunk
-```
-; onepole.rsk - one-pole lowpass, f64 samples, stdin to stdout
-|V
-    buf{4096}
-    prev := 0.0f
-    coeff := 0.15f
-    got := 0
-    i := 0 |
 
-F onepole(x: f) {
-    d := x - prev
-    prev := d * coeff + prev
-    r := prev
-}
-
-P filterBlock(n) {
-    LF (i := 0 until n) {
-        buf{i} := onepole(buf{i})
-    }
-}
-
-got := read(0, &buf, 32768)
-LW (got > 0) {
-    filterBlock(got / 8)
-    write(1, &buf, got)
-    got := read(0, &buf, 32768)
-}
-```
-- Rust
-```
-use std::io::{self, Read, Write};
-use std::mem::size_of;
-
-const SAMPLE: usize = size_of::<f64>();
-const BLOCK: usize = 4096 * SAMPLE;
-
-struct OnePole {
-    coeff: f64,
-    prev: f64,
-}
-
-impl OnePole {
-    fn new(coeff: f64) -> Self {
-        Self { coeff, prev: 0.0 }
-    }
-
-    fn process(&mut self, x: f64) -> f64 {
-        self.prev += self.coeff * (x - self.prev);
-        self.prev
-    }
-}
-
-fn main() -> io::Result<()> {
-    let mut filter = OnePole::new(0.15);
-    let mut buf = [0u8; BLOCK];
-    let mut filled = 0;
-
-    let mut stdin = io::stdin().lock();
-    let mut stdout = io::stdout().lock();
-
-    loop {
-        let got = match stdin.read(&mut buf[filled..]) {
-            Ok(0) => break,
-            Ok(n) => n,
-            Err(e) if e.kind() == io::ErrorKind::Interrupted => continue,
-            Err(e) => return Err(e),
-        };
-        filled += got;
-
-        let whole = filled - filled % SAMPLE;
-        for frame in buf[..whole].chunks_exact_mut(SAMPLE) {
-            let mut bytes = [0u8; SAMPLE];
-            bytes.copy_from_slice(frame);
-            let y = filter.process(f64::from_le_bytes(bytes));
-            frame.copy_from_slice(&y.to_le_bytes());
-        }
-        stdout.write_all(&buf[..whole])?;
-
-        buf.copy_within(whole..filled, 0);
-        filled -= whole;
-    }
-
-    if filled != 0 {
-        return Err(io::Error::new(
-            io::ErrorKind::UnexpectedEof,
-            "trailing partial sample",
-        ));
-    }
-    stdout.flush()
-}
-```

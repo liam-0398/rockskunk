@@ -1383,6 +1383,19 @@ begin
 end;
 
 function discriminateArrays(variable: String): Boolean;
+
+procedure setFree(arrayname, arrayIndex, rightside, arrayType: String);
+begin
+    consume;
+    variable := arrayToMem(arrayname, arrayIndex);
+    if not isNumber(arrayIndex) then
+        allocInvalidateArrays;
+    rightside := evaluateExpression(False);
+    emitAssignArray(variable, rightside, arrayType);
+    discriminateArrays := True;
+    Exit;
+end;
+
 var
     rightside, arrayName, arrayIndex, arrayType: String;
 begin
@@ -1396,14 +1409,7 @@ begin
             arrayIndex := consume;
             consume; // ]
             arrayType := 'WORD';
-            consume;
-            variable := arrayToMem(arrayname, arrayIndex);
-            if not isNumber(arrayIndex) then
-                allocInvalidateArrays;
-            rightside := evaluateExpression(False);
-            emitAssignArray(variable, rightside, arrayType);
-            discriminateArrays := True;
-            Exit;
+            setFree(arrayname, arrayIndex, rightside, arrayType);
         end;
 
       // Float Arrays
@@ -1414,14 +1420,7 @@ begin
             arrayIndex := consume;
             consume; // ]
             arrayType := 'FLOAT';
-            consume;
-            variable := arrayToMem(arrayname, arrayIndex);
-            if not isNumber(arrayIndex) then
-                allocInvalidateArrays;
-            rightside := evaluateExpression(True);
-            emitAssignArray(variable, rightside, arrayType);
-            discriminateArrays := True;
-            Exit;
+            setFree(arrayname, arrayIndex, rightside, arrayType);
         end;
 
       // Byte Arrays
@@ -1433,14 +1432,7 @@ begin
             arrayIndex := consume;
             consume; // ]
             arrayType := 'BYTE';
-            consume;
-            variable := arrayToMem(arrayname, arrayIndex);
-            if not isNumber(arrayIndex) then
-                allocInvalidateArrays;
-            rightside := evaluateExpression(False);
-            emitAssignArray(variable, rightside, arrayType);
-            discriminateArrays := True;
-            Exit;
+            setFree(arrayname, arrayIndex, rightside, arrayType);
         end;
 end;
 

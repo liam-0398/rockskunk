@@ -1,20 +1,19 @@
 ## rockskunk
 # A terse, typeless (ish), no-bullshit language
 
-Very WIP. WAY down the line I want to do a ppc32 version as well so i can get weird with my Power Macs. I have no formal education I am making this up as I go along.
+Very WIP. WAY WAY down the line I want to do a ppc32 version as well so i can get weird with my Power Macs. I have no formal education I am making this up as I go along.
 
 # Core tenants 
 
 1. One formal type: Float64. Everything else is just raw memory (8-byte qword)
 2. Compiles directly to x86_64 NASM 
-3. Contains vector intrinsics that use SIMD registers based on what CPUFLAGS are availble. Can be set with command line argument to target older/newer CPUs. Detection is done in-compiler in Pascal with branching for every variation.
-4. Memory is flat, arrays are offsets. 
-5. Pascal FFI for interfacing with system libraries
-6. variable "r" inside function is always return, doesnt need declared
-7. Compiler auto-executes NASM so its a one shot compile
-8. floats are just defined with number ending in f for easy type check. a := 52.222f
-9. local variables auto declared on assignment
-10. The compiler isn't the the all seeing overlord. It will halt on obvious syntax violations but does not assume it knows more than the programmer and will warn rather than halt on stupid decisions. There is nothing stopping you from using inline asm to destroy the stack. If you really mess up, the nasm pass will call you out. If you know more than the compiler and want some weird stuff, as long as NASM approves you are free to do whatever you want. 
+3. Memory is flat, arrays are offsets. 
+4. Pascal FFI for interfacing with system libraries
+5. variable "r" inside function is always returned, doesnt need declared
+6. Compiler auto-executes NASM so its a one shot compile
+7. floats are just defined with number ending in f for easy type check. a := 52.222f
+8. local variables auto declared on assignment
+9. The compiler isn't the the all seeing overlord. It will halt on obvious syntax violations but does not assume it knows more than the programmer and will warn rather than halt on stupid decisions. There is nothing stopping you from using inline asm to destroy the stack. If you really mess up, the nasm pass will call you out. If you know more than the compiler and want some weird stuff, as long as NASM approves you are free to do whatever you want. 
 
 # Conventions
 
@@ -22,25 +21,17 @@ Very WIP. WAY down the line I want to do a ppc32 version as well so i can get we
 - Many small functions over large blobs of doom
 - Use common functions inside functions to keep codebase small
 - Operators evaluated left to right
-- Closing bracket goes on last below last unless it is a loop/conditional, those are closed inline
+- Closing bracket goes on line below last unless it is a loop/conditional, those are closed inline
 - Floats must look like 10.0f with the . and the f
 - Never mix floats and ints.
-- Functions are always declared before they are called
-
-# Requirements
-
-- Vector support
-- Dead code elimination
-- Optimization via string/regex op pass over intermediate.asm
-- Register allocation
-- Code folding in-compiler
+- Functions are always declared before they are called. No forward dec statements as of now, never forward functions without decaration.
 
 # Inspiration
 
 - Original FORTRAN Compiler
 - Old Pascal Compilers
 
-## What I have learned from bootstrap mistakes
+## What I have learned from bootstrap compiler mistakes
 
 - Reverted after changing to record based system. Never again.
 
@@ -57,11 +48,11 @@ Very WIP. WAY down the line I want to do a ppc32 version as well so i can get we
 
 ## Not Implemented Yet
 
-- Vectors
+- Vectors (this will take FOREVER)
 - Pascal FFI
 - Records
 - Static declarations
-- Register Allocation
+- Register Allocation (this will take FOREVER)
 - Malloc/Free
 - Directives
 - Compound operators
@@ -262,7 +253,7 @@ array := makeVector(array) ;vectorize (auto width based on cpuflags)
 ```
 # Psuedocode
 - Note: These examples are generated and therefore probably bullshit but I want to demonstrate the terse syntax.
-- rockskunk
+- rockskunk (whenever vectors get atted in 2035)
 ```
 ; one-pole lowpass, N voices in parallel (SIMD lanes), auto-width via v()
 |V'

@@ -953,26 +953,9 @@ begin
     end;
 end;
 
-function resolveSyscall(): String;
+function call(fname: String; returnsFloat: Boolean): String;
 var
-    argument: String;
-begin
-    if peek() = 'AMP' then
-        begin
-            consume;
-            resolveSyscall:= emitAddressOf(varToMem(consume));
-        end
-    else
-        begin
-            argument := consume;
-            if isNumber(argument) then
-                resolveSyscall:= argument
-            else
-                resolveSyscall:= varToMem(argument);
-        end;
-end;
-
-function call(fname: String; first: String; returnsFloat: Boolean): String;
+    first: String;
 begin
         allocFlushCallerSaved; // may get nasty with argparser
           if returnsFloat then
@@ -1021,7 +1004,7 @@ begin
         begin
             consume; // (
             argname := consume();
-            if not isNumber(argname) then argname := varToMem(argname);
+            if not isNumber(argname) then theOracle();
             consume; // )
             functionPrintF(argname);
         end
@@ -1029,20 +1012,20 @@ begin
         begin
             consume; // (
             argname := consume();
-            if not isNumber(argname) then argname := varToMem(argname);
+            if not isNumber(argname) then theOracle();
             consume; // )
             functionPrintW(argname);
         end
     else if variable = 'sys' then
         begin
             consume;// sys, (
-            num := resolveSyscall(); consume;
-            a := resolveSyscall(); consume;
-            b := resolveSyscall(); consume;
-            c := resolveSyscall(); consume;
-            d := resolveSyscall(); consume;
-            e := resolveSyscall(); consume;
-            f := resolveSyscall(); consume;
+            num := theOracle(); consume;
+            a := theOracle(); consume;
+            b := theOracle(); consume;
+            c := theOracle(); consume;
+            d := theOracle(); consume;
+            e := theOracle(); consume;
+            f := theOracle(); consume;
             emitSyscall(num, a, b, c, d, e, f);
         end
     else
@@ -1078,42 +1061,6 @@ begin
             end;
 end;
 
-function opResolver(misformattedBastard: String): String;
-var
-    isFloat: Boolean;
-begin
-    isFloat := False;  // THROW IN ISFLOTLIT CHECK LATER
-    statusMessage('OPRESOLVER');
-
-    if (Length(misformattedBastard) > 0) and (misformattedBastard[1] = '[') then
-        begin
-            opResolver := misformattedBastard;
-            Exit;
-        end;
-
-    if (Pos('.', misformattedBastard) > 0) or (Pos('f', misformattedBastard) > 0) then
-                        isFloat := True;
-
-    if not isFloat then
-            Exit(misformattedBastard)
-    else
-        begin
-            if misformattedBastard[Length(misformattedBastard)] = 'f' then
-                misformattedBastard := copy(misformattedBastard, 1, Length(misformattedBastard) - 1); // strip f from float
-            opResolver := '[' + emitFloatConstant(misformattedBastard) + ']';
-        end;
-end;
-
-function ifFloatIfVar(second: String): String;
-begin
-        if isFloatLiteral(second) then
-            ifFloatIfVar := opResolver(second)
-        else if not isNumber(second) then
-            ifFloatIfVar := varToMem(second)
-        else
-            ifFloatIfVar := second; // if its just a lowly number
-end;
-
 function WhoGoesThere(intruder: String): String;
 var
     isFloat: Boolean;
@@ -1140,9 +1087,9 @@ end;
 
 // MAIN PARSER MACHINERY ====================================================
 
-function argumentParser(argname, fname, first: String; returnsFloat: Boolean; argfindex: Integer): String;
+function argumentParser(fname: String; returnsFloat: Boolean; argfindex: Integer): String;
 var
-    strlabel, arrayName, arrayIndex: String;
+    strlabel, arrayName, arrayIndex, argname: String;
     seenFloats, seenInts, argCounter: Integer;
     isFloatArg: Boolean;
 begin
@@ -1152,28 +1099,8 @@ begin
             seenFloats := 0;
             seenInts := 0;
 
-            repeat  // VERIFY LOOP
-                isFloatArg := False;
-
-                if peek() = 'STRING' then
-                begin
-                    argname := consume();
-                    strlabel := emitStringConstant(argname);
-                    argname := strlabel;
-                end
-                else if (peek() = 'IDENTIFIER') and ((peek2() = 'LBRAC') or (peek2() = 'LBRACE') or (peek2() = 'BANG')) then
-                begin
-                    arrayName := consume();
-                    discriminateArrays(arrayname);
-                end
-                else
-                begin
-                    argname := consume();
-                    if param_FType[argfindex + argcounter] = 'FLOAT' then
-                        isFloatArg := True;
-                    if not isNumber(argname) then
-                        argname := varToMem(argname);
-                end;
+            repeat
+                argname := theOracle();
 
                 if isFloatArg then
                 begin
@@ -1192,84 +1119,10 @@ begin
                     consume;
                 Inc(argcounter);
             until peek() = 'RPAR';
+
             consume(); // )
             allocUnlockAll;
-            argumentParser := call(fname, first, returnsFloat);
-end;
-
-function eeArrays(): String;
-var
-    arrayname, arrayIndex, arrayType, str: String;
-begin
-    statusMessage('EEVAL - ARRAYS');
-        // Word Arrays
-    if (peek()='IDENTIFIER') and (peek2()='LBRAC') then
-        begin
-            arrayname := consume;
-            consume; // [
-            arrayIndex := consume;
-            consume; // ]
-            arrayType := 'WORD';
-            Exit(arrayToMem(arrayname, arrayIndex));
-        end;
-
-    // Float Arrays
-    if (peek()='IDENTIFIER') and (peek2()='LBRACE') then
-        begin
-            arrayname := consume;
-            consume; // [
-            arrayIndex := consume;
-            consume; // ]
-            arrayType := 'FLOAT';
-            Exit(arrayToMem(arrayname, arrayIndex));
-        end;
-
-    // Byte Arrays
-    if (peek() = 'IDENTIFIER') and (peek2()='BANG') then
-        begin
-            arrayname := consume;
-            consume;
-            consume; // [
-            arrayIndex := consume;
-            consume; // ]
-            arrayType := 'BYTE';
-            Exit(arrayToMem(arrayname, arrayIndex));
-        end;
-end;
-
-function eeIncidentals(): String;
-var
-    arrayname, arrayIndex, arrayType, str, ampaddr, ident: String;
-    a, b, c, d, e, f, num: String;
-begin
-    if peek() = 'AMP' then
-        begin
-            consume;
-            ampaddr := VarToMem(consume);
-            Exit(emitAddressOf(ampaddr));
-        end;
-
-    if (peek()='IDENTIFIER') and (peek2()='CARET') then
-        begin
-            ident := consume;
-            consume;
-            Exit(emitDereference(VarToMem(ident)))
-        end;
-
-    if (peekV() = 'sys') and (peek2() = 'LPAR') then
-        begin
-            consume;// sys, (
-            consume;
-            num := resolveSyscall(); consume;
-            a := resolveSyscall(); consume;
-            b := resolveSyscall(); consume;
-            c := resolveSyscall(); consume;
-            d := resolveSyscall(); consume;
-            e := resolveSyscall(); consume;
-            f := resolveSyscall(); consume;
-            Exit(emitSyscall(num, a, b, c, d, e, f));
-        end
-
+            argumentParser := call(fname, returnsFloat);
 end;
 
 function bitwiseEvaluator(first: String; isFloat: Boolean): String;
@@ -1301,57 +1154,55 @@ end;
 
 function parseCall(fname: String): String;
 var
-    call_ret, argname, first: string;
+    argname, first: String;
     returnsFloat: Boolean;
     argfindex: Integer;
 begin
-    first := fname;
-    argname := fname;
+    returnsFloat := False;
     if WhoGoesThere(fname) = 'FLOAT' then
         returnsFloat := True;
-
     argfindex := matchIndex(fname, 'PARAM');
 
     consume(); // (
     if peek() <> 'RPAR' then
-    begin
-        call_ret := argumentParser(argname, fname, first, returnsFloat, argfindex);
-    end
+        parseCall := argumentParser(fname, returnsFloat, argfindex)
     else
     begin
         consume(); // )
-        call_ret := call(fname, argname, returnsFloat);
+        parseCall := call(fname, returnsFloat);
     end;
-
-    Exit(call_ret);
 end;
 
-function theOracle(): String;
+function theOracle(var isFloat: Boolean): String;
 var
     float, str, ident, arrayName, index, ampaddr: String;
-    isFloat: Boolean;
 begin
     isFloat := False;
     case peek() of
-        'NUMBER': begin theOracle := consume; end;
+        'NUMBER': begin theOracle := consume; isFloat := False ;end;
         'FLOAT': begin
                 float := consume;
                 float := copy(float, 1, Length(float) - 1);
-                theOracle := '[' + emitFloatConstant(float) + ']'; end;
+                theOracle := '[' + emitFloatConstant(float) + ']';
+                isFloat := True;
+                end;
         'STRING': begin
                 str := consume;
                 emitStringConstant(str);
+                isFloat := False;
                 theOracle := emitStringConstant(str);
                 end;
         'VESCAPE': begin
                 consume;                          // [[
                 theOracle := '[' + consume() + ']';   // label, wrapped
                 consume;                          // ]
-                consume;                          // ]
+                consume;
+                isFloat := False;                        // ]
             end;
         'AMP': begin
                 consume;
                 ampaddr := VarToMem(consume);
+                isFloat := False;
                 Exit(emitAddressOf(ampaddr));
             end;
         'IDENTIFIER': begin
@@ -1359,10 +1210,12 @@ begin
                 begin
                     ident := consume;
                     consume;
+                    isFloat := False;
                     Exit(emitDereference(VarToMem(ident)))
                 end
                 else if (peek2() = 'LBRAC') or (peek2() = 'LBRACE') or (peek2() = 'BANG') then
                 begin
+                    isFloat := False;
                     allocInvalidateArrays;
                     if peek2() = 'LBRACE' then isFloat := True;
                     arrayName := consume;
@@ -1374,6 +1227,7 @@ begin
                 end
                 else if peek2() = 'LPAR' then
                 begin
+                    // Do intrinsic things
                     theOracle := parseCall(consume);
                 end
                 else
@@ -1627,12 +1481,12 @@ begin
                                             returnsFloat := True;
 
                                         argfindex := matchIndex(variable, 'PARAM');
-                                        argumentParser(argname, variable, '', returnsFloat, argfindex);
+                                        argumentParser(variable, returnsFloat, argfindex);
                                     end
                                 else
                                     begin
                                         consume; //)
-                                        call(variable, argname, returnsFloat);
+                                        call(variable, returnsFloat);
                                     end;
                             end;
 
@@ -1747,15 +1601,15 @@ var
 begin
     consume; // LOCATE
     consume; // (
-    cvar := varToMem(consume);         // c — must already be declared, per other loop vars
+    cvar := varToMem(consume);
     consume; // ,
     needle := consume();
     if not isNumber(needle) then
-        needle := varToMem(needle);    // reuse the same pattern as ifFloatIfVar for the needle operand
+        needle := varToMem(needle);
     consume; // ,
     arrname := consume();
     consume; // [
-    countTok := consume();             // literal count in checking[N] — sets iteration bound directly
+    countTok := consume();
     consume; // ]
     consume; // )
 

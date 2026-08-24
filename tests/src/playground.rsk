@@ -2,13 +2,10 @@
 |V array[100] |
 
 
-P other() {
-    v := 100
-    b := v
 }
 
 P main() {
     str := 'STRING'
-    a := 5
-    b := a * 3
+    writeln(str)
+
 }

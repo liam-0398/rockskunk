@@ -15,12 +15,12 @@ const
         'xmm8',  'xmm9',  'xmm10', 'xmm11', 'xmm12', 'xmm13', 'xmm14', 'xmm15'
     );
     // WAHT REGISTERS ALLOC CAN TOUCH
-    regAlloc: array[0..31] of Boolean = (
+    {regAlloc: array[0..31] of Boolean = (
         False, False, False, True,  False, False, True,  True,
         True,  True,  False, False, True,  True,  True,  True,
         True,  True,  True,  True,  True,  True,  True,  True,
         True,  True,  True,  True,  True,  True,  True,  True
-        );
+        );}
 
     // LIMITS
     FILEBUF_SIZE = 67108864; // 64MB if you are a madman with the DO loops
@@ -56,7 +56,7 @@ var
     param_FCount: Integer;
     paramPending, awaitingFunctionOpen: Boolean;
 
-    // Alloc
+    // JUST IGNORE THIS HERE BLOCK
     regOwner, regStamp: Array[0..31] of Integer;
     regDirty, regLocked, symIsArrayElem: Array[0..31] of Boolean; // set isarrayelement in atom
     regClock, tempCount: Integer;
@@ -151,7 +151,7 @@ begin
                 matchName := True;
     end
     else
-        WriteLn('YOU HAVE FRUSTRATED THE COMPLIER - MATCHNAME - WRONG SEARCH TYPE');
+        statusMessage('YOU HAVE FRUSTRATED THE COMPLIER - MATCHNAME - WRONG SEARCH TYPE');
 end;
 
 function matchType(variable, which: String): String;
@@ -183,7 +183,7 @@ begin
                 matchType := return_FType[i];
     end
     else
-        WriteLn('YOU HAVE FRUSTRATED THE COMPLIER - MATCHTYPE - WRONG SEARCH TYPE');
+        statusMessage('YOU HAVE FRUSTRATED THE COMPLIER - MATCHTYPE - WRONG SEARCH TYPE');
 end;
 
 function matchIndex(variable, which: String): Integer;
@@ -216,7 +216,7 @@ begin
                 matchIndex := i;
     end
     else
-        WriteLn('YOU HAVE FRUSTRATED THE COMPLIER - MATCHINDEX - WRONG SEARCH TYPE');
+        statusMessage('YOU HAVE FRUSTRATED THE COMPLIER - MATCHINDEX - WRONG SEARCH TYPE');
 end;
 
 
@@ -296,7 +296,7 @@ begin
     bytes := bytes + libBytes + markerLen;
 end;
 
-{procedure openFile;
+{procedure openFile; // USE TO SKIP StANDARD LIBRARY
 begin
     WriteLn('LOADING SOURCEFILE LIBRARY');
     fd := fpOpen(filename, O_RdOnly);
@@ -304,7 +304,7 @@ begin
     fpClose(fd);
 end;}
 
-procedure openIntermediateFile; // open temp sourcefile
+procedure openIntermediateFile; // open temp sourcefiles
 begin
     fd3 := fpOpen('text.tmp',O_WRONLY OR O_CREAT OR O_TRUNC, 438);
     fd4 := fpOpen('data.tmp',O_WRONLY OR O_CREAT OR O_TRUNC, 438);
@@ -356,57 +356,28 @@ procedure closeIntermediateFile; begin fpClose(fd3); fpClose(fd4); end;
 // will take me months.
 
 // protects register from allocator interference
-procedure allocLock(r: Integer);
-begin
-end;
-
+procedure allocLock(r: Integer); begin end;
 // self explanitory
-procedure allocUnlockAll();
-begin
-end;
-
+procedure allocUnlockAll(); begin end;
 // mark a temp dead and free register no store
 // U: after temp is consumed
-procedure allocRelease();
-begin
-end;
-
+procedure allocRelease(); begin end;
 // check every used reg for one holding symbol, clear it and banish them to memory with store
-procedure allocFlushAll();
-begin
-end;
-
+procedure allocFlushAll(); begin end;
 // sweep every caller saved register, if dirty store to mem and clear
 // U: before call and syscall to save registers that arent going to be CLOBBERED
-procedure allocFlushCallerSaved();
-begin
-end;
-
+procedure allocFlushCallerSaved(); begin end;
 // samae as FlushALl but straight up throws away everything and clears them
 // U: Where symboyls have changed meaning
-procedure allocInvalidateAll();
-begin
-end;
-
+procedure allocInvalidateAll(); begin end;
 // ises symIsArayElem to drop no store, can pin arrays in loops
-procedure allocInvalidateArrays();
-begin
-end;
-
+procedure allocInvalidateArrays(); begin end;
 // foce into register
-procedure allocIntoRegister();
-begin
-end;
-
+procedure allocIntoRegister(); begin end;
 // given symindex returns a register to write into, if already in reuse
-procedure allocDestRegister();
-begin
-end;
-
+procedure allocDestRegister(); begin end;
 // return register name if cached, memory if not
-procedure allocReadLocation();
-begin
-end;
+procedure allocReadLocation(); begin end;
 
 // CODE GENERATION ===========================================
 // ========================================================
@@ -418,10 +389,8 @@ procedure loadRBX(addr: String); begin WriteText('    mov rbx, ' + addr + #10); 
 procedure loadXMM0(addr: String); begin WriteText('    movsd xmm0, ' + addr + #10); end;
 
 // FUNCTIONS -----------------------------------------------------------
-procedure emitFN(fname : String);
-begin
-    WriteText(fname + ':' + #10);
-end;
+
+procedure emitFN(fname : String); begin WriteText(fname + ':' + #10); end;
 
 procedure emitFunctionSetup();
 begin
@@ -435,11 +404,10 @@ end;
 
 procedure emitFunctionTeardown(result: String; isProcedure: Boolean);
 var
-    rcheck: String;
+    rcheck, paddedSize: String;
     isFloat: Boolean;
     savedPos: Int64;
     alignedSize: Integer;
-    paddedSize: String;
 begin
     if not isProcedure then
     begin
@@ -456,6 +424,8 @@ begin
 
     allocFlushAll; // save and dump
     allocInvalidateAll; // dump, ready for fresh
+
+    // BEHOLD THE ALIGNER OF STACKS, KEEPER OF BALANCE
     alignedSize := (frameOffset + 15) and not 15;
     paddedSize := Format('%.10d', [alignedSize]);
     savedPos := FpLSeek(fd3, 0, Seek_Cur);
@@ -476,8 +446,8 @@ procedure emitLabel(labelname: String); begin allocFlushAll; WriteText(labelname
 // ASSIGNMENT -----------------------------------------------------------
 procedure emitAssign(variable : String; value : String);
 begin
-    if value <> 'rax' then
-        WriteText('    mov rax, ' + value + #10); // if i didnt do this i get mov rax, rax
+    if value <> 'rax' then // if i didnt do this i get mov rax, rax
+        WriteText('    mov rax, ' + value + #10);
     WriteText('    mov ' + variable + ', rax' + #10);
 end;
 
@@ -488,14 +458,14 @@ begin
 
     if aType = 'BYTE' then
         begin
-            if value <> 'rax' then
-                    WriteText('    mov rax, ' + value + #10); // if i didnt do this i get mov rax, rax
+            if value <> 'rax' then // if i didnt do this i get mov rax, rax
+                    WriteText('    mov rax, ' + value + #10);
                     WriteText('    mov byte ' + variable + ', al' + #10);
         end
     else
         begin
-    if value <> 'rax' then
-            WriteText('    mov rax, ' + value + #10); // if i didnt do this i get mov rax, rax
+    if value <> 'rax' then  // if i didnt do this i get mov rax, rax
+            WriteText('    mov rax, ' + value + #10);
             WriteText('    mov ' + variable + ', rax' + #10);
         end;
 end;
@@ -521,7 +491,7 @@ begin
         Inc(labelCounter);
 end;
 
-// note to self; making a length label and a datalabel, no matter how much it sounds like, does not make
+// note to self; making a length label and a datalabel seprate, no matter how much it sounds like, does not make
 // a length prefixed string. You will fight pointer math for quite some time before you realize that
 // to labels mean two locations in memory, dumbass.
 function emitStringConstant(content: String): String;
@@ -530,6 +500,7 @@ var
     theOneTrueEntry: String;
     inQuote: Boolean;
 begin
+    inQuote := False;
     theOneTrueEntry := '';
     sLength := length(content);
     for i := 1 to sLength do
@@ -562,19 +533,14 @@ begin
     if theOneTrueEntry <> '' then theOneTrueEntry := theOneTrueEntry + ', '; // null terminator baby
     theOneTrueEntry :=theOneTrueEntry + '0';
 
-    WriteData('   str_' + IntToStr(labelCounter) + ': dq 10' + #10 + 'db ' + theOneTrueEntry + #10);
+    WriteData('   str_' + IntToStr(labelCounter) + ': dq ' + IntToStr(sLength) + #10 + 'db ' + theOneTrueEntry + #10);
 
     emitStringConstant := 'str_' + IntToStr(labelCounter);
     Inc(labelCounter);
 end;
 
-function functionBytesToString(): String;
+function functionBytesToString(): String; // for my battle with readLn
 begin
-
-
-
-
-
 end;
 
 // ARRAYS / MEMORY -----------------------------------------------------------
@@ -585,14 +551,14 @@ begin
         emitAddressOf := 'rax';
 end;
 
-function emitDereference(variable: String): String; // ^
+function emitDereference(variable: String): String; // := x^
 begin
         WriteText('    mov rax, ' + variable + #10); // load pointers value (addr)
         WriteText('    mov rax, [rax]' + #10); // use that register as memory and read through it
         emitDereference := 'rax';
 end;
 
-function emitWritePointer(variable, value: String): String; // ^
+function emitWritePointer(variable, value: String): String; // x^ :=
 begin
         WriteText('    mov rax, ' + variable + #10); // load pointers value (addr)
         WriteText('    mov [rax], ' + value + #10); // write value into it
@@ -603,6 +569,7 @@ procedure emitMalloc(); begin end;            // cm(size)
 procedure emitFree(); begin end;              // fm(p)
 
 // MATH -----------------------------------------------------------
+
 procedure emitAdd(dst, src: String); begin WriteText('    add ' + dst + ', ' + src + #10); end;
 procedure emitSub(dst, src: String); begin WriteText('    sub ' + dst + ', ' + src + #10); end;
 procedure emitMul(dst, src: String); begin WriteText('    imul ' + dst + ', ' + src + #10); end;
@@ -685,6 +652,7 @@ end;
 
 // SYSTEM ----------------------------------
 
+// picky about which registers are loaded
 function emitSyscall(num, arg1, arg2, arg3, arg4, arg5, arg6: String): String;
 begin
     allocFlushCallerSaved;
@@ -854,6 +822,7 @@ begin
     Inc(position);  // Increment counter to drop the token
 end;
 
+// slap a label on that bad boy
 function varToMem(variable: String): String;
 var
     foundIndex: Integer;
@@ -878,6 +847,7 @@ begin
         hardFault('VAR_TO_MEM', variable);
 end;
 
+// also slap a label on theese bad boys
 function arrayToMem(arrayName, aindex: String): String;
 var
     i, intindex ,elementSize: Integer;
@@ -933,9 +903,10 @@ end;
 var
     rightside, arrayName, arrayIndex, arrayType: String;
 begin
-
+    rightside := '';
     discriminateArrays := False;
-        // Word Arrays
+
+    // Word Arrays
     if peek() = 'LBRAC' then
     begin
         arrayname := variable;
@@ -970,22 +941,17 @@ begin
     end;
 end;
 
+// function calls
 function call(fname: String; returnsFloat: Boolean): String;
-var
-    first: String;
 begin
-        allocFlushCallerSaved; // may get nasty with argparser
+        allocFlushCallerSaved;
           if returnsFloat then
             begin
-                WriteText('    call ' + fname + #10);
-                first := 'xmm0';
-                call := 'xmm0';
+                WriteText('    call ' + fname + #10); call := 'xmm0';
             end
         else
             begin
-                WriteText('    call ' + fname + #10);
-                first := 'rax';
-                call := 'rax';
+                WriteText('    call ' + fname + #10); call := 'rax';
             end;
 end;
 
@@ -1000,7 +966,7 @@ begin
             else if op = 'STAR'  then emitMulFloat('xmm0', second)
             else if op = 'SLASH' then emitDivFloat('xmm0', second)
             else
-                hardFault('EMIT_MATH', op);
+                hardFault('EMIT_MATH - FLOAT', op);
         end
     else
         begin
@@ -1009,10 +975,11 @@ begin
             else if op = 'STAR'  then emitMul('rax', second)
             else if op = 'SLASH' then emitDiv('rax', second)
             else
-                hardFault('EMIT_MATH', op);
+                hardFault('EMIT_MATH - FIXED', op);
         end;
 end;
 
+// calls that rely on asm in the compiler
 function parseIntrinsic(name: String): String;
 var
     a, b, c, d, e, f, num: String;
@@ -1046,6 +1013,7 @@ begin
     end;
 end;
 
+// high tech, incredibly optimized cold folding
 function foldCode(first: String; isFloat: boolean): String;
 var
     result1: Double;
@@ -1055,7 +1023,7 @@ begin
             op := peek(); // Operator
             consume;
             second := consume; // Operand
-            statusMessage('OPTIMIZATION');
+            statusMessage('FOLDING');
 
             if isFloat then
                 begin
@@ -1075,12 +1043,11 @@ begin
             end;
 end;
 
+// who really are you Mr. Variable
 function WhoGoesThere(intruder: String): String;
 var
     isFloat: Boolean;
-    i: Integer;
 begin
-    i := 0;
     isFloat := False;
 
     if isNumber(intruder) then // RAW NUM
@@ -1099,11 +1066,11 @@ begin
 
 end;
 
-// MAIN PARSER MACHINERY ====================================================
+// MAIN PARSER MACHINERY ==========================================================================
 
 function argumentParser(fname: String; returnsFloat: Boolean; argfindex: Integer): String;
 var
-    strlabel, arrayName, arrayIndex, argname: String;
+    argname: String;
     seenFloats, seenInts, argCounter: Integer;
     isFloat: Boolean;
 begin
@@ -1143,7 +1110,7 @@ function bitwiseEvaluator(first: String; isFloat: Boolean): String;
 var
     second, op: String;
 begin
-    statusMessage('EEVAL - BITWISE');
+    statusMessage('BITWISE');
     loadRAX(first);
 
     while ((peek() = 'DOLLAR') or (peek() = 'PIPE') or (peek() = 'NOR') or (peek() = 'NOY') or (peek() = 'SHL') or (peek() = 'SHR')) do
@@ -1164,9 +1131,9 @@ begin
     bitwiseEvaluator := 'rax';
 end;
 
+// who's calling?
 function parseCall(fname: String): String;
 var
-    argname, first: String;
     returnsFloat: Boolean;
     argfindex: Integer;
 begin
@@ -1187,39 +1154,30 @@ end;
 
 function evaluateExpression(isFloat: Boolean): String;
 var
-    first, second, op, argname, fname, return, math_ret, call_ret, ampaddr, r, ident: String;
-    arrayname, arrayIndex, arrayType, str: String;
-    num, a, b, c: String;
-    i, argfindex: Integer;
+    first, second, op, return, math_ret: String;
 begin
-    i := 0;
     first := '';
-    argname := '';
-    arrayType := '';
-    arrayIndex := '';
-    arrayname := '';
-    str := '';
 
-            statusMessage('EEVAL - NOT OP');
+    statusMessage('EXPRESSION EVALUATOR');
 
 
-            if (peek() = 'NUMBER') and (peek3() = 'NUMBER') then
-                begin
-                    return := foldCode(first, isFloat);
-                    Exit(return);
-                end;
+    if (peek() = 'NUMBER') and (peek3() = 'NUMBER') then
+            begin
+                return := foldCode(first, isFloat);
+                Exit(return);
+            end;
 
-            first := theOracle(isFloat);
+    first := theOracle(isFloat);
 
-            if ((peek() = 'DOLLAR') or (peek() = 'PIPE') or (peek() = 'NOR') or (peek() = 'NOY') or (peek() = 'SHL') or (peek() = 'SHR')) then
-                Exit(bitwiseEvaluator(first, isFloat));
+    if ((peek() = 'DOLLAR') or (peek() = 'PIPE') or (peek() = 'NOR') or (peek() = 'NOY') or (peek() = 'SHL') or (peek() = 'SHR')) then
+            Exit(bitwiseEvaluator(first, isFloat));
 
-            // if next token isnt operator return the first operand eg if var := 5 not var := 5 + b
-            if not ((peek() = 'PLUS') or (peek() = 'MINUS') or (peek() = 'STAR') or (peek() = 'SLASH')) then
+    // if next token isnt operator, return the first operand eg if var := 5 not var := 5 + b
+    if not ((peek() = 'PLUS') or (peek() = 'MINUS') or (peek() = 'STAR') or (peek() = 'SLASH')) then
                 evaluateExpression := first
             else
                 begin
-                    statusMessage('EEVAL - OP');
+                    statusMessage('EXPRESSION EVALUATOR - OPERATOR BRANCH');
 
                     if isFloat then
                         loadXMM0(first) // floats need Xtra Math Man
@@ -1233,9 +1191,9 @@ begin
                         consume;
                         second := theOracle(isFloat);
                         math_ret := emitMath(op, second, isFloat);
-                    end;
-                    Exit(math_ret)
-                end;
+            end;
+        Exit(math_ret)
+    end;
 end;
 
 // You name it, the oracle knows it.
@@ -1321,24 +1279,24 @@ begin
     end;
 end;
 
+// determine what to do with the left side of the expression. x :=
 procedure discriminateIdentifier();
 var
-    variable, rightside, twoname, argname, value, gvar: String;
+    variable, rightside, twoname, value, gvar: String;
     isDeclared, isReturn, isFloat, didArrays: boolean;
-    arrayname, arrayIndex, arrayType: String;
-    i, ii, symIndex, argfindex: Integer;
+    ii, symIndex, argfindex: Integer;
     returnsFloat, isGlobal: Boolean;
 begin
-    i := 0;
     ii := 0;
     symIndex := 0;
-    argName := '';
     value := '';
+    variable := '';
     isDeclared := False;
     isReturn := False;
     isFloat := False;
     isGlobal := False;
 
+    // globals are in the array arrays, i know i know
     if matchName(variable, 'ARRAY') then isGlobal := True;
 
     variable := consume(); // consume the a in a := 5
@@ -1358,7 +1316,7 @@ begin
 
     if peek() = 'CARET' then // dereferenc sym on left side of assign, write through pointer
         begin
-            allocInvalidateAll; // shit gets weird so clear it, memory has changed
+            allocInvalidateAll; // shit gets weird so clear it, memory has changed : Alloc placeholder
             consume; // :=
             value := consume;
             if isNumber(value) then
@@ -1380,13 +1338,13 @@ begin
                     consume(); // :=
                         if symType[symIndex] = 'FLOAT' then
                                 begin
-                                rightside := evaluateExpression(isFloat);
-                                emitAssignFloat(variable, rightside); // emit asm
+                                    rightside := evaluateExpression(isFloat);
+                                    emitAssignFloat(variable, rightside);
                                 end
                             else
                                 begin
-                                rightside := evaluateExpression(isFloat);
-                                emitAssign(variable, rightside);
+                                    rightside := evaluateExpression(isFloat);
+                                    emitAssign(variable, rightside);
                                 end;
                         statusMessage('ASSIGN - DECLARED');
                 end
@@ -1456,10 +1414,11 @@ begin
                     end;
         end
         else
-        begin // callParser goes here eventuallyy need to wire in
+        begin
                 if peek() = 'LPAR' then
                     begin
 
+                        // off to the ASM calls
                         if (variable = 'sys') or (variable = 'printf') or (variable = 'printw') then
                         begin
                             statusMessage('DI - ASM');
@@ -1496,13 +1455,15 @@ end;
 
 
 // CONTROL FLOW =============================================================
-// USE AT YOUR OWN RISK ONLY DO , WHILE AND WHEN ARE PROVEN
-
-procedure conditionalIntrinsic(); begin end;
+// USE AT YOUR OWN RISK
+// ASM IS *NOT* MY STRONG SUIT but i am learning slowly but surely
 
    {cfKind, cfTLabel, cfELabel, cfLVar: Array[0..64] of String;
     cfDepth: Integer;}
 
+// these use the flags set in emitComapareAndJump
+// the flags are ZeroF, SignD, OvrflwF, or CarryF and wiped by the next instruction so it has to be ASAP
+// ASM flags are runtime, do I jump? Pascal insertions are compile time, WHEN do I jump?
 procedure condJumpTable(condition, endLabel: String);
 begin
     if condition = 'LESSEQUAL' then  // all the shit is backwards here
@@ -1523,32 +1484,32 @@ end;
 procedure emitCompareAndJump(leftVal, rightVal, condition, skipLabel: String);
 begin
     WriteText('    mov rax, ' + leftVal + #10);
-    WriteText('    push rax' + #10);
+    WriteText('    push rax' + #10);    // psh that bad boy on the stack so its not clobbered
     WriteText('    mov rbx, ' + rightVal + #10);
-    WriteText('    pop rax' + #10);
+    WriteText('    pop rax' + #10); // bring it back for the compare
     WriteText('    cmp rax, rbx' + #10);
     condJumpTable(condition, skipLabel);
 end;
 
-function loopWhile(): Boolean;
+procedure loopWhile();
 var
     loopvar, loopcond, looplimit, toplabel, endlabel: String;
 begin
     consume; //consume LW
     consume; // consume LPAR
-    loopvar := varToMem(consume);
+    loopvar := varToMem(consume); // handle variable variables
     loopcond := peek; // grab TYPE not the damn value
     consume; // now eat it
     looplimit := consume;
     consume; // RPAR
-    toplabel := labelMaker('LW');
+    toplabel := labelMaker('LW'); // prep labels
     endlabel := labelMaker('LW');
     emitLabel(toplabel); // it is I, the start of the loop
 
     WriteText('    mov rax, ' + loopvar + #10);
-    WriteText('    cmp rax, ' + looplimit + #10);
+    WriteText('    cmp rax, ' + looplimit + #10); // same comparison as above, runtime decisions
 
-    condJumpTable(loopCond, endLabel);
+    condJumpTable(loopCond, endLabel); // off to decide what operators are going to be placed
 
     cfKind[cfDepth] := 'WHILE';
     cfTLabel[cfDepth] := toplabel;
@@ -1556,7 +1517,7 @@ begin
     Inc(cfDepth);
 end;
 
-function loopFor(): Boolean;
+procedure loopFor();
 var
     loopvar, loopstart, looplimit, toplabel, endlabel: String;
 begin
@@ -1566,7 +1527,7 @@ begin
     consume; // :=
     loopstart := consume; // 0
     consume; // until
-    looplimit := evaluateExpression(False);
+    looplimit := evaluateExpression(False); // throw the limit into the evaluator so its not locked to litterals
     consume; // RPAR
     WriteText('    mov rax, ' + loopstart + #10);
     WriteText('    mov ' + loopvar + ', rax' + #10);
@@ -1577,7 +1538,7 @@ begin
 
     WriteText('    mov rax, ' + loopvar + #10);
     WriteText('    cmp rax, ' + looplimit + #10);
-    WriteText('    jge ' + endlabel + #10);
+    WriteText('    jge ' + endlabel + #10); // exit when loopvar > looplimit
 
     cfKind[cfDepth] := 'FOR';
     cfTLabel[cfDepth] := toplabel;
@@ -1591,8 +1552,6 @@ var
     cvar, needle, arrname, countTok, endlabel, toplabel, nextlabel: String;
     elementSize, countVal, n: Integer;
     arrType: String;
-    needleVal, cMem: String;
-    i: Integer;
 begin
     consume; // LOCATE
     consume; // (
@@ -1614,38 +1573,38 @@ begin
 
     WriteText('    mov qword ' + cvar + ', -1' + #10);   // c := -1, assume not found
 
-    if isNumber(countTok) and (StrToInt(countTok) < 10) then
+    if isNumber(countTok) and (StrToInt(countTok) < 10) then // if the number is below 10 its unrolled
         begin
             countVal := StrToInt(countTok);
             endlabel := labelMaker('LOC');
-            for n := 0 to countVal - 1 do
+            for n := 0 to countVal - 1 do // DO loop, this is done at compile time
                 begin
-                    WriteText('    mov rax, [' + arrname + ' + ' + IntToStr(n * elementSize) + ']' + #10);
+                    WriteText('    mov rax, [' + arrname + ' + ' + IntToStr(n * elementSize) + ']' + #10); // LD
                     WriteText('    cmp rax, ' + needle + #10);
                     nextlabel := labelMaker('LOC');
-                    WriteText('    jne ' + nextlabel + #10);
-                    WriteText('    mov qword ' + cvar + ', ' + IntToStr(n) + #10);
-                    WriteText('    jmp ' + endlabel + #10);
+                    WriteText('    jne ' + nextlabel + #10); // if NOT = skip to next check
+                    WriteText('    mov qword ' + cvar + ', ' + IntToStr(n) + #10); // if = store
+                    WriteText('    jmp ' + endlabel + #10); // adios
                     emitLabel(nextlabel);
                 end;
             emitLabel(endlabel);
         end
-    else
-        begin
-            WriteText('    mov r11, 0' + #10);
+    else // if the number is > 10 it transitions into a for loop so your NAsM file isnt 100MB if using often
+    begin // thoeretically worse performance but negligible
+            WriteText('    mov r11, 0' + #10); // hop up into r11 staying away from the rax for less traffic
             toplabel := labelMaker('LOC');
             endlabel := labelMaker('LOC');
             emitLabel(toplabel);
-            WriteText('    cmp r11, ' + countTok + #10);
-            WriteText('    jge ' + endlabel + #10);
-            WriteText('    mov rax, [' + arrname + ' + r11*' + IntToStr(elementSize) + ']' + #10);
-            WriteText('    cmp rax, ' + needle + #10);
+            WriteText('    cmp r11, ' + countTok + #10); // compare counter
+            WriteText('    jge ' + endlabel + #10); // exit if its the end
+            WriteText('    mov rax, [' + arrname + ' + r11*' + IntToStr(elementSize) + ']' + #10); // ld elem
+            WriteText('    cmp rax, ' + needle + #10); // compare with search. ^^ r11*8 mult counter by elmsize
             nextlabel := labelMaker('LOC');
-            WriteText('    jne ' + nextlabel + #10);
-            WriteText('    mov qword ' + cvar + ', r11' + #10);
-            WriteText('    jmp ' + endlabel + #10);
+            WriteText('    jne ' + nextlabel + #10); // if NOT = continue
+            WriteText('    mov qword ' + cvar + ', r11' + #10); // if you find it load
+            WriteText('    jmp ' + endlabel + #10); // exit if found
             emitLabel(nextlabel);
-            WriteText('    inc r11' + #10);
+            WriteText('    inc r11' + #10); // icnrement counter and restart loop
             WriteText('    jmp ' + toplabel + #10);
             emitLabel(endlabel);
         end;
@@ -1653,9 +1612,9 @@ begin
     loopLocate := True;
 end;
 
-function loopDo(): Boolean;
+procedure loopDo();
 var
-    loopvar, loopstart, looplimit, toplabel, endlabel: String;
+    loopvar, loopstart, looplimit: String;
     loopCounter, doDepth, ls, ll, n, bodyStart, bodyEnd: Integer;
 begin
 
@@ -1671,7 +1630,7 @@ begin
     loopCounter := position; // starting on {
     doDepth := 0;
 
-    repeat
+    repeat // BEHOLD, THE DESTORYER OF NESTS, FINDER OF CODE
             if tokenKind[loopCounter] = 'LBRACE' then
                 begin
                     Inc(doDepth);
@@ -1682,20 +1641,22 @@ begin
             Inc(loopCounter);
         until doDepth = 0;
 
-    frameOffset := frameOffset + 8;
+    frameOffset := frameOffset + 8; // your making another var, remeber always allocate memory
     symOffset[symCount] := frameOffset;
     symName[symCount] := loopvar;
     Inc(symCount);
 
-    loopvar := varToMem(loopvar);
+    loopvar := varToMem(loopvar); // make memory label
 
+    // the brace check above grabbed the offsets so this is preparing the bounds
     bodyStart := position + 1;
     bodyEnd := loopCounter - 1;
 
+    // laziness
     ll := StrToInt(looplimit);
     ls := StrToInt(loopstart);
 
-
+    // Compiler wisdom
     if ll > 10000 then
         writeLn('DO LOOP > 10000 ITERATION - VAYA CON DIOS')
     else if ll > 500 then
@@ -1703,20 +1664,21 @@ begin
     else if ll > 100 then
         writeLn('YOU HAVE FRUSTRATED THE COMPILER - YOU DARE EXCEED 100 ITERATIONS OF A DO LOOP?');
 
+    // COMPILE TIME unrolled do loop
     for n := ls to ll - 1 do
         begin
-            WriteText('    mov qword ' + computeOffset(symOffset[symCount-1]) + ', ' + IntToStr(n) + #10);
-            position := bodyStart;
-            while position < bodyEnd do
-                dispatch;
+            WriteText('    mov qword ' + computeOffset(symOffset[symCount-1]) + ', ' + IntToStr(n) + #10); //stre
+            position := bodyStart; // pull the parser into the loop, trapped to forever do its bidding
+            while position < bodyEnd do // RERERERE REEEWWWIIINNNNDDDDDD
+                dispatch; // parse as if it was coming from the lexer
         end;
 
-    position := bodyEnd + 1;
+    position := bodyEnd + 1; // free at last
 end;
 
-function condWhen(): Boolean;
+procedure condWhen();
 var
-    condvar, condition, condlimit, endlabel, misslabel: String;
+    condvar, condition, condlimit, endlabel: String;
 begin
     consume; //consume W
     consume; // consume LPAR
@@ -1726,14 +1688,14 @@ begin
     condlimit := evaluateExpression(False);
     consume; // RPAR
 
-    endlabel := labelMaker('W');
+    endlabel := labelMaker('W'); // label of where to SKIP to
 
+    // if the condition of the when is NOT true, it skips the body and jumps to the endlabel
     emitCompareAndJump(condvar, condlimit, condition, endlabel);
 
     cfKind[cfDepth] := 'WHEN';
     cfELabel[cfDepth] := endlabel;
     Inc(cfDepth);
-    condWhen := True;
 end;
 
 procedure condIf();
@@ -1748,7 +1710,7 @@ begin
     condlimit := evaluateExpression(False);
     consume; // RPAR
 
-    if not chainContinuing then
+    if not chainContinuing then // if its the end of the line, makes the end label to jump to
         begin
 
             endlabel := labelMaker('IF');
@@ -1758,10 +1720,10 @@ begin
         end;
 
 
-    misslabel := labelMaker('IF');
+    misslabel := labelMaker('IF'); // generates a stopover jump label because this is now assumed to be an elseif
     cfTLabel[cfDepth - 1] := misslabel;
 
-    emitCompareAndJump(condvar, condlimit, condition, misslabel);
+    emitCompareAndJump(condvar, condlimit, condition, misslabel); // continue the party
 
     chainContinuing := False;
 end;
@@ -1770,12 +1732,13 @@ procedure condElse();
 begin
     consume;
 
-    if not chainContinuing then
+    if not chainContinuing then // if there is no flag set stating an if was opened, you mustve just put an else
         begin
             WriteLn(IntToStr(t_line[position]) + ' - ' + 'I CANT BELIEVE YOUVE DONE THIS - ALL ELSE NO IF HUH?');
             Halt(1);
         end;
 
+    // say this was an else, stop the chain
     cfKind[cfDepth - 1] := 'E';
     chainContinuing := False;
 end;
@@ -1792,7 +1755,7 @@ begin
                 argCount := 0;
                 symCount := 0;
                 awaitingFunctionOpen := True;
-                        for i := 0 to 1023 do
+                        for i := 0 to 1023 do // reset that there symbol table
                             begin
                                 symName[i] := '';
                                 symType[i] := '';
@@ -1803,7 +1766,7 @@ begin
                                 symIsTemp[i] := False;
                             end;
 
-                        for i := 0 to 31 do
+                        for i := 0 to 31 do // placeholder for when i get to register allocation in 3 years
                             begin
                                 regOwner[i] := -1;
                                 regDirty[i] := False;
@@ -1819,7 +1782,7 @@ begin
                         repeat
                                 frameOffset := frameOffset + 8;
                                 symOffset[symCount] := frameOffset;
-                                doubleParamCapacity();
+                                doubleParamCapacity(); // manage the dynamic arrays
                                 param_FName[param_FCount] := currentFN;
                                 symName[symCount] := consume(); // grab param name
                                 symType[symCount] := 'NUMBER'; // int param for now
@@ -1855,10 +1818,9 @@ end;
 
 procedure varBlock();
 var
-    arrayName, arrayType, arraySize, variable, value: String;
+    arrayName, arraySize, variable, value: String;
 begin
     arrayName := '';
-    arrayType := '';
     arraySize := '';
     variable := '';
     value := '';
@@ -1929,27 +1891,27 @@ end;
 procedure rightbrace();
 begin
     consume;
-            if cfDepth > 0 then
+            if cfDepth > 0 then // are we currently in a loop or conditional?
                 begin
-                    Dec(cfDepth);
+                    Dec(cfDepth); // drop a brace from the count
                     case cfKind[cfDepth] of
                         'FOR': begin
-                            WriteText('    inc qword ' + cfLVar[cfDepth] + #10);
-                            WriteText('    jmp ' + cfTLabel[cfDepth] + #10);
+                            WriteText('    inc qword ' + cfLVar[cfDepth] + #10); // increment counter
+                            WriteText('    jmp ' + cfTLabel[cfDepth] + #10); // jump to check
                             emitLabel(cfELabel[cfDepth]);
                         end;
                         'WHILE': begin
-                            WriteText('    jmp ' + cfTLabel[cfDepth] + #10);
+                            WriteText('    jmp ' + cfTLabel[cfDepth] + #10); // jump back to condition
                             emitLabel(cfELabel[cfDepth]);
                         end;
-                        'WHEN': begin emitLabel(cfELabel[cfDepth]); end;
+                        'WHEN': begin emitLabel(cfELabel[cfDepth]); end; // materialize skip label
                         'IF': begin
                             WriteText('    jmp ' + cfELabel[cfDepth] + #10);
-                            emitLabel(cfTLabel[cfDepth]);
+                            emitLabel(cfTLabel[cfDepth]);   // elseif label
                             chainContinuing := True;
-                            Inc(cfDepth);
+                            Inc(cfDepth); // it goes DEEPER
                         end;
-                        'E': begin emitLabel(cfELabel[cfDepth]); end;
+                        'E': begin emitLabel(cfELabel[cfDepth]); end; // exit label
                     end;
                 end
                 else

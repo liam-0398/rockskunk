@@ -252,8 +252,8 @@ array := makeVector(array) ;vectorize (auto width based on cpuflags)
 
 ```
 # Psuedocode
-- Note: These examples are generated and therefore probably bullshit but I want to demonstrate the terse syntax.
-- rockskunk (whenever vectors get atted in 2035)
+- Note: These examples are generated and therefore probably bullshit, but I want to demonstrate the terse syntax.
+- rockskunk (whenever vectors get added in 2035)
 ```
 ; one-pole lowpass, N voices in parallel (SIMD lanes), auto-width via v()
 |V'

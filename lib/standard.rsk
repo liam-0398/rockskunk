@@ -95,7 +95,7 @@ P printb(v) { ; BITWISE
     sys(1, 1, binbuf, 65, 0, 0, 0)
 }
 
-F readln() {
+F readln() { ; broke as hell, need more infrastructure
     input := ''
     bytes := 0
     i := 0
@@ -181,7 +181,7 @@ F prlimit64(pid, resource, newlimit, oldlimit) { r := sys(302, pid, resource, ne
 
 ; PROCESS CONTROL MISC -----------------------------------------------------
 
-F prctl(option, arg2, arg3, arg4, arg5) { r := sys(157, option, arg2, arg3, arg4, arg5) }
+F prctl(option, arg2, arg3, arg4, arg5) { r := sys(157, option, arg2, arg3, arg4, arg5, 0) }
 
 
 ; INIT-SPECIFIC ----------------------------------------------------------
@@ -230,7 +230,7 @@ F accept4(sockfd, addr, addrlen, flags) { r := sys(288, sockfd, addr, addrlen, f
 F sendmsg(sockfd, msg, flags) { r := sys(46, sockfd, msg, flags, 0, 0, 0) }
 F recvmsg(sockfd, msg, flags) { r := sys(47, sockfd, msg, flags, 0, 0, 0) }
 F sendmmsg(sockfd, msgvec, vlen, flags) { r := sys(307, sockfd, msgvec, vlen, flags, 0, 0) }
-F recvmmsg(sockfd, msgvec, vlen, flags, timeout) { r := sys(299, sockfd, msgvec, vlen, flags, timeout) }
+F recvmmsg(sockfd, msgvec, vlen, flags, timeout) { r := sys(299, sockfd, msgvec, vlen, flags, timeout, 0) }
 
 ; ZERO-COPY -----------------------------------------------------------------
 

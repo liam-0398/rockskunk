@@ -252,7 +252,7 @@ begin
     Inc(labelCounter)
 end;
 
-procedure openFile;
+procedure openFile; // includes standard library
 var
     libBytes, markerLen, i: CInt;
     marker: String;
@@ -1656,7 +1656,6 @@ begin
             cfKind[cfDepth] := 'IF';
             Inc(cfDepth);
         end;
-
 
     misslabel := labelMaker('IF'); // generates a stopover jump label because this is now assumed to be an elseif
     cfTLabel[cfDepth - 1] := misslabel;

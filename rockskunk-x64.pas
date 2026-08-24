@@ -185,6 +185,38 @@ begin
         WriteLn('YOU HAVE FRUSTRATED THE COMPLIER - MATCHTYPE - WRONG SEARCH TYPE');
 end;
 
+function matchIndex(variable, which: String): Integer;
+var
+    i: LongInt;
+begin
+    if which = 'ARRAY' then
+    begin
+        for i := 0 to aCount - 1 do
+            if variable = aName[i] then
+                matchIndex := i;
+    end
+    else if which = 'SYM' then
+    begin
+        for i := 0 to symCount - 1 do
+            if variable = symName[i] then
+                matchIndex := i;
+    end
+    else if which = 'PARAM' then
+    begin
+        for i := 0 to param_FCount - 1 do
+            if variable = param_FName[i] then
+                matchIndex := i;
+    end
+    else if which = 'RETURN' then
+    begin
+        for i := 0 to return_FCount - 1 do
+            if variable = return_FType[i] then
+                matchIndex := i;
+    end
+    else
+        WriteLn('YOU HAVE FRUSTRATED THE COMPLIER - MATCHINDEX - WRONG SEARCH TYPE');
+end;
+
 function keywordCheck(word: String): Boolean; // Flag keywords
 var
     i: Integer;
@@ -810,16 +842,7 @@ begin
     varToMem := '';
     foundIndex := -1;
 
-
-
-    for i := 0 to aCount - 1 do // grab index for type check
-    begin
-        if aName[i] = variable then
-        begin
-            foundIndex := i;
-            Break;
-        end;
-    end;
+    foundIndex := matchIndex(variable, 'ARRAY');
 
     if foundIndex = - 1 then // if it wasnt found its a local
         if matchName(variable, 'SYM') then
@@ -844,9 +867,7 @@ begin
     arrayToMem := '';
     i := 0;
 
-    for i := 0 to aCount - 1 do
-            if aName[i] = arrayName then
-                    arType := aType[i];
+    arType := matchType(arrayName, 'ARRAY');
 
     if arType = 'WORD' then elementSize := 8
     else if arType = 'FLOAT' then elementSize := 8
@@ -1050,21 +1071,11 @@ begin
             isFloat := True;
         end
     else
-        begin // VAR
-            for i := 0 to symCount - 1 do // NAME AND TYPE ===========================
-                begin
-                    if intruder = symName[i] then
-                        if symType[i] = 'FLOAT' then
-                            isFloat := True;
-                end;
-    end;
+        if matchType(intruder, 'SYM') = 'FLOAT' then
+            isFloat := True;
 
-    for i := 0 to return_FCount - 1 do // Function
-        begin
-            if intruder = return_FName[i] then
-                if return_FType[i] = 'FLOAT' then
-                    isFloat := True;
-        end;
+    if matchType(intruder, 'RETURN') = 'FLOAT' then
+        isFloat := True;
 
     if isFloat then WhoGoesTHere := 'FLOAT' else WhoGoesTHere := 'QWORD';
 
@@ -1298,12 +1309,7 @@ begin
         if WhoGoesThere(fname) = 'FLOAT' then
             returnsFloat := True;
 
-        for i := 0 to param_FCount - 1 do // INDEX
-            if fname = param_FName[i] then
-                begin
-                    argfindex := param_FIndex[i];
-                    break;
-                end;
+        argfindex := matchIndex(fname, 'PARAM');
 
         consume(); // (
         if peek() <> 'RPAR' then
@@ -1464,20 +1470,10 @@ begin
     if variable = 'r' then isReturn := True;
 
     didArrays := discriminateArrays(variable);
-    if didArrays then Exit;
+        if didArrays then Exit;
 
-    //WriteLn('discrim start: variable=' + variable + ' position=' + IntToStr(position)); // DEBUG
-
-    for i := 0 to 255 do  // scan to see if var is delclred already
-        begin
-            if symName[i] = variable then
-                begin
-                    isDeclared := True;
-                    symIndex := i;
-                    if symType[i] = 'FLOAT' then // if its a float take the float path
-                        isFloat := True;
-                end;
-        end;
+    if matchName(variable, 'SYM') then isDeclared := True;
+    if matchType(variable, 'SYM') = 'FLOAT' then isFloat := True;
 
     if peek() = 'CARET' then // dereferenc sym on left side of assign, write through pointer
         begin
@@ -1598,13 +1594,7 @@ begin
                                         if WhoGoesThere(variable) = 'FLOAT' then
                                             returnsFloat := True;
 
-                                        for i := 0 to param_FCount - 1 do
-                                            if variable = param_FName[i] then
-                                                begin
-                                                    argfindex := param_FIndex[i];
-                                                    break;
-                                                end;
-
+                                        argfindex := matchIndex(variable, 'PARAM');
                                         argumentParser(argname, variable, '', returnsFloat, argfindex);
                                     end
                                 else

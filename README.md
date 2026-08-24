@@ -31,6 +31,7 @@ Very WIP. WAY WAY down the line I want to do a ppc32 version as well so i can ge
 - B
 - Pascal
 - Common Lisp
+- FORTH
 
 ## What I have learned from bootstrap compiler mistakes
 

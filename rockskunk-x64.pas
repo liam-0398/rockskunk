@@ -5,22 +5,8 @@ uses
 
 const
     intRegs: array[0..5] of String = ('rdi', 'rsi', 'rdx', 'rcx', 'r8', 'r9'); // SYSV ABI
-    intRegIndex: array[0..5] of Integer = (7, 6, 2, 1, 8, 9); //encoding order
     acceptedKeywords: array[0..15] of String = // MAKE SURE TO UPDATE KEYWORD CHECK WHEN ADDING
     ('ADD', 'F', 'LF', 'LW', 'W', 'IF', 'BREAK', 'LOCATE', 'E', 'P', 'OR', 'AND', 'NOR', 'XOR', 'CALL', 'DO');
-    regName: array[0..31] of String = (
-        'rax', 'rcx', 'rdx', 'rbx', 'rsp', 'rbp', 'rsi', 'rdi',
-        'r8',  'r9',  'r10', 'r11', 'r12', 'r13', 'r14', 'r15',
-        'xmm0',  'xmm1',  'xmm2',  'xmm3',  'xmm4',  'xmm5',  'xmm6',  'xmm7',
-        'xmm8',  'xmm9',  'xmm10', 'xmm11', 'xmm12', 'xmm13', 'xmm14', 'xmm15'
-    );
-    // WAHT REGISTERS ALLOC CAN TOUCH
-    {regAlloc: array[0..31] of Boolean = (
-        False, False, False, True,  False, False, True,  True,
-        True,  True,  False, False, True,  True,  True,  True,
-        True,  True,  True,  True,  True,  True,  True,  True,
-        True,  True,  True,  True,  True,  True,  True,  True
-        );}
 
     // LIMITS
     FILEBUF_SIZE = 67108864; // 64MB if you are a madman with the DO loops
@@ -56,15 +42,9 @@ var
     param_FCount: Integer;
     paramPending, awaitingFunctionOpen: Boolean;
 
-    // JUST IGNORE THIS HERE BLOCK
-    regOwner, regStamp: Array[0..31] of Integer;
-    regDirty, regLocked, symIsArrayElem: Array[0..31] of Boolean; // set isarrayelement in atom
-    regClock, tempCount: Integer;
-
     // Symbol Table
     symName, symType: array[0..1023] of String;
-    symEscaped, symisTemp: array[0..1023] of Boolean;
-    symOffset, symReg, symNextUse: array[0..1023] of Integer;
+    symOffset: array[0..1023] of Integer;
     aName, aType, aSize: array of String;
 
     currentFN: String;
@@ -349,35 +329,9 @@ procedure closeIntermediateFile; begin fpClose(fd3); fpClose(fd4); end;
 
 // REG ALLOC ===========================================
 // ========================================================
-// Going to be resgister descriptor model, dragon book getReg ish
-// Do I know what im doing? Hell no. Am i going to figure it out? yes.
+// I just straight up removed the stubs, its going to be a long time before
+// I am able to grasp how this works and find a way to implment it
 
-// after planning and thinking it over i have no idea what i am  doing. This
-// will take me months.
-
-// protects register from allocator interference
-procedure allocLock(r: Integer); begin end;
-// self explanitory
-procedure allocUnlockAll(); begin end;
-// mark a temp dead and free register no store
-// U: after temp is consumed
-procedure allocRelease(); begin end;
-// check every used reg for one holding symbol, clear it and banish them to memory with store
-procedure allocFlushAll(); begin end;
-// sweep every caller saved register, if dirty store to mem and clear
-// U: before call and syscall to save registers that arent going to be CLOBBERED
-procedure allocFlushCallerSaved(); begin end;
-// samae as FlushALl but straight up throws away everything and clears them
-// U: Where symboyls have changed meaning
-procedure allocInvalidateAll(); begin end;
-// ises symIsArayElem to drop no store, can pin arrays in loops
-procedure allocInvalidateArrays(); begin end;
-// foce into register
-procedure allocIntoRegister(); begin end;
-// given symindex returns a register to write into, if already in reuse
-procedure allocDestRegister(); begin end;
-// return register name if cached, memory if not
-procedure allocReadLocation(); begin end;
 
 // CODE GENERATION ===========================================
 // ========================================================
@@ -394,7 +348,6 @@ procedure emitFN(fname : String); begin WriteText(fname + ':' + #10); end;
 
 procedure emitFunctionSetup();
 begin
-    allocInvalidateAll;
     WriteText('    push rbp' + #10);
     WriteText('    mov rbp, rsp' + #10);
     WriteText('    sub rsp, ');
@@ -422,9 +375,6 @@ begin
             WriteText('    movsd xmm0, ' + result + #10);
     end;
 
-    allocFlushAll; // save and dump
-    allocInvalidateAll; // dump, ready for fresh
-
     // BEHOLD THE ALIGNER OF STACKS, KEEPER OF BALANCE
     alignedSize := (frameOffset + 15) and not 15;
     paddedSize := Format('%.10d', [alignedSize]);
@@ -441,7 +391,7 @@ end;
 
 // CONTROL FLOW -----------------------------------------------------------
 
-procedure emitLabel(labelname: String); begin allocFlushAll; WriteText(labelname + ':' + #10) end;
+procedure emitLabel(labelname: String); begin WriteText(labelname + ':' + #10) end;
 
 // ASSIGNMENT -----------------------------------------------------------
 procedure emitAssign(variable : String; value : String);
@@ -453,9 +403,6 @@ end;
 
 procedure emitAssignArray(variable : String; value : String; atype: String);
 begin
-    if not isNumber(value) then
-        allocInvalidateAll;
-
     if aType = 'BYTE' then
         begin
             if value <> 'rax' then // if i didnt do this i get mov rax, rax
@@ -655,7 +602,6 @@ end;
 // picky about which registers are loaded
 function emitSyscall(num, arg1, arg2, arg3, arg4, arg5, arg6: String): String;
 begin
-    allocFlushCallerSaved;
     WriteText('    mov rax, ' + num + #10);
     WriteText('    mov rdi, ' + arg1 + #10);
     WriteText('    mov rsi, ' + arg2 + #10);
@@ -892,8 +838,6 @@ procedure setFree(arrayname, arrayIndex, rightside, arrayType: String);
 begin
     consume;
     variable := arrayToMem(arrayname, arrayIndex);
-    if not isNumber(arrayIndex) then
-        allocInvalidateArrays;
     rightside := evaluateExpression(False);
     emitAssignArray(variable, rightside, arrayType);
     discriminateArrays := True;
@@ -944,7 +888,6 @@ end;
 // function calls
 function call(fname: String; returnsFloat: Boolean): String;
 begin
-        allocFlushCallerSaved;
           if returnsFloat then
             begin
                 WriteText('    call ' + fname + #10); call := 'xmm0';
@@ -1086,13 +1029,11 @@ begin
                 if isFloat then
                 begin
                     WriteText('    movsd xmm' + IntToStr(seenFloats) + ', ' + argname + #10);
-                    allocLock(16 + seenFloats);
                     Inc(seenFloats);
                 end
                 else
                 begin
                     WriteText('    mov ' + intRegs[seenInts] + ', ' + argname + #10);
-                    allocLock(intRegIndex[seenInts]);
                     Inc(seenInts);
                 end;
 
@@ -1102,7 +1043,6 @@ begin
             until peek() = 'RPAR';
 
             consume(); // )
-            allocUnlockAll;
             argumentParser := call(fname, returnsFloat);
 end;
 
@@ -1244,7 +1184,6 @@ begin
                 else if (peek2() = 'LBRAC') or (peek2() = 'LBRACE') or (peek2() = 'BANG') then
                 begin
                     isFloat := False;
-                    allocInvalidateArrays;
                     if peek2() = 'LBRACE' then isFloat := True;
                     arrayName := consume;
                     if peek() = 'BANG' then consume;
@@ -1316,7 +1255,6 @@ begin
 
     if peek() = 'CARET' then // dereferenc sym on left side of assign, write through pointer
         begin
-            allocInvalidateAll; // shit gets weird so clear it, memory has changed : Alloc placeholder
             consume; // :=
             value := consume;
             if isNumber(value) then
@@ -1760,17 +1698,6 @@ begin
                                 symName[i] := '';
                                 symType[i] := '';
                                 symOffset[i] := 0;
-                                symReg[i] := -1;
-                                symNextUse[i] := -1;
-                                symEscaped[i] := False;
-                                symIsTemp[i] := False;
-                            end;
-
-                        for i := 0 to 31 do // placeholder for when i get to register allocation in 3 years
-                            begin
-                                regOwner[i] := -1;
-                                regDirty[i] := False;
-                                regLocked[i] := False;
                             end;
 
                 paramPending := False;
@@ -2352,22 +2279,6 @@ begin
         cfLVar[i] := '';
     end;
 
-    for i := 0 to 31 do
-    begin
-        regOwner[i] := -1;      // -1 means nobody lives here
-        regStamp[i] := 0;
-        regDirty[i] := False;
-        regLocked[i] := False;
-    end;
-
-    for i := 0 to 1023 do
-    begin
-        symReg[i] := -1;        // -1 means not in a register
-        symNextUse[i] := -1;    // -1 means not yet scanned
-        symEscaped[i] := False;
-        symIsTemp[i] := False;
-    end;
-
     deleteFile('intermediate.asm');
     deleteFile('text.tmp');
     deleteFile('data.tmp');
@@ -2389,8 +2300,6 @@ begin
     isProcedure := False;
     chainContinuing := False;
 
-    regClock := 0;                  // LRU counter
-    tempCount := 0;
 end;
 
 procedure sendToNASM(outputName: String);

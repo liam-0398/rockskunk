@@ -1,7 +1,5 @@
 ; SKUNKINIT
-; NO-BULLSHIT INIT SYSTEM
 |V
-
     fsckCall[3]
     depmodCall[2]
     servicesCall[2]
@@ -10,6 +8,9 @@
     initmiscCall[2]
 |
 
+P spawnGetty() {}
+
+P dev() {}
 
 P misc() {
     write(console, 'COMPLETING MISC FUNCTIONS\n', 26)
@@ -93,6 +94,4 @@ P main() {
     services()
 
     spawnGetty()
-
-
 }

@@ -897,6 +897,60 @@ begin
         hardFault('ARRAY_TO_MEM', arrayName);
 end;
 
+function discriminateArrays(variable: String): Boolean;
+
+procedure setFree(arrayname, arrayIndex, rightside, arrayType: String);
+begin
+    consume;
+    variable := arrayToMem(arrayname, arrayIndex);
+    if not isNumber(arrayIndex) then
+        allocInvalidateArrays;
+    rightside := evaluateExpression(False);
+    emitAssignArray(variable, rightside, arrayType);
+    discriminateArrays := True;
+    Exit;
+end;
+
+var
+    rightside, arrayName, arrayIndex, arrayType: String;
+begin
+
+    discriminateArrays := False;
+        // Word Arrays
+    if peek() = 'LBRAC' then
+    begin
+        arrayname := variable;
+        consume; // [
+        arrayIndex := consume;
+        consume; // ]
+        arrayType := 'WORD';
+        setFree(arrayname, arrayIndex, rightside, arrayType);
+    end;
+
+      // Float Arrays
+    if peek() = 'LBRACE' then
+    begin
+        arrayname := variable;
+        consume; // [
+        arrayIndex := consume;
+        consume; // ]
+        arrayType := 'FLOAT';
+        setFree(arrayname, arrayIndex, rightside, arrayType);
+    end;
+
+      // Byte Arrays
+    if peek() = 'BANG' then
+    begin
+        arrayname := variable;
+        consume;
+        consume; // [
+        arrayIndex := consume;
+        consume; // ]
+        arrayType := 'BYTE';
+        setFree(arrayname, arrayIndex, rightside, arrayType);
+    end;
+end;
+
 function resolveSyscall(): String;
 var
     argument: String;
@@ -1085,7 +1139,7 @@ end;
 
 function argumentParser(argname, fname, first: String; returnsFloat: Boolean; argfindex: Integer): String;
 var
-    strlabel, argIdent, arrayIndex: String;
+    strlabel, arrayName, arrayIndex: String;
     seenFloats, seenInts, argCounter: Integer;
     isFloatArg: Boolean;
 begin
@@ -1107,38 +1161,8 @@ begin
                 else if (peek() = 'IDENTIFIER') and ((peek2() = 'LBRAC') or (peek2() = 'LBRACE') or (peek2() = 'BANG')) then
                 begin
                     writeLn('ARRAY BRANCH OF ARGPARSER');
-                    argIdent := consume();  // the array name, NOT yet consumed by anything else
-                    if peek() = 'LBRAC' then
-                    begin
-                        consume; // [
-                        arrayIndex := consume;
-                        consume; // ]
-                        argname := arrayToMem(argIdent, arrayIndex);
-                        if not isNumber(arrayIndex) then
-                            allocInvalidateArrays;
-                    end
-                    else if peek() = 'LBRACE' then
-                    begin
-                        consume; // [
-                        arrayIndex := consume;
-                        consume; // ]
-                        argname := arrayToMem(argIdent, arrayIndex);
-                        if not isNumber(arrayIndex) then
-                            allocInvalidateArrays;
-                    end
-                    else if peek() = 'BANG' then
-                    begin
-                        consume; // !
-                        consume; // [
-                        arrayIndex := consume;
-                        consume; // ]
-                        argname := arrayToMem(argIdent, arrayIndex);
-                        if not isNumber(arrayIndex) then
-                            allocInvalidateArrays;
-                    end;
-
-                    if param_FType[argfindex + argcounter] = 'FLOAT' then
-                        isFloatArg := True;
+                    arrayName := consume();
+                    discriminateArrays(arrayname);
                 end
                 else
                 begin
@@ -1379,60 +1403,6 @@ begin
                         end;
                     Exit(math_ret)
                 end;
-        end;
-end;
-
-function discriminateArrays(variable: String): Boolean;
-
-procedure setFree(arrayname, arrayIndex, rightside, arrayType: String);
-begin
-    consume;
-    variable := arrayToMem(arrayname, arrayIndex);
-    if not isNumber(arrayIndex) then
-        allocInvalidateArrays;
-    rightside := evaluateExpression(False);
-    emitAssignArray(variable, rightside, arrayType);
-    discriminateArrays := True;
-    Exit;
-end;
-
-var
-    rightside, arrayName, arrayIndex, arrayType: String;
-begin
-
-    discriminateArrays := False;
-        // Word Arrays
-    if peek() = 'LBRAC' then
-        begin
-            arrayname := variable;
-            consume; // [
-            arrayIndex := consume;
-            consume; // ]
-            arrayType := 'WORD';
-            setFree(arrayname, arrayIndex, rightside, arrayType);
-        end;
-
-      // Float Arrays
-    if peek() = 'LBRACE' then
-        begin
-            arrayname := variable;
-            consume; // [
-            arrayIndex := consume;
-            consume; // ]
-            arrayType := 'FLOAT';
-            setFree(arrayname, arrayIndex, rightside, arrayType);
-        end;
-
-      // Byte Arrays
-    if peek() = 'BANG' then
-        begin
-            arrayname := variable;
-            consume;
-            consume; // [
-            arrayIndex := consume;
-            consume; // ]
-            arrayType := 'BYTE';
-            setFree(arrayname, arrayIndex, rightside, arrayType);
         end;
 end;
 

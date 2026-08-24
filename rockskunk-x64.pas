@@ -86,6 +86,7 @@ var
 
 function WhoGoesThere(intruder: String): String; forward;
 function evaluateExpression(isFloat: Boolean): String; forward;
+function theOracle(var isFloat: Boolean): String; forward;
 function loopLocate(): Boolean; forward;
 
 procedure dispatch(); forward;
@@ -999,12 +1000,13 @@ end;
 procedure asmFunctionCalls(variable: String; argname: String);
 var
     a, b, c, d, e, f, num: String;
+    isFloat: Boolean;
 begin
     if variable = 'printf' then
         begin
             consume; // (
             argname := consume();
-            if not isNumber(argname) then theOracle();
+            if not isNumber(argname) then theOracle(isFloat);
             consume; // )
             functionPrintF(argname);
         end
@@ -1012,20 +1014,20 @@ begin
         begin
             consume; // (
             argname := consume();
-            if not isNumber(argname) then theOracle();
+            if not isNumber(argname) then theOracle(isFloat);
             consume; // )
             functionPrintW(argname);
         end
     else if variable = 'sys' then
         begin
             consume;// sys, (
-            num := theOracle(); consume;
-            a := theOracle(); consume;
-            b := theOracle(); consume;
-            c := theOracle(); consume;
-            d := theOracle(); consume;
-            e := theOracle(); consume;
-            f := theOracle(); consume;
+            num := theOracle(isFloat); consume;
+            a := theOracle(isFloat); consume;
+            b := theOracle(isFloat); consume;
+            c := theOracle(isFloat); consume;
+            d := theOracle(isFloat); consume;
+            e := theOracle(isFloat); consume;
+            f := theOracle(isFloat); consume;
             emitSyscall(num, a, b, c, d, e, f);
         end
     else
@@ -1092,6 +1094,7 @@ var
     strlabel, arrayName, arrayIndex, argname: String;
     seenFloats, seenInts, argCounter: Integer;
     isFloatArg: Boolean;
+    isFloat: Boolean;
 begin
             //WriteLn('ARGUMENT PARSER - I' + IntToStr(argfindex) + '- N' + argname); // DEBUG
             statusMessage('ARGPARSER');
@@ -1100,7 +1103,7 @@ begin
             seenInts := 0;
 
             repeat
-                argname := theOracle();
+                argname := theOracle(isFloat);
 
                 if isFloatArg then
                 begin
@@ -1134,10 +1137,7 @@ begin
 
     while ((peek() = 'DOLLAR') or (peek() = 'PIPE') or (peek() = 'NOR') or (peek() = 'NOY') or (peek() = 'SHL') or (peek() = 'SHR')) do
     begin
-        op := peek();
-        consume;
-        second := consume();
-        second := ifFloatIfVar(second);
+        theOracle(isFloat);
 
         if      op = 'DOLLAR' then emitAnd('rax', second)
         else if op = 'PIPE'   then emitOr('rax', second)
@@ -1173,6 +1173,58 @@ begin
     end;
 end;
 
+function evaluateExpression(isFloat: Boolean): String;
+var
+    first, second, op, argname, fname, return, math_ret, call_ret, ampaddr, r, ident: String;
+    arrayname, arrayIndex, arrayType, str: String;
+    num, a, b, c: String;
+    i, argfindex: Integer;
+begin
+    i := 0;
+    first := '';
+    argname := '';
+    arrayType := '';
+    arrayIndex := '';
+    arrayname := '';
+    str := '';
+
+            statusMessage('EEVAL - NOT OP');
+
+
+            if (peek() = 'NUMBER') and (peek3() = 'NUMBER') then
+                begin
+                    return := foldCode(first, isFloat);
+                    Exit(return);
+                end;
+
+            theOracle(isFloat);
+
+            if ((peek() = 'DOLLAR') or (peek() = 'PIPE') or (peek() = 'NOR') or (peek() = 'NOY') or (peek() = 'SHL') or (peek() = 'SHR')) then
+                Exit(bitwiseEvaluator(first, isFloat));
+
+            // if next token isnt operator return the first operand eg if var := 5 not var := 5 + b
+            if not ((peek() = 'PLUS') or (peek() = 'MINUS') or (peek() = 'STAR') or (peek() = 'SLASH')) then
+                evaluateExpression := first
+            else
+                begin
+                    statusMessage('EEVAL - OP');
+
+                    if isFloat then
+                        loadXMM0(first) // floats need Xtra Math Man
+                    else
+                        loadRAX(first);
+
+                    // BEHOLD THE CHAINER OR OPERATORS, SOLVER OF EXPRESSIONS
+                    while ((peek() = 'PLUS') or (peek() = 'MINUS') or (peek() = 'STAR') or (peek() = 'SLASH')) do
+                        begin
+                            theOracle(isFloat);
+
+                            math_ret := emitMath(op, second, isFloat);
+                        end;
+                    Exit(math_ret)
+                end;
+end;
+
 function theOracle(var isFloat: Boolean): String;
 var
     float, str, ident, arrayName, index, ampaddr: String;
@@ -1185,19 +1237,18 @@ begin
                 float := copy(float, 1, Length(float) - 1);
                 theOracle := '[' + emitFloatConstant(float) + ']';
                 isFloat := True;
-                end;
+            end;
         'STRING': begin
                 str := consume;
-                emitStringConstant(str);
                 isFloat := False;
                 theOracle := emitStringConstant(str);
-                end;
+            end;
         'VESCAPE': begin
                 consume;                          // [[
-                theOracle := '[' + consume() + ']';   // label, wrapped
+                theOracle := '[' + consume() + ']';
                 consume;                          // ]
                 consume;
-                isFloat := False;                        // ]
+                isFloat := False;
             end;
         'AMP': begin
                 consume;
@@ -1239,97 +1290,6 @@ begin
             hardFault('I CANT BELEIVE YOUVE DONE THIS - YOU HAVE DISPLEASED THE ORACLE', peek() + ' ' + peekV());
     end;
 end;
-
-
-function evaluateExpression(isFloat: Boolean): String;
-var
-    first, second, op, argname, fname, return, math_ret, call_ret, ampaddr, r, ident: String;
-    arrayname, arrayIndex, arrayType, str: String;
-    num, a, b, c: String;
-    returnsFloat: Boolean;
-    i, argfindex: Integer;
-begin
-    i := 0;
-    first := '';
-    argname := '';
-    arrayType := '';
-    arrayIndex := '';
-    arrayname := '';
-    str := '';
-    returnsFloat := False;
-
-    if (peek() = 'AMP') or ((peek() = 'IDENTIFIER') and (peek2() = 'CARET')) or ((peekV() = 'sys') and (peek2() = 'LPAR')) then
-        begin
-            r := eeIncidentals();
-            Exit(r);
-        end;
-
-    if ((peek() = 'IDENTIFIER') and (peek2() = 'LBRAC')) or ((peek() = 'IDENTIFIER') and (peek2() = 'LBRACE')) or ((peek() = 'IDENTIFIER') and (peek2() = 'BANG')) then
-        begin
-            r := eeArrays();
-            Exit(r);
-        end;
-
-    if (peek() = 'IDENTIFIER') and (peek2() = 'LPAR') then
-        call_ret := parseCall(fname)
-    else
-        begin
-            statusMessage('EEVAL - NOT OP');
-           if peek() = 'VESCAPE' then
-                begin
-                    consume;                          // [[
-                    first := '[' + consume() + ']';   // label, wrapped
-                    consume;                          // ]
-                    consume;                          // ]
-                end
-                else if peek() = 'STRING' then
-                    first := emitStringConstant(consume)
-                else
-                begin
-                    first := consume; // first operand (the a in a + b)
-                    if isFloatLiteral(first) then
-                        first := opResolver(first)
-                    else if not isNumber(first) then
-                        first := varToMem(first);
-                    if isNumber(first) and (peek2() = 'NUMBER') then
-                    begin
-                        return := foldCode(first, isFloat);
-                        Exit(return);
-                    end;
-                    first := opResolver(first);
-                end;
-
-
-            if ((peek() = 'DOLLAR') or (peek() = 'PIPE') or (peek() = 'NOR') or (peek() = 'NOY') or (peek() = 'SHL') or (peek() = 'SHR')) then
-                Exit(bitwiseEvaluator(first, isFloat));
-
-            // if next token isnt operator return the first operand eg if var := 5 not var := 5 + b
-            if not ((peek() = 'PLUS') or (peek() = 'MINUS') or (peek() = 'STAR') or (peek() = 'SLASH')) then
-                evaluateExpression := first
-            else
-                begin
-                    statusMessage('EEVAL - OP');
-
-                    if isFloat then
-                        loadXMM0(first) // floats need Xtra Math Man
-                    else
-                        loadRAX(first);
-
-                    // BEHOLD THE CHAINER OR OPERATORS, SOLVER OF EXPRESSIONS
-                    while ((peek() = 'PLUS') or (peek() = 'MINUS') or (peek() = 'STAR') or (peek() = 'SLASH')) do
-                        begin
-                            op := peek();
-                            consume;
-                            second := consume();
-                            second := ifFloatIfVar(second); // resolve assignment of var
-
-                            math_ret := emitMath(op, second, isFloat);
-                        end;
-                    Exit(math_ret)
-                end;
-        end;
-end;
-
 
 procedure discriminateIdentifier();
 var

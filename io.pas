@@ -140,9 +140,10 @@ procedure asmFoundationsMINE(); // Its happening
 begin
     WriteText(#10 + 'print_qword:' + #10);
     WriteText(#10 + '' + #10);
-
-
-
+    // setup counter
+    // loop over chars
+    // convert from ascii?
+    // syscall
 end;
 
 procedure asmFoundations();

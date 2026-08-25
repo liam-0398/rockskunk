@@ -190,34 +190,35 @@ begin
         statusMessage('YOU HAVE FRUSTRATED THE COMPLIER - MATCHINDEX - WRONG SEARCH TYPE');
 end;
 
-function recordIdent(variable: String; which: String): Boolean;
+// more complicated than other lookups, still working out details
+function recordIdent(variable: String; which: String): Integer;
 var
     i: LongInt;
 begin
-    recordIdent := False;
+    recordIdent := -1;
     if which = 'NAME' then
     begin
         for i := 0 to recCount - 1 do
             if variable = recName[i] then
-                recordIdent := True;
+                recordIdent := i; //INDEX
     end
-    else if which = 'OFFSETS' then // debating if this is where the whitespace delimited match goes
+    else if which = 'OFFSETS' then // // need to adjust so one size is picked up in field string
     begin
         for i := 0 to recCount - 1 do
             if variable = recOffsets[i] then
-                recordIdent := True;
+                recordIdent := i; // INDEX
     end
-    else if which = 'SIZE' then // debating if this is where the whitespace delimited match goes
+    else if which = 'SIZE' then
     begin
         for i := 0 to recCount - 1 do
             if variable = recSize[i] then
-                recordIdent := True;
+                recordIdent := i; //SIZE
     end
     else if which = 'FIELDS' then
     begin
         for i := 0 to recCount - 1 do
-            if variable = recFields[i] then
-                recordIdent := True;
+            if variable = recFields[i] then // need to adjust so one field is picked up in field string
+                recordIdent := i; // INDEX
     end
     else
         statusMessage('YOU HAVE FRUSTRATED THE COMPLIER - RECORDIDENT - WRONG SEARCH TYPE');
@@ -623,7 +624,26 @@ begin
         hardFault('ARRAY_TO_MEM', arrayName);
 end;
 
-function recordToMem(recordName: String): String; begin end;
+// pay no mind to this here function
+function recordToMem(recordName, field: String): String;
+var
+    index, offsets: String;
+    size: integer;
+begin
+    if RecordIdent(recordName, 'NAME') <> -1 then
+    begin
+        index := RecordIdent(recordName, 'NAME');
+        offsets := recOffsets[index];
+        // find offset with whilespace delimiter comparison
+        size := recSize[index];
+
+
+
+    end
+    else
+        hardFault('RECORD_TO_MEM', recordnameName);
+
+end;
 
 function discriminateArrays(variable: String): Boolean;
 procedure setFree(arrayname, arrayIndex, rightside, arrayType: String);
@@ -1018,7 +1038,7 @@ end;
 // determine what to do with the left side of the expression. x :=
 procedure discriminateIdentifier();
 var
-    variable, rightside, twoname, value, gvar: String;
+    variable, rightside, twoname, value, gvar, field: String;
     isDeclared, isReturn, isFloat, didArrays: boolean;
     ii, symIndex, argfindex: Integer;
     returnsFloat, isGlobal: Boolean;
@@ -1027,6 +1047,7 @@ begin
     symIndex := 0;
     value := '';
     variable := '';
+    field := '';
     isDeclared := False;
     isReturn := False;
     isFloat := False;
@@ -1067,12 +1088,8 @@ begin
     if peek() = 'DOT' then // records
     begin
         consume; //.
-
-
-
-
-
-
+        field := consume;
+        recordToMem(first, field)
     end;
 
     if peek() = 'ASSIGN' then // if its a := x etc etc

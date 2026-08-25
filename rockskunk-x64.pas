@@ -12,6 +12,7 @@ const
     FILEBUF_SIZE = 67108864; // 64MB if you are a madman with the DO loops
     INITIAL_TOKEN_CAP = 4096;
     INITIAL_ARRAY_CAP = 256;
+    INITIAL_RECORD_CAP = 256;
     INITIAL_FUNC_CAP = 128;
 var
     Debug: Boolean = True; // TOGGLE DEBUG OUTPUT
@@ -45,13 +46,14 @@ var
     symName, symType: array[0..1023] of String;
     symOffset: array[0..1023] of Integer;
     aName, aType, aSize: array of String;
+    recName, recType, recSize: array of String;
 
     currentFN: String;
     bytes, bbytes, fd, fd2, fd3, fd4, fd5: CInt;
     filename, output_filename, stdlib_filename, returnAddr: String;
     isProcedure: Boolean;
 
-    frameOffset, labelCounter, position, symCount, aCount, argCount, tokenCount, fstackPosition: LongInt;
+    frameOffset, labelCounter, position, symCount, aCount, recCount, argCount, tokenCount, fstackPosition: LongInt;
 
 {
    DO NOT FORGET LIST ====
@@ -1823,6 +1825,38 @@ begin
     consume;
 end;
 
+// broke as hell, pay no mind to this here function
+procedure recordBlock();
+var
+    recordName, field, offset, range, size: String;
+    counter: Integer;
+begin
+    recordName := '';
+    field := '';
+    offset := '';
+    range := '';
+    size := '';
+    consume; // consume |V
+    recordName := consume;
+    while peek() <> 'PIPE' do
+    begin
+        if peek2() = 'IDENTIFIER' then // globals
+        begin
+            field := consume;
+            offset := consume;
+            consume; // :
+            range := consume;
+            WriteBSS(recordName + ': resb ' + size + #10); // fake so it will compile
+        end
+        else
+        begin
+            WriteLn(IntToStr(t_line[position]) + ' - ' + 'I CANT BELIEVE YOUVE DONE THIS - RECORDBLOCK - YOUVE SCRATCHED MY COLLECTION>> ' + peek() + ' ' + peekV());
+            Halt(1);
+        end;
+    end;
+    consume;
+end;
+
 // PARSER -----------
 
 procedure rightbrace();
@@ -1929,8 +1963,8 @@ begin
             'LOCATE': begin loopLocate(); end;
             'DO': begin loopDo(); end;
             'VARBLOCK': begin varBlock(); end;
-            'STATICBLOCK': begin
-                consume; // consume '
+            'RECORDBLOCK': begin
+                recordBlock();
             end;
             'ASMBLOCK': begin
                 consume; // consume |A
@@ -2232,6 +2266,16 @@ begin
     end;
 end;
 
+procedure doubleRecordCapacity();
+begin
+    if recCount >= Length(recName) then
+    begin
+        SetLength(recName, Length(aName) * 2);
+        SetLength(recType, Length(aType) * 2);
+        SetLength(recSize, Length(aSize) * 2);
+    end;
+end;
+
 procedure doubleReturnCapacity();
 begin
     if return_FCount >= Length(return_FName) then
@@ -2273,6 +2317,9 @@ begin
     SetLength(aName, INITIAL_ARRAY_CAP);
     SetLength(aType, INITIAL_ARRAY_CAP);
     SetLength(aSize, INITIAL_ARRAY_CAP);
+    SetLength(recName, INITIAL_RECORD_CAP);
+    SetLength(recType, INITIAL_RECORD_CAP);
+    SetLength(recSize, INITIAL_RECORD_CAP);
     SetLength(tokenKind, INITIAL_TOKEN_CAP);
     SetLength(tokenValue, INITIAL_TOKEN_CAP);
     SetLength(t_line, INITIAL_TOKEN_CAP);

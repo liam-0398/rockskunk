@@ -1,0 +1,23 @@
+; LS
+
+P listDir() {
+    path := argv(1)
+    directory := opendir(path)
+        W (dirp = nil) { writeln('NO DIR') }
+
+    LW (dirent <> nil) {
+        dirent := readdir(directory^)
+        IF (dirent <> nil) {
+
+        ; whelp i need records to do this
+
+        }
+    }
+}
+
+P main() {
+    count := argc()
+    IF (argc > 0) {
+        listDir()
+    } E { exit(1) }
+}

@@ -1603,11 +1603,11 @@ begin
     bodyEnd := loopCounter - 1;
 
     // Compiler wisdom
-    if ll > 10000 then
+    if StrToInt(looplimit) > 10000 then
         writeLn('DO LOOP > 10000 ITERATION - VAYA CON DIOS')
-    else if ll > 500 then
+    else if StrToInt(looplimit) > 500 then
         writeLn('WHOA THERE PARTNER - YOUR SOURCE IS ABOUT TO BE BIGGER THAN FIREFOX WITH > 500 ITERATIONS OF A DO LOOP')
-    else if ll > 100 then
+    else if StrToInt(looplimit) > 100 then
         writeLn('YOU HAVE FRUSTRATED THE COMPILER - YOU DARE EXCEED 100 ITERATIONS OF A DO LOOP?');
 
     // COMPILE TIME unrolled do loop

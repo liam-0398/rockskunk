@@ -86,8 +86,8 @@ begin
     fd5 := fpOpen('bss.tmp', O_RdOnly, 438);
     WriteOut('section .bss' + #10);
     WriteOut('   digitbuf: resb 32' + #10);
-    WriteOut('g_argc: resq 1' + #10);
-    WriteOut('g_argv: resq 1' + #10);
+    WriteOut('   g_argc: resq 1' + #10);
+    WriteOut('   g_argv: resq 1' + #10);
     bbytes := fpRead(fd5, bbuf, SizeOf(bbuf));
     fpWrite(fd2, bbuf, bbytes);
     fpClose(fd5);
@@ -135,15 +135,47 @@ begin
     WriteText('    call print_float' + #10);
 end;
 
-
 procedure asmFoundationsMINE(); // Its happening
 begin
+    WriteText(#10 + 'global _start' + #10);
+    WriteText('_start:'+ #10);
+    WriteText('  mov rax, [rsp]'+ #10);
+    WriteText('  mov [g_argc], rax'+ #10);
+    WriteText('  lea rax, [rsp + 8]'+ #10);
+    WriteText('  mov [g_argv], rax'+ #10);
+    WriteText('  call main'+ #10);
+    WriteText('  mov rdi, rax'+ #10);
+    WriteText('  mov rax, 60'+ #10);
+    WriteText('  syscall'+ #10);
+
     WriteText(#10 + 'print_qword:' + #10);
-    WriteText(#10 + '' + #10);
     // setup counter
+    WriteText(#10 + 'mov rcx, 20' + #10); // put size of buffer into the counter
+    WriteText(#10 + 'mov rcx, 20' + #10); //
     // loop over chars
     // convert from ascii?
-    // syscall
+    // add spcae to the buffer
+    WriteText(#10 + 'mov al, 32' + #10); // move ascii space into al (8bit rax)
+    WriteText(#10 + 'mov [digitbuf], al' + #10); // move the contents of al into the buffer
+    // sys(num, location, buffer, count)
+    // write(rax (1), rdi (1), rsi [digitbuf], rdx (count))
+    WriteText('    mov rax, 1' + #10); // write
+    WriteText('    mov rdi, 1' + #10);
+    WriteText('    mov rsi, digitbuf' + #10);
+    WriteText('    mov rdx, 1' + #10);
+    WriteText('    syscall' + #10);
+    WriteText('    ret' + #10 + #10);
+
+    // conversions
+    WriteText(#10 + 'intToFloat:' + #10);
+    WriteText('    cvtsi2sd xmm0, rax' + #10);
+    WriteText('    ret' + #10 + #10);
+
+    WriteText(#10 + 'floatToInt:' + #10);
+    WriteText('    cvttsd2si rax, xmm0' + #10);  // arg comes in xmm0
+    WriteText('    ret' + #10 + #10);
+
+    //WriteText(#10 + 'strToVal:' + #10);
 end;
 
 procedure asmFoundations();

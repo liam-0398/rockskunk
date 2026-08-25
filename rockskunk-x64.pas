@@ -638,8 +638,8 @@ begin
         size := recSize[index];
 
         // PLACEHOLDER
-        WriteText('    mov r10, ' + varToMem(aindex) + #10);
-        ArrayToMem := '   [' + arrayname + ' + r10*' + size + ']';
+        WriteText('    mov r10, ' + varToMem(IntToStr(index)) + #10);
+        recordToMem := '   [' + recordname + ' + r10*' + size + ']';
 
     end
     else

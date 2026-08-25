@@ -634,10 +634,12 @@ begin
     begin
         index := RecordIdent(recordName, 'NAME');
         offsets := recOffsets[index];
-        // find offset with whilespace delimiter comparison
+        // find offset with whilespace delimiter comparison and compare to fields
         size := recSize[index];
 
-
+        // PLACEHOLDER
+        WriteText('    mov r10, ' + varToMem(aindex) + #10);
+        ArrayToMem := '   [' + arrayname + ' + r10*' + size + ']';
 
     end
     else

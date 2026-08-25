@@ -200,7 +200,38 @@ begin
         statusMessage('YOU HAVE FRUSTRATED THE COMPLIER - MATCHINDEX - WRONG SEARCH TYPE');
 end;
 
-
+function recordIdent(variable: String; which: String): Boolean;
+var
+    i: LongInt;
+begin
+    recordIdent := False;
+    if which = 'NAME' then
+    begin
+        for i := 0 to recCount - 1 do
+            if variable = recName[i] then
+                recordIdent := True;
+    end
+    else if which = 'OFFSETS' then // debating if this is where the whitespace delimited match goes
+    begin
+        for i := 0 to recCount - 1 do
+            if variable = recOffsets[i] then
+                recordIdent := True;
+    end
+    else if which = 'SIZE' then // debating if this is where the whitespace delimited match goes
+    begin
+        for i := 0 to recCount - 1 do
+            if variable = recSize[i] then
+                recordIdent := True;
+    end
+    else if which = 'FIELDS' then
+    begin
+        for i := 0 to recCount - 1 do
+            if variable = recFields[i] then
+                recordIdent := True;
+    end
+    else
+        statusMessage('YOU HAVE FRUSTRATED THE COMPLIER - RECORDIDENT - WRONG SEARCH TYPE');
+end;
 
 function keywordCheck(word: String): Boolean; // Flag keywords
 var
@@ -837,8 +868,9 @@ begin
         hardFault('ARRAY_TO_MEM', arrayName);
 end;
 
-function discriminateArrays(variable: String): Boolean;
+function recordToMem(recordName: String): String; begin end;
 
+function discriminateArrays(variable: String): Boolean;
 procedure setFree(arrayname, arrayIndex, rightside, arrayType: String);
 begin
     consume;

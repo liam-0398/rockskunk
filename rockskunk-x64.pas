@@ -627,8 +627,8 @@ end;
 // pay no mind to this here function
 function recordToMem(recordName, field: String): String;
 var
-    index, offsets: String;
-    size: integer;
+    offsets, size: String;
+    index: integer;
 begin
     if RecordIdent(recordName, 'NAME') <> -1 then
     begin
@@ -641,7 +641,7 @@ begin
 
     end
     else
-        hardFault('RECORD_TO_MEM', recordnameName);
+        hardFault('RECORD_TO_MEM', recordName);
 
 end;
 
@@ -1089,7 +1089,7 @@ begin
     begin
         consume; //.
         field := consume;
-        recordToMem(first, field)
+        recordToMem(variable, field)
     end;
 
     if peek() = 'ASSIGN' then // if its a := x etc etc

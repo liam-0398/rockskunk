@@ -4,14 +4,93 @@
     fsckCall[3]
     depmodCall[2]
     servicesCall[2]
+
+    ; Misc
     mountaCall[2]
     swaponCall[2]
     initmiscCall[2]
+
+    ; Devices
+    udevtCall[4]
+    udevadmCall[4]
+    udevsettleCall[4]
+    udevdaemonCall[4]
+    networkingCall[2]
+
+    gettyCall[2]
 |
 
-P spawnGetty() {}
+P dontFearTheReaper() {
+    waitpid(-1, @status, WNOHANG)
+}
 
-P dev() {}
+P spawnGetty() {
+
+    gettyCall[0] := 'agetty'
+    gettyCall[1] := 'tty1'
+    gettyCall[2] := nil
+
+    pid := fork
+    W (pid = 0) {
+        setsid()
+        ioctl(0, $540E, nil)
+        execve('/sbin/agetty', gettyCall)
+        exit(1)
+    }
+
+    gettyCall[1] := 'tty2'
+    pid := fork
+    W (pid = 0) {
+        setsid()
+        ioctl(0, $540E, nil)
+        execve('/sbin/agetty', gettyCall)
+        exit(1)
+    }
+
+}
+
+P dev() {
+    write(console, 'INITIALIZING DEVICES\n', 21)
+
+    udevtCall[0] := 'udevd'
+    udevtCall[1] := 'trigger'
+    udevtCall[2] := '--action=add'
+    udevtCall[3] := '--type=subsystems'
+    udevtCall[4] := Nil
+    udevadmCall[0] := 'udevadm'
+    udevadmCall[1] := 'trigger'
+    udevadmCall[2] := '--action=add'
+    udevadmCall[3] := '--type=devices'
+    udevadmCall[4] := Nil
+    udevsettleCall[0] := 'udevadm'
+    udevsettleCall[1] := 'settle'
+    udevsettleCall[2] := Nil
+    udevdaemonCall[0] := 'udevd'
+    udevdaemonCall[1] := '--daemon'
+    udevdaemonCall[2] := Nil
+    networkingCall[0] := '/bin/sh'
+    networkingCall[1] := '/etc/pinit/init_networking'
+    networkingCall[2] := Nil
+
+    ; waitpid for depmod
+    fpWrite(console, 'DEPMOD COMPELTE\n', 16);
+
+    pid := fork() IF (pid = 0) { execve('/sbin/udevd', udevdaemonCall)} E {} ; waitpid
+
+    pid := fork() IF (pid = 0) { execve('/sbin/udevadm', udevadmCall)} E {} ; waitpid
+    pid := fork() IF (pid = 0) { execve('/sbin/udevadm', udevtCall)} E {} ; waitpid
+    pid := fork() IF (pid = 0) { execve('/sbin/udevadm', udevsettleCall)} E {} ; waitpid
+
+    ; short sleep before networking init
+
+    write(console, 'DEVICES LOADED\n', 15)
+    write(console, 'INITIALIZING NETWORK\n', 21)
+
+    pid := fork() IF (pid = 0) { execve('/bin/sh', networkingCall)} E {} ; waitpid
+
+    write(console, 'NETWORK INITIALIZED\n', 20);
+
+}
 
 P misc() {
     write(console, 'COMPLETING MISC FUNCTIONS\n', 26)
@@ -19,10 +98,19 @@ P misc() {
     mountaCall[0] := 'mount'
     mountaCall[1] := '-a'
     mountaCall[3] := nil
+    swaponCall[0] := 'swapon'
+    swaponCall[1] := '-a'
+    swaponCall[3] := nil
+    initmiscCall[0] := '/bin/sh'
+    initmiscCall[1] := '/etc/sinit/init_misc'
+    initmiscCall[3] := nil
+
+    pid := fork() IF (pid = 0) { execve('/bin/mount', mountaCall)} E {} ; waitpid
+    pid := fork() IF (pid = 0) { execve('/sbin/swapon', swaponCall)} E {} ; waitpid
 
     pid := fork();
         IF (pid = 0) {
-            ; rdrlog
+            ; rdrnull
             execve('/bin/sh', fsckCall) }
         E { } ; waitPID waitpid(pid, @status, 0)
 
@@ -52,8 +140,7 @@ P kMod() {
     depmodCall[3] := nil
 
     pid := fork();
-        IF (pid = 0) { execve('/usr/bin/depmod', fsckCall) }
-        E { } ; waitPID waitpid(pid, @status, 0)
+        IF (pid = 0) { execve('/usr/bin/depmod', fsckCall) } E { } ; waitPID waitpid(pid, @status, 0)
 }
 
 P remount() {
@@ -64,8 +151,7 @@ P remount() {
     fsckCall[3] := nil
 
     pid := fork();
-        IF (pid = 0) { execve('/sbin/fsck', fsckCall) }
-        E { } ; waitPID waitpid(pid, @status, 0)
+        IF (pid = 0) { execve('/sbin/fsck', fsckCall) } E { } ; waitPID waitpid(pid, @status, 0)
 
     mountroot := '/' + 8
     mount(nil, mountroot, nil, 32, nil)

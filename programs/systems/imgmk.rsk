@@ -1,0 +1,19 @@
+; IMGMK
+; Generates raw images for nefarious purposes
+
+|V buffer [1048576] |
+
+P makeImage() {
+    size := argv(1)
+    file := argv(2)
+
+    fd := open(file, 65, 438)
+    size := ; damn i need to find a way to convert string to numbers
+
+}
+
+P main() {
+    count := argc()
+    IF (argc > 1) { makeImage() }
+    E { writeln('NOT ENOUGH ARGS') exit(1) }
+}

@@ -15,7 +15,6 @@ const
     INITIAL_FUNC_CAP = 128;
 var
     Debug: Boolean = True; // TOGGLE DEBUG OUTPUT
-    Alloc: Boolean = False;
 
     // I/O
     buf, databuf, textbuf, bbuf: Array[0..1048575] of Char;
@@ -348,6 +347,7 @@ procedure emitFN(fname : String); begin WriteText(fname + ':' + #10); end;
 
 procedure emitFunctionSetup();
 begin
+    statusMessage('HELLO FUNCTION');
     WriteText('    push rbp' + #10);
     WriteText('    mov rbp, rsp' + #10);
     WriteText('    sub rsp, ');
@@ -362,6 +362,7 @@ var
     savedPos: Int64;
     alignedSize: Integer;
 begin
+    statusMessage('GOODBYE FUNCTION');
     if not isProcedure then
     begin
         isFloat := False;
@@ -602,6 +603,7 @@ end;
 // picky about which registers are loaded
 function emitSyscall(num, arg1, arg2, arg3, arg4, arg5, arg6: String): String;
 begin
+    statusMessage('RMIT SYSCALL');
     WriteText('    mov rax, ' + num + #10);
     WriteText('    mov rdi, ' + arg1 + #10);
     WriteText('    mov rsi, ' + arg2 + #10);
@@ -775,7 +777,7 @@ var
 begin
     varToMem := '';
     foundIndex := matchIndex(variable, 'ARRAY');
-
+    statusMessage('VAR_TO_MEM');
     if foundIndex = -1 then
     begin
         if matchName(variable, 'SYM') then
@@ -801,7 +803,7 @@ var
 begin
     arrayToMem := '';
     i := 0;
-
+    statusMessage('ARRAY_TO_MEM');
     arType := matchType(arrayName, 'ARRAY');
 
     if arType = 'WORD' then elementSize := 8
@@ -847,6 +849,7 @@ end;
 var
     rightside, arrayName, arrayIndex, arrayType: String;
 begin
+    statusMessage('DISCRIMINATE ARRAYS');
     rightside := '';
     discriminateArrays := False;
 
@@ -888,6 +891,7 @@ end;
 // function calls
 function call(fname: String; returnsFloat: Boolean): String;
 begin
+    statusMessage('CALL');
           if returnsFloat then
             begin
                 WriteText('    call ' + fname + #10); call := 'xmm0';
@@ -928,6 +932,7 @@ var
     a, b, c, d, e, f, num: String;
     isFloat: Boolean;
 begin
+    statusMessage('PARSE INTRINSIC');
     consume; // (
     if name = 'printf' then
     begin
@@ -991,6 +996,7 @@ function WhoGoesThere(intruder: String): String;
 var
     isFloat: Boolean;
 begin
+    statusMessage('WHOGOESTHERE');
     isFloat := False;
 
     if isNumber(intruder) then // RAW NUM
@@ -1077,6 +1083,7 @@ var
     returnsFloat: Boolean;
     argfindex: Integer;
 begin
+    statusMessage('PARSECALL');
     returnsFloat := False;
     if WhoGoesThere(fname) = 'FLOAT' then
         returnsFloat := True;
@@ -1404,6 +1411,7 @@ end;
 // ASM flags are runtime, do I jump? Pascal insertions are compile time, WHEN do I jump?
 procedure condJumpTable(condition, endLabel: String);
 begin
+    statusMessage('LOOP - JUMP TABLE');
     if condition = 'LESSEQUAL' then  // all the shit is backwards here
         WriteText('    jg ' + endlabel + #10)       // jump if greater (skip when i > limit)
     else if condition = 'LESS' then
@@ -1421,6 +1429,7 @@ end;
 
 procedure emitCompareAndJump(leftVal, rightVal, condition, skipLabel: String);
 begin
+    statusMessage('LOOP - COMPARE');
     WriteText('    mov rax, ' + leftVal + #10);
     WriteText('    push rax' + #10);    // psh that bad boy on the stack so its not clobbered
     WriteText('    mov rbx, ' + rightVal + #10);
@@ -1433,6 +1442,7 @@ procedure loopWhile();
 var
     loopvar, loopcond, looplimit, toplabel, endlabel: String;
 begin
+    statusMessage('LOOP - WHILE');
     consume; //consume LW
     consume; // consume LPAR
     loopvar := varToMem(consume); // handle variable variables
@@ -1459,6 +1469,7 @@ procedure loopFor();
 var
     loopvar, loopstart, looplimit, toplabel, endlabel: String;
 begin
+    statusMessage('LOOP - FOR');
     consume; //consume LF
     consume; // consume LPAR
     loopvar := varToMem(consume);
@@ -1487,17 +1498,18 @@ end;
 
 function loopLocate(): Boolean;
 var
-    cvar, needle, arrname, countTok, endlabel, toplabel, nextlabel: String;
+    cvar, willToLive, arrname, countTok, endlabel, toplabel, nextlabel: String;
     elementSize, countVal, n: Integer;
     arrType: String;
 begin
+    statusMessage('LOOP - LOCATE');
     consume; // LOCATE
     consume; // (
     cvar := varToMem(consume);
     consume; // ,
-    needle := consume();
-    if not isNumber(needle) then
-        needle := varToMem(needle);
+    willToLive := consume();
+    if not isNumber(willToLive) then
+        willToLive := varToMem(willToLive);
     consume; // ,
     arrname := consume();
     consume; // [
@@ -1518,7 +1530,7 @@ begin
             for n := 0 to countVal - 1 do // DO loop, this is done at compile time
                 begin
                     WriteText('    mov rax, [' + arrname + ' + ' + IntToStr(n * elementSize) + ']' + #10); // LD
-                    WriteText('    cmp rax, ' + needle + #10);
+                    WriteText('    cmp rax, ' + willToLive + #10);
                     nextlabel := labelMaker('LOC');
                     WriteText('    jne ' + nextlabel + #10); // if NOT = skip to next check
                     WriteText('    mov qword ' + cvar + ', ' + IntToStr(n) + #10); // if = store
@@ -1536,7 +1548,7 @@ begin
             WriteText('    cmp r11, ' + countTok + #10); // compare counter
             WriteText('    jge ' + endlabel + #10); // exit if its the end
             WriteText('    mov rax, [' + arrname + ' + r11*' + IntToStr(elementSize) + ']' + #10); // ld elem
-            WriteText('    cmp rax, ' + needle + #10); // compare with search. ^^ r11*8 mult counter by elmsize
+            WriteText('    cmp rax, ' + willToLive + #10); // compare with search. ^^ r11*8 mult counter by elmsize
             nextlabel := labelMaker('LOC');
             WriteText('    jne ' + nextlabel + #10); // if NOT = continue
             WriteText('    mov qword ' + cvar + ', r11' + #10); // if you find it load
@@ -1553,9 +1565,9 @@ end;
 procedure loopDo();
 var
     loopvar, loopstart, looplimit: String;
-    loopCounter, doDepth, ls, ll, n, bodyStart, bodyEnd: Integer;
+    loopCounter, doDepth, n, bodyStart, bodyEnd: Integer;
 begin
-
+    statusMessage('LOOP - DO');
     consume; //consume LF
     consume; // consume LPAR
     loopvar := consume;
@@ -1590,10 +1602,6 @@ begin
     bodyStart := position + 1;
     bodyEnd := loopCounter - 1;
 
-    // laziness
-    ll := StrToInt(looplimit);
-    ls := StrToInt(loopstart);
-
     // Compiler wisdom
     if ll > 10000 then
         writeLn('DO LOOP > 10000 ITERATION - VAYA CON DIOS')
@@ -1603,7 +1611,7 @@ begin
         writeLn('YOU HAVE FRUSTRATED THE COMPILER - YOU DARE EXCEED 100 ITERATIONS OF A DO LOOP?');
 
     // COMPILE TIME unrolled do loop
-    for n := ls to ll - 1 do
+    for n := StrToInt(loopstart) to StrToInt(looplimit) - 1 do
         begin
             WriteText('    mov qword ' + computeOffset(symOffset[symCount-1]) + ', ' + IntToStr(n) + #10); //stre
             position := bodyStart; // pull the parser into the loop, trapped to forever do its bidding
@@ -1618,6 +1626,7 @@ procedure condWhen();
 var
     condvar, condition, condlimit, endlabel: String;
 begin
+    statusMessage('CONDITIONAL - WHEN');
     consume; //consume W
     consume; // consume LPAR
     condvar := evaluateExpression(False);
@@ -1640,6 +1649,7 @@ procedure condIf();
 var
     condvar, condition, condlimit, endlabel, misslabel: String;
 begin
+    statusMessage('CONDITIONAL - IF');
     consume; //consume W
     consume; // consume LPAR
     condvar := evaluateExpression(False);
@@ -1668,7 +1678,7 @@ end;
 procedure condElse();
 begin
     consume;
-
+    statusMessage('CONDITIONAL - ELSE');
     if not chainContinuing then // if there is no flag set stating an if was opened, you mustve just put an else
         begin
             WriteLn(IntToStr(t_line[position]) + ' - ' + 'I CANT BELIEVE YOUVE DONE THIS - ALL ELSE NO IF HUH?');
@@ -1684,6 +1694,7 @@ function constructFunction(): Boolean;
 var
     i: Integer;
 begin
+    statusMessage('CONSTRUCT FUNCTION');
                 constructFunction := (peek() = 'P');
                 consume;
                 currentFN := consume;
@@ -1817,6 +1828,7 @@ end;
 procedure rightbrace();
 begin
     consume;
+        statusMessage('RBRACE');
             if cfDepth > 0 then // are we currently in a loop or conditional?
                 begin
                     Dec(cfDepth); // drop a brace from the count
@@ -1849,6 +1861,7 @@ var
     i, d, seenFloats, seenInts: Integer;
     asmgrab, atok, asmend: String;
 begin
+    statusMessage('DISPATCH');
     asmend := '';
     asmgrab := '';
     atok := '';

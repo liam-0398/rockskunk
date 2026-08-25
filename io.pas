@@ -148,13 +148,23 @@ begin
     WriteText('  mov rax, 60'+ #10);
     WriteText('  syscall'+ #10);
 
+    // raw value is deposited into rax before this ever runs
+    // dividing by 10 and taking the remainder the adding ascii zero convers it into ascii
+    // gives order wrong after loop, goes by least signifiacnt digit need it most signifiacnt for output
     WriteText(#10 + 'print_qword:' + #10);
     // setup counter
-    WriteText(#10 + 'mov rcx, 20' + #10); // put size of buffer into the counter
-    WriteText(#10 + 'mov rcx, 20' + #10); //
+    WriteText(#10 + 'mov rcx, 0' + #10); // counter to count how many charachters while walking buffer
+    WriteText(#10 + 'mov rsi, [digitbuf] + 20' + #10); // set maxiumum legth of the buffer?
     // loop over chars
+    WriteText(#10 + '.collect:' + #10);
+    WriteText(#10 + 'cmp rcx, 0' + #10);
+    WriteText(#10 + 'je .collect' + #10); // jump if comparison = 0 make sure there are charachters
     // convert from ascii?
-    // add spcae to the buffer
+    WriteText(#10 + 'cqo' + #10);
+    WriteText(#10 + 'idiv rax' + #10);
+    WriteText(#10 + 'add rdx, 48' + #10); // remainder lives here, add ascii 0 (48) to convert
+
+    // add spcae to the buffer after loop
     WriteText(#10 + 'mov al, 32' + #10); // move ascii space into al (8bit rax)
     WriteText(#10 + 'mov [digitbuf], al' + #10); // move the contents of al into the buffer
     // sys(num, location, buffer, count)

@@ -46,7 +46,7 @@ var
     symName, symType: array[0..1023] of String;
     symOffset: array[0..1023] of Integer;
     aName, aType, aSize: array of String;
-    recName, recType, recSize: array of String;
+    recName, recOffsets, recSize: array of String;
 
     currentFN: String;
     bytes, bbytes, fd, fd2, fd3, fd4, fd5: CInt;
@@ -645,6 +645,7 @@ begin
     WriteText('  syscall'+ #10);
 
 
+    // NO LONGER PUTTING THIS OFF I WILL BE REWrITING SOON, PREPARE YOURSELVES FOR SOME GRADE D ASSEMBLY
     // NOT MY WORK NEED TO REWRITE WHEN I KNOW MORE ASM> FOR DEBUGGING ONLY ===========
     // char code in AL, writes it to stdout via digitbuf
     WriteText(#10 + 'print_char:' + #10);
@@ -1828,25 +1829,28 @@ end;
 // broke as hell, pay no mind to this here function
 procedure recordBlock();
 var
-    recordName, field, offset, range, size: String;
+    recordName, field, offset, range, size, offCounter: String;
     counter: Integer;
 begin
     recordName := '';
+    offCounter := '';
     field := '';
     offset := '';
     range := '';
     size := '';
+    counter := 0;
     consume; // consume |V
     recordName := consume;
     while peek() <> 'PIPE' do
     begin
-        if peek2() = 'IDENTIFIER' then // globals
+        if peek2() = 'IDENTIFIER' then
         begin
             field := consume;
             offset := consume;
             consume; // :
             range := consume;
-            WriteBSS(recordName + ': resb ' + size + #10); // fake so it will compile
+            counter := counter + StrToInt(range);
+            offCounter := offset + ' ';
         end
         else
         begin
@@ -1854,6 +1858,11 @@ begin
             Halt(1);
         end;
     end;
+    size := IntToStr(counter);
+    recName[recCount] := field;
+    recSize[recCount] := size;
+    recOffsets[recCount] := offCounter;
+    WriteBSS(recordName + ': resb ' + size + #10);
     consume;
 end;
 
@@ -2271,7 +2280,7 @@ begin
     if recCount >= Length(recName) then
     begin
         SetLength(recName, Length(aName) * 2);
-        SetLength(recType, Length(aType) * 2);
+        SetLength(recOffsets, Length(aType) * 2);
         SetLength(recSize, Length(aSize) * 2);
     end;
 end;
@@ -2318,7 +2327,7 @@ begin
     SetLength(aType, INITIAL_ARRAY_CAP);
     SetLength(aSize, INITIAL_ARRAY_CAP);
     SetLength(recName, INITIAL_RECORD_CAP);
-    SetLength(recType, INITIAL_RECORD_CAP);
+    SetLength(recOffsets, INITIAL_RECORD_CAP);
     SetLength(recSize, INITIAL_RECORD_CAP);
     SetLength(tokenKind, INITIAL_TOKEN_CAP);
     SetLength(tokenValue, INITIAL_TOKEN_CAP);

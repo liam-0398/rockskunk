@@ -1,4 +1,24 @@
-i7-9750H on battery, binary on NFS share.
+i7-9750H, binary on NFS share.
+## bettleground
+# sumofsquares 100000000
+/NFS/Code/rockskunk $ > time ./sumofsqaures  
+672921401752298880  
+real    0m0.216s
+user    0m0.212s
+sys     0m0.000s
+/NFS/Code/rockskunk $ > time ./ssO0
+672921401752298880
+
+real    0m0.230s
+user    0m0.224s
+sys     0m0.000s
+/NFS/Code/rockskunk $ > time ./ssO2
+672921401752298880
+
+real    0m0.080s
+user    0m0.074s
+sys     0m0.000s
+
 # dsp/lpf
 5,000,000 iterations
 Optimizer dead code elimination, no register allocation

@@ -75,7 +75,7 @@ begin
     WriteLn('OPTIMIZING');
     deadCodePass; // another one
     WriteLn('OPTIMIZING!!!!');
-    //deadCodePass; // ANOTHER ONE
+    deadCodePass; // ANOTHER ONE
     writeFileO;
     RE.Free;
 end;

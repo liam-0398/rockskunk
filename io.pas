@@ -35,7 +35,6 @@ procedure writeData(s: String); begin fpWrite(fd4, s[1], Length(s)); end;
 procedure writeBSS(s: String); begin fpWrite(fd5, s[1], Length(s)); end;
 
 procedure closeIntermediateFile; begin fpClose(fd3); fpClose(fd4); end;
-
 procedure openFile; // includes standard library
 var
     libBytes, markerLen, i: CInt;
@@ -136,6 +135,15 @@ begin
     WriteText('    call print_float' + #10);
 end;
 
+
+procedure asmFoundationsMINE(); // Its happening
+begin
+    WriteText(#10 + 'print_qword:' + #10);
+    WriteText(#10 + '' + #10);
+
+
+
+end;
 
 procedure asmFoundations();
 begin

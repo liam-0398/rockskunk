@@ -46,7 +46,7 @@ var
     symName, symType: array[0..1023] of String;
     symOffset: array[0..1023] of Integer;
     aName, aType, aSize: array of String;
-    recName, recOffsets, recSize: array of String;
+    recName, recOffsets, recSize, recFields: array of String;
 
     currentFN: String;
     bytes, bbytes, fd, fd2, fd3, fd4, fd5: CInt;
@@ -1277,6 +1277,17 @@ begin
             Exit;
         end;
 
+    if peek() = 'DOT' then // records
+    begin
+        consume; //.
+
+
+
+
+
+
+    end;
+
     if peek() = 'ASSIGN' then // if its a := x etc etc
         begin
 
@@ -1829,11 +1840,12 @@ end;
 // broke as hell, pay no mind to this here function
 procedure recordBlock();
 var
-    recordName, field, offset, range, size, offCounter: String;
+    recordName, field, offset, range, size, offCounter, fieldList: String;
     counter: Integer;
 begin
     recordName := '';
     offCounter := '';
+    fieldList := '';
     field := '';
     offset := '';
     range := '';
@@ -1846,11 +1858,12 @@ begin
         if peek2() = 'IDENTIFIER' then
         begin
             field := consume;
+            fieldList := field + ' ';
             offset := consume;
+            offCounter := offset + ' ';
             consume; // :
             range := consume;
             counter := counter + StrToInt(range);
-            offCounter := offset + ' ';
         end
         else
         begin
@@ -1859,7 +1872,8 @@ begin
         end;
     end;
     size := IntToStr(counter);
-    recName[recCount] := field;
+    recName[recCount] := recordName;
+    recFields[recCount] := fieldList;
     recSize[recCount] := size;
     recOffsets[recCount] := offCounter;
     WriteBSS(recordName + ': resb ' + size + #10);
@@ -2078,7 +2092,7 @@ begin
         case buf[i] + buf[i+1] of
             ':=': assignDoubleChar(':=', 'ASSIGN');
             '|V': assignDoubleChar('|V', 'VARBLOCK');
-            '|S': assignDoubleChar('|S', 'STATICBLOCK');
+            '|R': assignDoubleChar('|S', 'RECORDBLOCK');
             '|D': assignDoubleChar('|D', 'DIRECTIVE');
             '|A': assignDoubleChar('|A', 'ASMBLOCK');
             '>=': assignDoubleChar('>=', 'GREQUAL');
@@ -2148,6 +2162,7 @@ begin
                     '$': assignSingleChar('$', 'DOLLAR');
                     '!': assignSingleChar('!', 'BANG');
                     '~': assignSingleChar('~', 'TILDE');
+                    '.': assignSingleChar('.', 'DOT');
 
                     ';': begin
                         while (i < bytes) and (buf[i] <> #10) do
@@ -2282,6 +2297,7 @@ begin
         SetLength(recName, Length(aName) * 2);
         SetLength(recOffsets, Length(aType) * 2);
         SetLength(recSize, Length(aSize) * 2);
+        SetLength(recFields, Length(aSize) * 2);
     end;
 end;
 
@@ -2329,6 +2345,7 @@ begin
     SetLength(recName, INITIAL_RECORD_CAP);
     SetLength(recOffsets, INITIAL_RECORD_CAP);
     SetLength(recSize, INITIAL_RECORD_CAP);
+    SetLength(recFields, INITIAL_RECORD_CAP);
     SetLength(tokenKind, INITIAL_TOKEN_CAP);
     SetLength(tokenValue, INITIAL_TOKEN_CAP);
     SetLength(t_line, INITIAL_TOKEN_CAP);

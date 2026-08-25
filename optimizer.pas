@@ -31,7 +31,7 @@ end;
 
 procedure writeFileO();
 begin
-    WriteLn('OPTIMIZER - WRITING FILE');
+    WriteLn('WRITING');
     fpLseek(fd, 0, SEEK_SET);
     fpFTruncate(fd, 0);
     fpWrite(fd, contents[1], Length(contents));
@@ -42,7 +42,6 @@ end;
 procedure deadCodePass();
 begin
 
-    // store reload fix across all registers (label-safe)
     // store reload fix across all registers
     RE.Expression := '^[ \t]*(mov[ \t]*\[rbp-(\d+)\][ \t]*,[ \t]*(rax|rbx|rcx|rdx|rsi|rdi|r8|r9|r10|r11|r12|r13|r14|r15)[ \t]*\r?\n)[ \t]*mov[ \t]*\3[ \t]*,[ \t]*\[rbp-\2\][ \t]*\r?\n';
     contents := RE.Replace(contents, '$1', True);
@@ -63,22 +62,20 @@ begin
     RE.Expression := '^[ \t]*(sub|add)[ \t]+rsp[ \t]*,[ \t]*0+[ \t]*\r?\n';
     contents := RE.Replace(contents, '', True);
 
-    // duplicates - ight this one might be a little tooo spicy
-    //RE.Expression := '^([ \t]*(mov|movsd|movss|lea|and|or|xor|add|sub|cmp)[ \t]+[^\r\n]+)\r?\n\1[ \t]*\r?\n';
-    //contents := RE.Replace(contents, '$1' + LineEnding, True);
-
 end;
 
 procedure optimize();
 begin
-    WriteLn('OPTIMIZER');
     filename := 'intermediate.asm';
     openFileO;
     RE := TRegExpr.Create();
     RE.ModifierM := True;
+    WriteLn('optimizing');
     deadCodePass;
+    WriteLn('OPTIMIZING');
     deadCodePass; // another one
-    deadCodePass; // ANOTHER ONE
+    WriteLn('OPTIMIZING!!!!');
+    //deadCodePass; // ANOTHER ONE
     writeFileO;
     RE.Free;
 end;

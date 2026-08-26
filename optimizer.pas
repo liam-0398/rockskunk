@@ -58,10 +58,6 @@ begin
     RE.Expression := '^[ \t]*movsd[ \t]*\[rbp-(\d+)\][ \t]*,[ \t]*(xmm\d+)[ \t]*\r?\n[ \t]*movsd[ \t]*\2[ \t]*,[ \t]*\[rbp-\1\][ \t]*\r?\n';
     contents := RE.Replace(contents, '', True);  
 
-    // zero byte stack
-    RE.Expression := '^[ \t]*(sub|add)[ \t]+rsp[ \t]*,[ \t]*0+[ \t]*\r?\n';
-    contents := RE.Replace(contents, '', True);
-
 end;
 
 procedure optimize();

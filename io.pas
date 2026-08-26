@@ -171,12 +171,21 @@ begin
     WriteText(#10 + 'jnz .collect' + #10); // uses flags from test and and jumps if not zero, repeating the loop
                                             // until its zero and there are no more charachters
     // emit -----------------------------------------
-    WriteText(#10 + '.emit' + #10);
+    WriteText(#10 + 'xor r10, r10' + #10); // initialize
+    WriteText(#10 + 'add r10, rcx' + #10); // copy counter to r10 because that boy is about be CLOBBERED
+
+    WriteText(#10 + '.emit:' + #10); // jump point
     WriteText(#10 + 'pop rdx' + #10); // return rax to the stack (flipped and in correct order)
-    WriteText(#10 + 'mov rdx, 32' + #10); // put a space on the end of that bitch
-    WriteText(#10 + 'mov [digitbuf], rdx' + #10); // move the contents of into the buffer
+    WriteText(#10 + 'mov [digitbuf + rcx], rdx' + #10); // throw chars at the end of the buffer (i hope)
+    WriteText(#10 + 'dec rcx' + #10);
+    WriteText(#10 + 'test rcx, rcx' + #10); // check if zero
+    WriteText(#10 + 'je .emit' + #10); // jump = zero
+
+    //WriteText(#10 + 'add r10, 1' + #10)
+    //WriteText(#10 + 'xor rax, rax' + #10); // initialize
+    WriteText(#10 + 'add rdx, 32' + #10); // put a space on the end of that bitch
+    WriteText(#10 + 'add [digitbuf + r10], rdx' + #10); // move the contents of into the buffer
     // sys(num, location, buffer, count) --------------------
-    // write(rax (1), rdi (1), rsi [digitbuf], rdx (count))
     WriteText('    mov rax, 1' + #10); // write
     WriteText('    mov rdi, 1' + #10);
     WriteText('    mov rsi, digitbuf' + #10);

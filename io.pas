@@ -153,88 +153,83 @@ begin
     // raw value is deposited into rax before this ever runs
     // dividing by 10 and taking the remainder the adding ascii zero code convers it into ascii
     // gives order wrong after loop, goes by least signifiacnt digit need it most signifiacnt for output
+
+    // NOTE TO ANYONE THAT IS ALSO WINGING IT AND LEARNING AS THEY GO. IF YOU DECREMENT THE COUNTER YOU USE TO COLLECT ALL THE CHARACHTERS INTO THE BUFFER, THEY WILL BE BACKWARDS AND YOU WILL SPEND HOURS TRYING TO FIGURE OUT WHY
+
     WriteText(#10 + 'print_qword:' + #10);
-    // setup counter
-    WriteText(#10 + 'mov rcx, 0' + #10); // counter to count how many charachters while walking buffer
-    WriteText(#10 + 'mov rsi, digitbuf + 20' + #10); // set maxiumum legth of the buffer?
-    WriteText(#10 + 'mov rbx, 10' + #10); // /10 for conversion
-    // loop over chars --------------------------
-    WriteText(#10 + '.collect:' + #10); // self-explanitory
-    WriteText(#10 + 'cqo' + #10);
-    WriteText(#10 + 'idiv rbx' + #10);
-    WriteText(#10 + 'add rdx, 48' + #10); // add 48 to the remainder to convert it into the ascii value '0' aval
-    WriteText(#10 + 'push rdx' + #10); // remainder here, pushing into stack will invert the order. it will get
-                                      // pushed down by subsequent pushes like how a forth stack works
-    WriteText(#10 + 'inc rcx' + #10); // increment counter
-    WriteText(#10 + 'test rax, rax' + #10); // see if 0, does an and and sets zero flag. if zero then ZF
-                                            // if it is not zero then the flag is cleared
-    WriteText(#10 + 'jnz .collect' + #10); // uses flags from test and and jumps if not zero, repeating the loop
-                                            // until its zero and there are no more charachters
-    // emit -----------------------------------------
-    WriteText(#10 + 'xor r10, r10' + #10); // initialize
-    WriteText(#10 + 'add r10, rcx' + #10); // copy counter to r10 because that boy is about be CLOBBERED
-
-    WriteText(#10 + '.emit:' + #10); // jump point
-    WriteText(#10 + 'pop rdx' + #10); // return rax to the stack (flipped and in correct order)
-    WriteText(#10 + 'mov [digitbuf + r10], rdx' + #10); // throw chars at the end of the buffer (i hope)
-    WriteText(#10 + 'dec rcx' + #10);
-    WriteText(#10 + 'test rcx, rcx' + #10); // check if zero
-    WriteText(#10 + 'jnz .emit' + #10); // jump not zero so itll loops down to zero and then quits
-
-    //WriteText(#10 + 'add r10, 1' + #10)
-    ///WriteText(#10 + 'xor rax, rax' + #10); // initialize
-    WriteText(#10 + 'add rdx, 32' + #10); // put a space on the end of that bitch
-    WriteText(#10 + 'add [digitbuf + r10], rdx' + #10); // move the contents of into the buffer
-    WriteText(#10 + 'mov rdx, r10' + #10); // THE GREAT UNCLOBBER
-    // sys(num, location, buffer, count) --------------------
-    WriteText('    mov rax, 1' + #10); // write
-    WriteText('    mov rdi, 1' + #10);
-    WriteText('    mov rsi, digitbuf' + #10);
-    //WriteText('    mov rdx, 1' + #10); no need, happens above
-    WriteText('    syscall' + #10);
-    WriteText('    ret' + #10 + #10);
+    WriteText('mov rcx, 0' + #10);      // start collection counter at zero
+    WriteText('mov rsi, digitbuf' + #10);  // prepare buffer
+    WriteText('mov rbx, 10' + #10);     // pull in 10 for the ascii conversion division
+    WriteText('xor r11, r11' + #10);    // initialize buffer counter
+    WriteText('mov r11, 0' + #10);      // start at 0
+    WriteText('.collect:' + #10);
+    WriteText('cqo' + #10);             // prep registers
+    WriteText('idiv rbx' + #10);        // divide rax rbx
+    WriteText('add rdx, 48' + #10);     // add ascii '0' to remainder, completing conversion to charachter
+    WriteText('push rdx' + #10);        // hide rdx in the stack so it doesnt get clobbered and
+                                        //stack is like forth so its in right order
+    WriteText('inc rcx' + #10);         // increment counter
+    WriteText('test rax, rax' + #10);   // check if rax = 0
+    WriteText('jnz .collect' + #10);    // if its not 0, continue loop
+    WriteText('.emit:' + #10);
+    WriteText('pop rdx' + #10);         // pull the charachters back out of the stack, LIFO like forth
+    WriteText('mov [digitbuf + r11], dl' + #10); // mov the low bytes of rdx into the buffer at the offset of the counter
+    WriteText('inc r11' + #10);
+    WriteText('cmp rcx, r11' + #10);    // check match
+    WriteText('jne .emit' + #10);       // continue loop if no match
+    WriteText('xor rdx, rdx' + #10);    // reinit rdx
+    WriteText('add rdx, 32' + #10);     // add ascii space code
+//WriteText('add [digitbuf + r10 + 1], dl' + #10); // add the space at the end of the line, actually
+                                        //corrupt the output lol
+//WriteText('add rcx, 1' + #10); // account for space? I dont think this is working
+// Threaten the linux kernel
+    WriteText('mov rax, 1' + #10);
+    WriteText('mov rdi, 1' + #10);
+    WriteText('mov rsi, digitbuf' + #10);
+    WriteText('mov rdx, rcx' + #10);    // put saved counter amount into rdx for the syscall
+    WriteText('syscall' + #10);
+    WriteText('ret' + #10 + #10);
 
     // PRINT_FLOAT =======================================
     // PLACEHOLDER
-    // raw value is deposited into rax before this ever runs
-    // dividing by 10 and taking the remainder the adding ascii zero convers it into ascii
-    // gives order wrong after loop, goes by least signifiacnt digit need it most signifiacnt for output
     WriteText(#10 + 'print_float:' + #10);
-    // setup counter
-    WriteText(#10 + 'mov rcx, 0' + #10); // counter to count how many charachters while walking buffer
-    WriteText(#10 + 'mov rsi, [digitbuf] + 20' + #10); // set maxiumum legth of the buffer?
-    WriteText(#10 + 'mov xmm1, 10' + #10); // /10 for conversion
-    // loop over chars --------------------------
-    WriteText(#10 + '.collect:' + #10); // self-explanitory
-    WriteText(#10 + 'cqo' + #10);
-    WriteText(#10 + 'idiv xmm0' + #10);
-    WriteText(#10 + 'add rdx, 48' + #10); // add 48 to the remainder to convert it into the ascii value '0' aval
-    WriteText(#10 + 'push rdx' + #10); // remainder here, pushing into stack will invert the order. it will get
-                                      // pushed down by subsequent pushes like how a forth stack works
-    WriteText(#10 + 'inc rcx' + #10); // increment counter
-    WriteText(#10 + 'test rax, rax' + #10); // see if 0, does an and and sets zero flag. if zero then ZF
-                                            // if it is not zero then the flag is cleared
-    WriteText(#10 + 'jnz .collect' + #10); // uses flags from test and and jumps if not zero, repeating the loop
-                                            // until its zero and there are no more charachters
-    // emit -----------------------------------------
-    WriteText(#10 + '.emit' + #10);
-    WriteText(#10 + 'pop rdx' + #10); // return rax to the stack (flipped and in correct order)
-    WriteText(#10 + 'mov rdx, 32' + #10); // put a space on the end of that bitch
-    WriteText(#10 + 'mov [digitbuf], rdx' + #10); // move the contents of into the buffer
-    // sys(num, location, buffer, count) --------------------
-    // write(rax (1), rdi (1), rsi [digitbuf], rdx (count))
-    WriteText('    mov rax, 1' + #10); // write
-    WriteText('    mov rdi, 1' + #10);
-    WriteText('    mov rsi, digitbuf' + #10);
-    WriteText('    mov rdx, 1' + #10);
-    WriteText('    syscall' + #10);
-    WriteText('    ret' + #10 + #10);
+    WriteText('mov rcx, 0' + #10);      // start collection counter at zero
+    WriteText('mov rsi, digitbuf' + #10);  // prepare buffer
+    WriteText('mov rbx, 10' + #10);     // pull in 10 for the ascii conversion division
+    WriteText('xor r11, r11' + #10);    // initialize buffer counter
+    WriteText('mov r11, 0' + #10);      // start at 0
+    WriteText('.collect:' + #10);
+    WriteText('cqo' + #10);             // prep registers
+    WriteText('idiv rbx' + #10);        // divide rax rbx
+    WriteText('add rdx, 48' + #10);     // add ascii '0' to remainder, completing conversion to charachter
+    WriteText('push rdx' + #10);        // hide rdx in the stack so it doesnt get clobbered and
+                                        //stack is like forth so its in right order
+    WriteText('inc rcx' + #10);         // increment counter
+    WriteText('test rax, rax' + #10);   // check if rax = 0
+    WriteText('jnz .collect' + #10);    // if its not 0, continue loop
+    WriteText('.emit:' + #10);
+    WriteText('pop rdx' + #10);         // pull the charachters back out of the stack, LIFO like forth
+    WriteText('mov [digitbuf + r11], dl' + #10); // mov the low bytes of rdx into the buffer at the offset of the counter
+    WriteText('inc r11' + #10);
+    WriteText('cmp rcx, r11' + #10);    // check match
+    WriteText('jne .emit' + #10);       // continue loop if no match
+    WriteText('xor rdx, rdx' + #10);    // reinit rdx
+    WriteText('add rdx, 32' + #10);     // add ascii space code
+//WriteText('add [digitbuf + r10 + 1], dl' + #10); // add the space at the end of the line, actually
+                                        //corrupt the output lol
+//WriteText('add rcx, 1' + #10); // account for space? I dont think this is working
+// Threaten the linux kernel
+    WriteText('mov rax, 1' + #10);
+    WriteText('mov rdi, 1' + #10);
+    WriteText('mov rsi, digitbuf' + #10);
+    WriteText('mov rdx, rcx' + #10);    // put saved counter amount into rdx for the syscall
+    WriteText('syscall' + #10);
+    WriteText('ret' + #10 + #10);
 
     // conversions
     WriteText(#10 + 'intToFloat:' + #10); // broken
     WriteText('    cvtsi2sd xmm0, rax' + #10);
     WriteText('    ret' + #10 + #10);
-
     WriteText(#10 + 'floatToInt:' + #10);
     WriteText('    cvttsd2si rax, xmm0' + #10);  // arg comes in xmm0
     WriteText('    ret' + #10 + #10);

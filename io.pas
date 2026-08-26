@@ -157,7 +157,7 @@ begin
     // setup counter
     WriteText(#10 + 'mov rcx, 0' + #10); // counter to count how many charachters while walking buffer
     WriteText(#10 + 'mov rsi, [digitbuf] + 20' + #10); // set maxiumum legth of the buffer?
-    WriteText(#10 + 'mov rbx, 10' + #10) // /10 for conversion
+    WriteText(#10 + 'mov rbx, 10' + #10); // /10 for conversion
     // loop over chars --------------------------
     WriteText(#10 + '.collect:' + #10); // self-explanitory
     WriteText(#10 + 'cqo' + #10);
@@ -193,7 +193,7 @@ begin
     // setup counter
     WriteText(#10 + 'mov rcx, 0' + #10); // counter to count how many charachters while walking buffer
     WriteText(#10 + 'mov rsi, [digitbuf] + 20' + #10); // set maxiumum legth of the buffer?
-    WriteText(#10 + 'mov xmm1, 10' + #10) // /10 for conversion
+    WriteText(#10 + 'mov xmm1, 10' + #10); // /10 for conversion
     // loop over chars --------------------------
     WriteText(#10 + '.collect:' + #10); // self-explanitory
     WriteText(#10 + 'cqo' + #10);

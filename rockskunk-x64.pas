@@ -1,7 +1,7 @@
 {$H+}{$C+}{$S+}{$Q+}{$R+}
 program rockskunk_x64;
 uses
-    BaseUnix, SysUtils, Unix, Optimizer, IO;
+    BaseUnix, SysUtils, Unix, StrUtils, Optimizer, IO;
 
 const
     intRegs: array[0..5] of String = ('rdi', 'rsi', 'rdx', 'rcx', 'r8', 'r9'); // SYSV ABI
@@ -292,7 +292,7 @@ begin
     WriteText('    push rbp' + #10);
     WriteText('    mov rbp, rsp' + #10);
     WriteText('    sub rsp, ');
-    fstackPosition := FpLSeek(fd3, 0, Seek_Cur);   // fd3 — matches WriteText's target
+    fstackPosition := FpLSeek(fd3, 0, Seek_Cur);
     WriteText('0000000128' + #10);
 end;
 
@@ -629,13 +629,41 @@ function recordToMem(recordName, field: String): String;
 var
     offsets, size: String;
     index: integer;
+
 begin
+    // the kernel is going to be more sassy about me walking in with a trenchcoat pretending i am C than expected
+    // I need to find out how i can convert on the fly from qword to those types that are used for dirent and
+    // stat and such while making it invisible to the user.
+
+    // going to have some sort of auto truncate and expanison based off of declared offsets. Gettings things out should ideally zero exmpand be the The One True Type but going in is going to be a silent truncation that I need to make people aware of.
+
+    // Requirements: Arrays come in, fields, offsets and sizes all come in like "f1 f2 f3" "0 4 8" "4 4 8"
+    // i need to split on that whitespace and associate each with their companions baed off how many spcaes
+    // deep they are. They will then be referenced as offsets of their bss declaration.
+
     if RecordIdent(recordName, 'NAME') <> -1 then
     begin
         index := RecordIdent(recordName, 'NAME');
         offsets := recOffsets[index];
         // find offset with whilespace delimiter comparison and compare to fields
         size := recSize[index];
+
+        // gotta think this ordering through and whether or not to loop over it (probably yes)
+        // run var based off lookup on incoming field name that pulls field string, splits it
+        // and assigns an integer based on which # in the field string it was.
+        offsets := ExtractDelimited(1, offsets, ' ');
+        size := ExtractDelimited(1, size, ' ');
+
+
+
+
+        // after determining what belongs to who, within loop write instructions directly from here, not
+        // shelled out to another emmiter.
+
+
+
+
+
 
         // PLACEHOLDER
         WriteText('    mov r10, ' + varToMem(IntToStr(index)) + #10);

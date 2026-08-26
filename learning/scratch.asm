@@ -5,13 +5,25 @@ section .text
 global _start
 
 _start:
-mov rax, 4766666998         ; FAKE INPUT
+mov xmm0, 3.14        ; FAKE INPUT
 call print_qword
 mov rdi, 0
 mov rax, 60
 syscall
 
-print_qword:
+print_float:
+movq rax, xmm0 ; make the float vulnerable
+
+
+
+
+
+
+
+
+
+
+
 mov rcx, 0      ; start collection counter at zero
 mov rsi, digitbuf  ; prepare buffer
 mov rbx, 10     ; pull in 10 for the ascii conversion division

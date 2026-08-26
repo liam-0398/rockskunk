@@ -192,6 +192,7 @@ begin
 
     // PRINT_FLOAT =======================================
     // PLACEHOLDER
+    // this is gonna be a pain in the ass
     WriteText(#10 + 'print_float:' + #10);
     WriteText('mov rcx, 0' + #10);      // start collection counter at zero
     WriteText('mov rsi, digitbuf' + #10);  // prepare buffer
@@ -255,6 +256,7 @@ begin
 
     // NO LONGER PUTTING THIS OFF I WILL BE REWrITING SOON, PREPARE YOURSELVES FOR SOME GRADE D ASSEMBLY
     // NOT MY WORK NEED TO REWRITE WHEN I KNOW MORE ASM> FOR DEBUGGING ONLY ===========
+    // DEPRECIATED, PRINT_QWORD HAS BEEN TOTALLY REPLACED BY A HANDWRITTEN FUNCTION, WAITING ON FP TO SWITCH
     // char code in AL, writes it to stdout via digitbuf
     WriteText(#10 + 'print_char:' + #10);
     WriteText('    mov [digitbuf], al' + #10);

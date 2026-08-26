@@ -151,12 +151,12 @@ begin
 
     // PRINT_QWORD =======================================
     // raw value is deposited into rax before this ever runs
-    // dividing by 10 and taking the remainder the adding ascii zero convers it into ascii
+    // dividing by 10 and taking the remainder the adding ascii zero code convers it into ascii
     // gives order wrong after loop, goes by least signifiacnt digit need it most signifiacnt for output
     WriteText(#10 + 'print_qword:' + #10);
     // setup counter
     WriteText(#10 + 'mov rcx, 0' + #10); // counter to count how many charachters while walking buffer
-    WriteText(#10 + 'mov rsi, [digitbuf] + 20' + #10); // set maxiumum legth of the buffer?
+    WriteText(#10 + 'mov rsi, digitbuf + 20' + #10); // set maxiumum legth of the buffer?
     WriteText(#10 + 'mov rbx, 10' + #10); // /10 for conversion
     // loop over chars --------------------------
     WriteText(#10 + '.collect:' + #10); // self-explanitory
@@ -176,20 +176,21 @@ begin
 
     WriteText(#10 + '.emit:' + #10); // jump point
     WriteText(#10 + 'pop rdx' + #10); // return rax to the stack (flipped and in correct order)
-    WriteText(#10 + 'mov [digitbuf + rcx], rdx' + #10); // throw chars at the end of the buffer (i hope)
+    WriteText(#10 + 'mov [digitbuf + r10], rdx' + #10); // throw chars at the end of the buffer (i hope)
     WriteText(#10 + 'dec rcx' + #10);
     WriteText(#10 + 'test rcx, rcx' + #10); // check if zero
-    WriteText(#10 + 'je .emit' + #10); // jump = zero
+    WriteText(#10 + 'jnz .emit' + #10); // jump not zero so itll loops down to zero and then quits
 
     //WriteText(#10 + 'add r10, 1' + #10)
-    //WriteText(#10 + 'xor rax, rax' + #10); // initialize
+    ///WriteText(#10 + 'xor rax, rax' + #10); // initialize
     WriteText(#10 + 'add rdx, 32' + #10); // put a space on the end of that bitch
     WriteText(#10 + 'add [digitbuf + r10], rdx' + #10); // move the contents of into the buffer
+    WriteText(#10 + 'mov rdx, r10' + #10); // THE GREAT UNCLOBBER
     // sys(num, location, buffer, count) --------------------
     WriteText('    mov rax, 1' + #10); // write
     WriteText('    mov rdi, 1' + #10);
     WriteText('    mov rsi, digitbuf' + #10);
-    WriteText('    mov rdx, 1' + #10);
+    //WriteText('    mov rdx, 1' + #10); no need, happens above
     WriteText('    syscall' + #10);
     WriteText('    ret' + #10 + #10);
 

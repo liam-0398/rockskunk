@@ -135,6 +135,7 @@ begin
     WriteText('    call print_float' + #10);
 end;
 
+// these print functions are harder to me than 80% of the compiler was
 procedure asmFoundationsMINE(); // Its happening
 begin
     WriteText(#10 + 'global _start' + #10);
@@ -148,6 +149,7 @@ begin
     WriteText('  mov rax, 60'+ #10);
     WriteText('  syscall'+ #10);
 
+    // PRINT_QWORD =======================================
     // raw value is deposited into rax before this ever runs
     // dividing by 10 and taking the remainder the adding ascii zero convers it into ascii
     // gives order wrong after loop, goes by least signifiacnt digit need it most signifiacnt for output
@@ -155,19 +157,61 @@ begin
     // setup counter
     WriteText(#10 + 'mov rcx, 0' + #10); // counter to count how many charachters while walking buffer
     WriteText(#10 + 'mov rsi, [digitbuf] + 20' + #10); // set maxiumum legth of the buffer?
-    // loop over chars
-    WriteText(#10 + '.collect:' + #10);
-    WriteText(#10 + 'cmp rcx, 0' + #10);
-    WriteText(#10 + 'je .collect' + #10); // jump if comparison = 0 make sure there are charachters
-    // convert from ascii?
+    WriteText(#10 + 'mov rbx, 10' + #10) // /10 for conversion
+    // loop over chars --------------------------
+    WriteText(#10 + '.collect:' + #10); // self-explanitory
     WriteText(#10 + 'cqo' + #10);
-    WriteText(#10 + 'idiv rax' + #10);
-    WriteText(#10 + 'add rdx, 48' + #10); // remainder lives here, add ascii 0 (48) to convert
+    WriteText(#10 + 'idiv rbx' + #10);
+    WriteText(#10 + 'add rdx, 48' + #10); // add 48 to the remainder to convert it into the ascii value '0' aval
+    WriteText(#10 + 'push rdx' + #10); // remainder here, pushing into stack will invert the order. it will get
+                                      // pushed down by subsequent pushes like how a forth stack works
+    WriteText(#10 + 'inc rcx' + #10); // increment counter
+    WriteText(#10 + 'test rax, rax' + #10); // see if 0, does an and and sets zero flag. if zero then ZF
+                                            // if it is not zero then the flag is cleared
+    WriteText(#10 + 'jnz .collect' + #10); // uses flags from test and and jumps if not zero, repeating the loop
+                                            // until its zero and there are no more charachters
+    // emit -----------------------------------------
+    WriteText(#10 + '.emit' + #10);
+    WriteText(#10 + 'pop rdx' + #10); // return rax to the stack (flipped and in correct order)
+    WriteText(#10 + 'mov rdx, 32' + #10); // put a space on the end of that bitch
+    WriteText(#10 + 'mov [digitbuf], rdx' + #10); // move the contents of into the buffer
+    // sys(num, location, buffer, count) --------------------
+    // write(rax (1), rdi (1), rsi [digitbuf], rdx (count))
+    WriteText('    mov rax, 1' + #10); // write
+    WriteText('    mov rdi, 1' + #10);
+    WriteText('    mov rsi, digitbuf' + #10);
+    WriteText('    mov rdx, 1' + #10);
+    WriteText('    syscall' + #10);
+    WriteText('    ret' + #10 + #10);
 
-    // add spcae to the buffer after loop
-    WriteText(#10 + 'mov al, 32' + #10); // move ascii space into al (8bit rax)
-    WriteText(#10 + 'mov [digitbuf], al' + #10); // move the contents of al into the buffer
-    // sys(num, location, buffer, count)
+    // PRINT_FLOAT =======================================
+    // PLACEHOLDER
+    // raw value is deposited into rax before this ever runs
+    // dividing by 10 and taking the remainder the adding ascii zero convers it into ascii
+    // gives order wrong after loop, goes by least signifiacnt digit need it most signifiacnt for output
+    WriteText(#10 + 'print_float:' + #10);
+    // setup counter
+    WriteText(#10 + 'mov rcx, 0' + #10); // counter to count how many charachters while walking buffer
+    WriteText(#10 + 'mov rsi, [digitbuf] + 20' + #10); // set maxiumum legth of the buffer?
+    WriteText(#10 + 'mov xmm1, 10' + #10) // /10 for conversion
+    // loop over chars --------------------------
+    WriteText(#10 + '.collect:' + #10); // self-explanitory
+    WriteText(#10 + 'cqo' + #10);
+    WriteText(#10 + 'idiv xmm0' + #10);
+    WriteText(#10 + 'add rdx, 48' + #10); // add 48 to the remainder to convert it into the ascii value '0' aval
+    WriteText(#10 + 'push rdx' + #10); // remainder here, pushing into stack will invert the order. it will get
+                                      // pushed down by subsequent pushes like how a forth stack works
+    WriteText(#10 + 'inc rcx' + #10); // increment counter
+    WriteText(#10 + 'test rax, rax' + #10); // see if 0, does an and and sets zero flag. if zero then ZF
+                                            // if it is not zero then the flag is cleared
+    WriteText(#10 + 'jnz .collect' + #10); // uses flags from test and and jumps if not zero, repeating the loop
+                                            // until its zero and there are no more charachters
+    // emit -----------------------------------------
+    WriteText(#10 + '.emit' + #10);
+    WriteText(#10 + 'pop rdx' + #10); // return rax to the stack (flipped and in correct order)
+    WriteText(#10 + 'mov rdx, 32' + #10); // put a space on the end of that bitch
+    WriteText(#10 + 'mov [digitbuf], rdx' + #10); // move the contents of into the buffer
+    // sys(num, location, buffer, count) --------------------
     // write(rax (1), rdi (1), rsi [digitbuf], rdx (count))
     WriteText('    mov rax, 1' + #10); // write
     WriteText('    mov rdi, 1' + #10);
@@ -177,7 +221,7 @@ begin
     WriteText('    ret' + #10 + #10);
 
     // conversions
-    WriteText(#10 + 'intToFloat:' + #10);
+    WriteText(#10 + 'intToFloat:' + #10); // broken
     WriteText('    cvtsi2sd xmm0, rax' + #10);
     WriteText('    ret' + #10 + #10);
 
@@ -186,6 +230,7 @@ begin
     WriteText('    ret' + #10 + #10);
 
     //WriteText(#10 + 'strToVal:' + #10);
+
 end;
 
 procedure asmFoundations();

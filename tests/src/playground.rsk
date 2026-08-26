@@ -1,11 +1,8 @@
 
-|V array[100] |
-
-
 }
 
 P main() {
-    str := 'STRING'
-    writeln(str)
+   a := 5
+    printw(a)
 
 }

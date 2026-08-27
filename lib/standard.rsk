@@ -7,6 +7,70 @@
     writebuf![256]
 |
 
+
+; OUTPUT ----------------------------------------------------------------
+
+P writeln(s) { 
+    len := s^
+    bufaddr := s + 8
+    r1 := sys(1, 1, bufaddr, len, 0, 0, 0)
+
+    nl := '\n'
+    nllen := nl^
+    nldata := nl + 8
+    r2 := sys(1, 1, nldata, nllen, 0, 0, 0)
+}
+
+P writet(s) { ; no newline. need to test
+    len := s^
+    bufaddr := s + 8
+    r1 := sys(1, 1, bufaddr, len, 0, 0, 0)
+}
+
+P printc(c) { ; CHAR broke
+    charbuf![0] := c
+    sys(1, 1, charbuf, 1, 0, 0, 0)
+}
+
+P printb(v) { ; lemme see all the bits
+    samt := 0
+    bit := 0
+    i := 0
+        LF (i := 0 until 64) {
+        samt := 63 - i
+        bit := v >> samt
+        bit := bit $ 1
+        bit := bit + 48
+        binbuf![i] := bit
+            }
+    binbuf![64] := 32
+    sys(1, 1, binbuf, 65, 0, 0, 0)
+}
+
+F readln() { ; broke as hell, need more infrastructure, surprisingly difficult
+    input := ''
+    bytes := 0
+    i := 0
+    LF (i := 0 until 256) {
+        bytes := read(0, readbuf![i], 1)
+        W (readbuf![i] = 10) { index := i BREAK }
+    }
+
+    LF (i := 0 until index - 1) {
+        input := readbuf![i]
+        printc(input)
+    }
+
+    r := input
+}
+
+; STRING
+
+F length(s) {
+    r := s^
+}
+
+
 ; I/O ----------------------------------------------------------------
 
 F read(fd, buf, count) { r := sys(0, fd, buf, count, 0, 0, 0) }
@@ -51,157 +115,12 @@ F wait4(pid, wstatus, options, rusage) { r := sys(61, pid, wstatus, options, rus
 F pipe2(pipefd, flags) { r := sys(293, pipefd, flags, 0, 0, 0, 0) }
 F kill(pid, sig) { r := sys(62, pid, sig, 0, 0, 0, 0) }
 
-; OUTPUT ----------------------------------------------------------------
-
-P writeln(s) { 
-    len := s^
-    bufaddr := s + 8
-    r1 := sys(1, 1, bufaddr, len, 0, 0, 0)
-
-    nl := '\n'
-    nllen := nl^
-    nldata := nl + 8
-    r2 := sys(1, 1, nldata, nllen, 0, 0, 0)
-}
-
-P writet(s) { ; no newline
-    len := s^
-    bufaddr := s + 8
-    r1 := sys(1, 1, bufaddr, len, 0, 0, 0)
-}
-
-F ccmp(p, q) {
-; walk both byte-by-byte until mismatch or double null
-; needs the byte-deref primitive either way
-}
-
-P printc(c) { ; CHAR
-    charbuf![0] := c
-    sys(1, 1, charbuf, 1, 0, 0, 0)
-}
-
-P printb(v) { ; BITWISE
-    samt := 0
-    bit := 0
-    i := 0
-        LF (i := 0 until 64) {
-        samt := 63 - i
-        bit := v >> samt
-        bit := bit $ 1
-        bit := bit + 48
-        binbuf![i] := bit
-            }
-    binbuf![64] := 32
-    sys(1, 1, binbuf, 65, 0, 0, 0)
-}
-
-F readln() { ; broke as hell, need more infrastructure
-    input := ''
-    bytes := 0
-    i := 0
-    LF (i := 0 until 256) {
-        bytes := read(0, readbuf![i], 1)
-        W (readbuf![i] = 10) { index := i BREAK }
-    }
-
-    LF (i := 0 until index - 1) {
-        input := readbuf![i]
-        printc(input)
-    }
-
-    r := input
-}
-
-; STRING
-
-F length(s) {
-    r := s
-}
-
-; SOCKETS -----------------------------------------------------------------
-
-F socket(domain, type, protocol) { r := sys(41, domain, type, protocol, 0, 0, 0) }
-F bind(sockfd, addr, addrlen) { r := sys(49, sockfd, addr, addrlen, 0, 0, 0) }
-F listen(sockfd, backlog) { r := sys(50, sockfd, backlog, 0, 0, 0, 0) }
-F accept(sockfd, addr, addrlen) { r := sys(43, sockfd, addr, addrlen, 0, 0, 0) }
-F connect(sockfd, addr, addrlen) { r := sys(42, sockfd, addr, addrlen, 0, 0, 0) }
-F sendto(sockfd, buf, len, flags, destaddr, addrlen) { r := sys(44, sockfd, buf, len, flags, destaddr, addrlen) }
-F recvfrom(sockfd, buf, len, flags, srcaddr, addrlen) { r := sys(45, sockfd, buf, len, flags, srcaddr, addrlen) }
-F setsockopt(sockfd, level, optname, optval, optlen) { r := sys(54, sockfd, level, optname, optval, optlen, 0) }
-
-; I/O MULTIPLEXING --------------------------------------------------------
-
-F poll(fds, nfds, timeout) { r := sys(7, fds, nfds, timeout, 0, 0, 0) }
-F epoll_create1(flags) { r := sys(291, flags, 0, 0, 0, 0, 0) }
-F epoll_ctl(epfd, op, fd, event) { r := sys(233, epfd, op, fd, event, 0, 0) }
-F epoll_wait(epfd, events, maxevents, timeout) { r := sys(232, epfd, events, maxevents, timeout, 0, 0) }
-
-; TERMINAL / DEVICE CONTROL ---------------------------------------------
-
-F ioctl(fd, request, arg) { r := sys(16, fd, request, arg, 0, 0, 0) }
-
-; SIGNALS ----------------------------------------------------------------
-
-F rt_sigaction(sig, act, oldact) { r := sys(13, sig, act, oldact, 0, 0, 0) }
-F rt_sigprocmask(how, set, oldset) { r := sys(14, how, set, oldset, 0, 0, 0) }
-F alarm(seconds) { r := sys(37, seconds, 0, 0, 0, 0, 0) }
-
-; TIME -----------------------------------------------------------------
-
-F clock_gettime(clockid, ts) { r := sys(228, clockid, ts, 0, 0, 0, 0) }
-F nanosleep(req, rem) { r := sys(35, req, rem, 0, 0, 0, 0) }
-F gettimeofday(tv, tz) { r := sys(96, tv, tz, 0, 0, 0, 0) }
-
-; PROCESS GROUPS / JOB CONTROL ------------------------------------------
-
-F setpgid(pid, pgid) { r := sys(109, pid, pgid, 0, 0, 0, 0) }
-F getpgid(pid) { r := sys(121, pid, 0, 0, 0, 0, 0) }
-F setsid() { r := sys(112, 0, 0, 0, 0, 0, 0) }
-F getsid(pid) { r := sys(124, pid, 0, 0, 0, 0, 0) }
-
-F ioctl_tcsetpgrp(fd, pgrp) { r := sys(16, fd, 21518, pgrp, 0, 0, 0) } ; TIOCSPGRP
-F ioctl_tcgetpgrp(fd, pgrp) { r := sys(16, fd, 21519, pgrp, 0, 0, 0) } ; TIOCGPGRP
-
-; MEMORY -------------------------------------------------------------
-
-F mmap(addr, length, prot, flags, fd, offset) { r := sys(9, addr, length, prot, flags, fd, offset) }
-F munmap(addr, length) { r := sys(11, addr, length, 0, 0, 0, 0) }
-F mprotect(addr, length, prot) { r := sys(10, addr, length, prot, 0, 0, 0) }
-F madvise(addr, length, advice) { r := sys(28, addr, length, advice, 0, 0, 0) }
-
-; WAITING -----------------------------------------------------------------
-
-F waitid(idtype, id, infop, options) { r := sys(247, idtype, id, infop, options, 0, 0) }
-
-; RESOURCE LIMITS ---------------------------------------------------------
-
-F getrlimit(resource, rlim) { r := sys(97, resource, rlim, 0, 0, 0, 0) }
-F setrlimit(resource, rlim) { r := sys(160, resource, rlim, 0, 0, 0, 0) }
-F prlimit64(pid, resource, newlimit, oldlimit) { r := sys(302, pid, resource, newlimit, oldlimit, 0, 0) }
-
-; PROCESS CONTROL MISC -----------------------------------------------------
-
-F prctl(option, arg2, arg3, arg4, arg5) { r := sys(157, option, arg2, arg3, arg4, arg5, 0) }
-
-
-; INIT-SPECIFIC ----------------------------------------------------------
-
-F reboot(magic1, magic2, cmd, arg) { r := sys(169, magic1, magic2, cmd, arg, 0, 0) }
-F syslog(type, buf, len) { r := sys(103, type, buf, len, 0, 0, 0) }
-F sethostname(name, len) { r := sys(170, name, len, 0, 0, 0, 0) }
-F pselect6(nfds, readfds, writefds, exceptfds, timeout, sigmask) { r := sys(270, nfds, readfds, writefds, exceptfds, timeout, sigmask) }
-
-; Utility -----------------
+; Misc -----------------
 
 F getpid() { r := sys(39, 0, 0, 0, 0, 0, 0) }
 F brk(addr) { r := sys(12, addr, 0, 0, 0, 0, 0) }
 F exit(code) { r := sys(60, code, 0, 0, 0, 0, 0) }
 F exitgroup(code) { r := sys(231, code, 0, 0, 0, 0, 0) }
-F uname(buf) { r := sys(63, buf, 0, 0, 0, 0, 0) }
-F sched_yield() { r := sys(24, 0, 0, 0, 0, 0, 0) }
-F getuid() { r := sys(102, 0, 0, 0, 0, 0, 0) }
-F umask(mask) { r := sys(95, mask, 0, 0, 0, 0, 0) }
-F geteuid() { r := sys(107, 0, 0, 0, 0, 0, 0) }
 
 F argc() {
     r := [[g_argc]]          
@@ -213,30 +132,5 @@ F argv(i) {
     r := a^ 
 }
 
-; NETWORKING ========================================================================
-
-; CORE SOCKET OPS NOT YET COVERED -----------------------------------------
-F send(sockfd, buf, len, flags) { r := sys(44, sockfd, buf, len, flags, 0, 0) } ; sendto w/ null addr
-F recv(sockfd, buf, len, flags) { r := sys(45, sockfd, buf, len, flags, 0, 0) } ; recvfrom w/ null addr
-F shutdown(sockfd, how) { r := sys(48, sockfd, how, 0, 0, 0, 0) }
-F getsockopt(sockfd, level, optname, optval, optlen) { r := sys(55, sockfd, level, optname, optval, optlen, 0) }
-F getsockname(sockfd, addr, addrlen) { r := sys(51, sockfd, addr, addrlen, 0, 0, 0) }
-F getpeername(sockfd, addr, addrlen) { r := sys(52, sockfd, addr, addrlen, 0, 0, 0) }
-F socketpair(domain, type, protocol, sv) { r := sys(53, domain, type, protocol, sv, 0, 0) }
-F accept4(sockfd, addr, addrlen, flags) { r := sys(288, sockfd, addr, addrlen, flags, 0, 0) }
-
-; SCATTER-GATHER / ANCILLARY DATA -----------------------------------------
-
-F sendmsg(sockfd, msg, flags) { r := sys(46, sockfd, msg, flags, 0, 0, 0) }
-F recvmsg(sockfd, msg, flags) { r := sys(47, sockfd, msg, flags, 0, 0, 0) }
-F sendmmsg(sockfd, msgvec, vlen, flags) { r := sys(307, sockfd, msgvec, vlen, flags, 0, 0) }
-F recvmmsg(sockfd, msgvec, vlen, flags, timeout) { r := sys(299, sockfd, msgvec, vlen, flags, timeout, 0) }
-
-; ZERO-COPY -----------------------------------------------------------------
-
-F sendfile(outfd, infd, offset, count) { r := sys(40, outfd, infd, offset, count, 0, 0) }
-F splice(fdin, offin, fdout, offout, len, flags) { r := sys(275, fdin, offin, fdout, offout, len, flags) }
-F vmsplice(fd, iov, nrsegs, flags) { r := sys(278, fd, iov, nrsegs, flags, 0, 0) }
-F tee(fdin, fdout, len, flags) { r := sys(276, fdin, fdout, len, flags, 0, 0) }
 
 ; END

@@ -136,7 +136,7 @@ begin
 end;
 
 // these print functions are harder to me than 80% of the compiler was
-procedure asmFoundationsMINE(); // Its happening
+procedure asmFoundationsMINE();
 begin
     WriteText(#10 + 'global _start' + #10);
     WriteText('_start:'+ #10);

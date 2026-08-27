@@ -1670,7 +1670,8 @@ begin
     consume;
 end;
 
-// broke as hell, pay no mind to this here function
+// collection now implemented but record field creation and modificationa are not done at all
+// do not use theese until this flag is cleared
 procedure recordBlock();
 var
     recordName, field, offset, range, size, offCounter, fieldList: String;

@@ -3,6 +3,8 @@
 
 Very WIP. WAY WAY down the line I want to do a ppc32 version as well so i can get weird with my Power Macs. I have no formal education I am making this up as I go along.
 
+It you want to risk it all: ``` fpc ./rockskunk-x64.pas ``` then ``` ./rockskunk-x64 yoursource.rsk ```.
+
 # Core tenants 
 
 1. One formal type: Float64. Everything else is just raw memory (8-byte qword)

@@ -11,8 +11,9 @@ mov rdi, 0
 mov rax, 60
 syscall
 
-print_float:
-movq rax, xmm0 ; make the float vulnerable
+; REFERENCE https://faculty.cs.niu.edu/~hutchins/csci640/float.htm
+
+print_qword:
 
 
 
@@ -24,11 +25,25 @@ movq rax, xmm0 ; make the float vulnerable
 
 
 
-mov rcx, 0      ; start collection counter at zero
-mov rsi, digitbuf  ; prepare buffer
-mov rbx, 10     ; pull in 10 for the ascii conversion division
-xor r11, r11    ; initialize buffer counter
-mov r11, 0      ; start at 0
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 .collect:
 cqo             ; prep registers

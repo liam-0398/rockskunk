@@ -1,3 +1,3 @@
 #!/bin/bash
 
-nasm -f elf64 -g scratch.asm -o scratch.o && ld scratch.o -o test
+nasm -f elf64 -g print_qword.asm -o scratch.o && ld scratch.o -o test

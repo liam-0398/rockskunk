@@ -78,10 +78,8 @@ procedure doubleParamOffsetCapacity(); forward;
 
 procedure hardFault(location, input: String);
 begin
-   if Debug = False then Exit else begin
          WriteLn(IntToStr(t_line[position]) + ' - ' + 'I CANT BELIEVE YOUVE DONE THIS - ' + location + ' - UNK SYMBOL>> ' + input);
             Halt(1);
-    end;
 end;
 
 procedure statusMessage(input: String);
@@ -1024,11 +1022,28 @@ begin
                 consume;
                 isFloat := False;
             end;
-        'AMP': begin
+        'AMP': begin /// need to implement addr of func and addr of array
                 consume;
-                ampaddr := VarToMem(consume);
-                isFloat := False;
-                Exit(emitAddressOf(ampaddr));
+                if peek2() = 'LPAR' then
+                begin
+                    ampaddr := VarToMem(consume); // need to see if need new fn and if need to include args
+                    consume; consume; consume;
+                    isFloat := False;
+                    Exit(emitAddressOf(ampaddr)); // confirm if need new emit
+                end
+                else if (peek2 = 'LBRAC') or (peek2 = 'LBRACE') or (peek2 = 'BANG') then
+                begin
+                    //ampaddr := ArrayToMem(consume); // need to fingure out if just array addr is fine or need offsets as well
+                    consume; consume; consume;
+                    isFloat := False;
+                    Exit(emitAddressOf(ampaddr)); // confirm if need new emit
+                end
+                else
+                    begin
+                        ampaddr := VarToMem(consume);
+                        isFloat := False;
+                        Exit(emitAddressOf(ampaddr));
+                    end;
             end;
         'IDENTIFIER': begin
                 if peek2() = 'CARET' then
@@ -1706,9 +1721,9 @@ begin
         if peek2() = 'IDENTIFIER' then
         begin
             field := consume;
-            fieldList := field + ' ';
+            fieldList := fieldlist + ' ' + field;
             offset := consume;
-            offCounter := offset + ' ';
+            offCounter := offCounter + ' ' + offset;
             consume; // :
             range := consume;
             counter := counter + StrToInt(range);

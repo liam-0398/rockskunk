@@ -121,7 +121,7 @@ begin
                 matchName := True;
     end
     else
-        statusMessage('YOU HAVE FRUSTRATED THE COMPLIER - MATCHNAME - WRONG SEARCH TYPE');
+        statusMessage('YOU HAVE FRUSTRATED THE COMPLIER - MATCH_NAME - WRONG SEARCH TYPE');
 end;
 
 function matchType(variable, which: String): String;
@@ -153,7 +153,7 @@ begin
                 matchType := return_FType[i];
     end
     else
-        statusMessage('YOU HAVE FRUSTRATED THE COMPLIER - MATCHTYPE - WRONG SEARCH TYPE');
+        statusMessage('YOU HAVE FRUSTRATED THE COMPLIER - MATCH_TYPE - WRONG SEARCH TYPE');
 end;
 
 function matchIndex(variable, which: String): Integer;
@@ -186,7 +186,7 @@ begin
                 matchIndex := i;
     end
     else
-        statusMessage('YOU HAVE FRUSTRATED THE COMPLIER - MATCHINDEX - WRONG SEARCH TYPE');
+        statusMessage('YOU HAVE FRUSTRATED THE COMPLIER - MATCH_INDEX - WRONG SEARCH TYPE');
 end;
 
 // more complicated than other lookups, still working out details
@@ -220,7 +220,7 @@ begin
                 recordIdent := i; // INDEX
     end
     else
-        statusMessage('YOU HAVE FRUSTRATED THE COMPLIER - RECORDIDENT - WRONG SEARCH TYPE');
+        statusMessage('YOU HAVE FRUSTRATED THE COMPLIER - RECORD_IDENT - WRONG SEARCH TYPE');
 end;
 
 function keywordCheck(word: String): Boolean; // Flag keywords
@@ -591,21 +591,24 @@ begin
         hardFault('VAR_TO_MEM', variable);
 end;
 
-// doing research to see if i even need this
 function functionToMem(variable: String): String;
 var
     foundIndex, i: Integer;
 begin
     functionToMem := '';
     statusMessage('FUNCTION_TO_MEM');
-    for i := 0 to param_FCount - 1 do
+    for i := 0 to param_FCount - 1 do // probably gonna emit here instead of seperate emitter
     begin
         if variable = param_FName[i] then
-            functionToMem := '   lea rax,' + ' [' + variable + ']' + #10;
+            begin
+            //functionToMem := '   lea rax,' + ' [' + variable + ']' + #10;
+            WriteText( '   lea rax,' + ' [' + variable + ']' + #10);
+            functionToMem := 'SUCCESS';
             break;
+            end;
     end;
-
-    hardFault('FUNCTION_TO_MEM', variable);
+    if functionToMem = '' then
+        hardFault('FUNCTION_TO_MEM', variable);
 end;
 
 // also slap a label on theese bad boys
@@ -1042,16 +1045,16 @@ begin
                 if peek2() = 'LPAR' then
                 begin
                     ampaddr := VarToMem(consume); // need to see if need new fn and if need to include args
-                    consume; consume; consume;
+                    consume; consume; // currently only accounting for func with no args
                     isFloat := False;
-                    Exit(emitAddressOf(ampaddr)); // confirm if need new emit
+                    Exit(); // confirm if need new emit
                 end
                 else if (peek2 = 'LBRAC') or (peek2 = 'LBRACE') or (peek2 = 'BANG') then
                 begin
-                    //ampaddr := ArrayToMem(consume); // need to fingure out if just array addr is fine or need offsets as well
+                    //ampaddr := ArrayToMem(consume); // need to fingure out bracnhing
                     consume; consume; consume;
                     isFloat := False;
-                    Exit(emitAddressOf(ampaddr)); // confirm if need new emit
+                    Exit(); // confirm if need new emit
                 end
                 else
                     begin

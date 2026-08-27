@@ -661,8 +661,8 @@ begin
         // gotta think this ordering through and whether or not to loop over it (probably yes)
         // run var based off lookup on incoming field name that pulls field string, splits it
         // and assigns an integer based on which # in the field string it was.
-        offsets := ExtractDelimited(1, offsets, ' ');
-        size := ExtractDelimited(1, size, ' ');
+        //offsets := ExtractDelimited(1, offsets, ' ');
+        //size := ExtractDelimited(1, size, ' ');
 
 
 

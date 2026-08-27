@@ -6,14 +6,14 @@ global _start
 
 _start:
 mov xmm0, 3.14        ; FAKE INPUT
-call print_qword
+call print_float
 mov rdi, 0
 mov rax, 60
 syscall
 
 ; REFERENCE https://faculty.cs.niu.edu/~hutchins/csci640/float.htm
 
-print_qword:
+print_float:
 
 
 

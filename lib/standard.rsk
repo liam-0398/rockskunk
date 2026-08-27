@@ -9,6 +9,13 @@
 
 
 ; OUTPUT ----------------------------------------------------------------
+; Assembly ----------------------------
+
+; printw(w)     prints value contained within rax
+; printf(f: f)  print value contained within xmm0
+; printr()      dumps value of registers at that period in time
+
+; Rsk --------------------------------
 
 P writeln(s) { 
     len := s^
@@ -21,31 +28,19 @@ P writeln(s) {
     r2 := sys(1, 1, nldata, nllen, 0, 0, 0)
 }
 
+; being moved to asembly
 P writet(s) { ; no newline. need to test
     len := s^
     bufaddr := s + 8
     r1 := sys(1, 1, bufaddr, len, 0, 0, 0)
 }
 
+; being moved to assembly
 P printc(c) { ; CHAR broke
     charbuf![0] := c
     sys(1, 1, charbuf, 1, 0, 0, 0)
 }
 
-P printb(v) { ; lemme see all the bits
-    samt := 0
-    bit := 0
-    i := 0
-        LF (i := 0 until 64) {
-        samt := 63 - i
-        bit := v >> samt
-        bit := bit $ 1
-        bit := bit + 48
-        binbuf![i] := bit
-            }
-    binbuf![64] := 32
-    sys(1, 1, binbuf, 65, 0, 0, 0)
-}
 
 F readln() { ; broke as hell, need more infrastructure, surprisingly difficult
     input := ''

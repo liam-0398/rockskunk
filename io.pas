@@ -239,6 +239,7 @@ begin
 
 end;
 
+// IMMINENT REMOVAL
 procedure asmFoundations();
 begin
     // placed at bottom for file
@@ -257,7 +258,6 @@ begin
     // NO LONGER PUTTING THIS OFF I WILL BE REWrITING SOON, PREPARE YOURSELVES FOR SOME GRADE D ASSEMBLY
     // NOT MY WORK NEED TO REWRITE WHEN I KNOW MORE ASM> FOR DEBUGGING ONLY ===========
     // DEPRECIATED, PRINT_QWORD HAS BEEN TOTALLY REPLACED BY A HANDWRITTEN FUNCTION, WAITING ON FP TO SWITCH
-    // char code in AL, writes it to stdout via digitbuf
     WriteText(#10 + 'print_char:' + #10);
     WriteText('    mov [digitbuf], al' + #10);
     WriteText('    mov rax, 1' + #10);

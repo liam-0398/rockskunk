@@ -6,7 +6,7 @@ interface
         BaseUnix, SysUtils, Unix, RegExpr;
     var
         fd, bytes: cint;
-        buf: Array[0..1048575] of Byte;
+        buf: Array[0..16777200] of Byte;
         filename: String;
         contents: ANSIString;
         RE: TRegExpr;

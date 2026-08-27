@@ -57,6 +57,7 @@ var
    PASCAL FFI
    VECTORS
    REGISTER ALLOC
+   SIGNED VS UNSIGNED WORDS, CURRENTLY BEING RECKLESS, DECIDE
 }
 
 // Forward Declarations
@@ -454,10 +455,14 @@ begin
         emitWritePointer := 'rax';
 end;
 
+// who really needs the heap anyways?
 procedure emitMalloc(); begin end;            // cm(size)
 procedure emitFree(); begin end;              // fm(p)
 
 // MATH -----------------------------------------------------------
+
+// signed vs unsigned debacle
+// signed due to presence of negative numbers
 
 procedure emitAdd(dst, src: String); begin WriteText('    add ' + dst + ', ' + src + #10); end;
 procedure emitSub(dst, src: String); begin WriteText('    sub ' + dst + ', ' + src + #10); end;
@@ -559,6 +564,11 @@ begin
     //WriteLn( 'CNSM - K ' + tokenKind[position] + ' V ' + tokenValue[position]);
     Inc(position);
 end;
+
+
+
+// signed vs unsigned debacle
+// interactions with memeory need to be unsigned because they dont go negative
 
 // slap a label on that bad boy
 function varToMem(variable: String): String;
@@ -1256,6 +1266,10 @@ end;
 // these use the flags set in emitComapareAndJump
 // the flags are ZeroF, SignD, OvrflwF, or CarryF and wiped by the next instruction so it has to be ASAP
 // ASM flags are runtime, do I jump? Pascal insertions are compile time, WHEN do I jump?
+
+// signed vs unsigned debacle
+// keep signed in case something goes negative
+
 procedure condJumpTable(condition, endLabel: String);
 begin
     statusMessage('LOOP - JUMP TABLE');

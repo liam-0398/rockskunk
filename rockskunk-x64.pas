@@ -563,8 +563,6 @@ begin
     Inc(position);
 end;
 
-
-
 // signed vs unsigned debacle
 // interactions with memeory need to be unsigned because they dont go negative
 
@@ -591,6 +589,23 @@ begin
 
     if varToMem = '' then
         hardFault('VAR_TO_MEM', variable);
+end;
+
+// doing research to see if i even need this
+function functionToMem(variable: String): String;
+var
+    foundIndex, i: Integer;
+begin
+    functionToMem := '';
+    statusMessage('FUNCTION_TO_MEM');
+    for i := 0 to param_FCount - 1 do
+    begin
+        if variable = param_FName[i] then
+            functionToMem := '   lea rax,' + ' [' + variable + ']' + #10;
+            break;
+    end;
+
+    hardFault('FUNCTION_TO_MEM', variable);
 end;
 
 // also slap a label on theese bad boys
